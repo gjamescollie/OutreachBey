@@ -1,0 +1,24 @@
+services:
+  outreachbey:
+    build: .
+    container_name: outreachbey
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - IS_DOCKER=true
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    volumes:
+      # WhatsApp session — survives restarts, only re-scan if deleted
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      # Business data — contacts, settings, logs
+      - ./data:/app/data
+      # Scheduled follow-ups
+      - ./followups.json:/app/followups.json
+    # Chromium needs /dev/shm larger than the Docker default 64MB
+    shm_size: '256mb'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

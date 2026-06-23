@@ -1,0 +1,28 @@
+# Never bake secrets or session into the image
+.env
+.wwebjs_auth/
+
+# Runtime data — mounted as volumes
+data/
+followups.json
+
+# Dev artifacts
+node_modules/
+npm-debug.log*
+
+# Mac clutter
+.DS_Store
+**/.DS_Store
+
+# Claude / IDE
+.claude/
+*.command
+
+# Tests and docs
+tests/
+docs/
+TestDockerDeployment/
+
+# Git
+.git/
+.gitignore
