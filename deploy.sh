@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# deploy.sh — One-command client deployment for Cay AI
+# Usage: bash deploy.sh <client_name> <api_key> <whatsapp_number>
+# Example: bash deploy.sh acme sk-or-xxxx 12425550100
+set -euo pipefail
+
+CLIENT_NAME="${1:?Usage: deploy.sh <client_name> <api_key> <whatsapp_number>}"
+API_KEY="${2:?Missing api_key}"
+WHATSAPP_NUMBER="${3:?Missing whatsapp_number}"
+
+REPO_URL="https://github.com/gjamescollie/OutreachBey"
+DEPLOY_DIR="$HOME/cay-$CLIENT_NAME"
+
+echo "==> Deploying Cay AI for: $CLIENT_NAME"
+
+# ─── Install Docker if missing ────────────────────────────────────────────────
+if ! command -v docker &>/dev/null; then
+  echo "==> Installing Docker..."
+  curl -fsSL https://get.docker.com | sh
+  systemctl enable --now docker
+fi
+
+# ─── Clone or pull repo ───────────────────────────────────────────────────────
+if [ -d "$DEPLOY_DIR/.git" ]; then
+  echo "==> Pulling latest..."
+  git -C "$DEPLOY_DIR" pull --ff-only
+else
+  echo "==> Cloning repo..."
+  git clone "$REPO_URL" "$DEPLOY_DIR"
+fi
+
+cd "$DEPLOY_DIR"
+
+# ─── Write .env ───────────────────────────────────────────────────────────────
+cp .env.template .env
+sed -i "s/^CLIENT_ID=.*/CLIENT_ID=$CLIENT_NAME/" .env
+sed -i "s/^OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=$API_KEY/" .env
+
+# ─── Scaffold data directory ──────────────────────────────────────────────────
+mkdir -p data
+[ -f data/settings.csv ] || echo "key,value" > data/settings.csv
+[ -f data/contacts.csv ] || echo "number,name,business,tags,notes,last_contacted" > data/contacts.csv
+[ -f data/log.csv ]      || echo "timestamp,to_number,to_name,message,status,tokens" > data/log.csv
+[ -f followups.json ]    || echo "[]" > followups.json
+
+# ─── Build and start ──────────────────────────────────────────────────────────
+echo "==> Building Docker image..."
+docker compose build
+
+echo "==> Starting container..."
+docker compose up -d
+
+# ─── Show QR code ─────────────────────────────────────────────────────────────
+echo ""
+echo "==> Waiting for WhatsApp QR code (Ctrl+C once scanned)..."
+docker compose logs -f | grep --line-buffered -A 5 "QR RECEIVED\|Scan the QR"

@@ -5,10 +5,11 @@ const fs = require('fs');
 const path = require('path');
 
 // ─── FILE PATHS ───────────────────────────────────────────────────────────────
-const FOLLOWUPS_FILE = './followups.json';
-const SETTINGS_FILE  = './data/settings.csv';
-const CONTACTS_FILE  = './data/contacts.csv';
-const LOG_FILE       = './data/log.csv';
+const DATA_DIR       = process.env.DATA_DIR || path.join(__dirname, 'data');
+const FOLLOWUPS_FILE = process.env.FOLLOWUPS_FILE || path.join(__dirname, 'followups.json');
+const SETTINGS_FILE  = path.join(DATA_DIR, 'settings.csv');
+const CONTACTS_FILE  = path.join(DATA_DIR, 'contacts.csv');
+const LOG_FILE       = path.join(DATA_DIR, 'log.csv');
 
 // ─── AI PROVIDER ──────────────────────────────────────────────────────────────
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'openrouter').toLowerCase();
@@ -2880,6 +2881,25 @@ async function handleInbound(msg) {
       return;
     }
   }
+}
+
+// ─── HEALTH ENDPOINT ──────────────────────────────────────────────────────────
+if (process.env.NODE_ENV !== 'test') {
+  const http = require('http');
+  const START_TIME = Date.now();
+  http.createServer((req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'ok',
+        client_id: process.env.CLIENT_ID || 'default',
+        uptime: Math.floor((Date.now() - START_TIME) / 1000),
+      }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  }).listen(3000);
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────

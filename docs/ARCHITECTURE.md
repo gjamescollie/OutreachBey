@@ -127,9 +127,44 @@ Status values: `sent`, `received`, `auto-replied`, `opt-out`, `hot-lead`, `demo`
 - Must run `chmod +x start.command` after each fresh download
 - `npm install --ignore-scripts` prevents Puppeteer from downloading its own Chrome
 
+## Docker Deployment
+
+Each client runs as an isolated Docker container on a $6/mo DigitalOcean droplet.
+
+### One-command deploy
+```bash
+bash <(curl -s https://raw.githubusercontent.com/gjamescollie/OutreachBey/main/deploy.sh) \
+  client_name api_key whatsapp_number
+```
+
+This script: installs Docker if missing → clones repo → writes `.env` → scaffolds `data/` → builds image → starts container → streams QR code to terminal.
+
+### Container layout
+| Path in container | Host mount | Purpose |
+|---|---|---|
+| `/app/data/` | `./data/` | Settings, contacts, log CSV |
+| `/app/.wwebjs_auth/` | `./.wwebjs_auth/` | WhatsApp session (delete to re-scan) |
+| `/app/followups.json` | `./followups.json` | Scheduled messages |
+
+### Health endpoint
+`GET http://<droplet-ip>:3000/health` returns:
+```json
+{ "status": "ok", "client_id": "acme", "uptime": 3600 }
+```
+Hook this into UptimeRobot (5-min interval) for uptime alerts.
+
+### Environment variables
+| Variable | Purpose |
+|---|---|
+| `CLIENT_ID` | Human-readable client name shown in `/health` |
+| `DATA_DIR` | Override data directory path (default: `./data`) |
+| `FOLLOWUPS_FILE` | Override followups.json path |
+| `AI_PROVIDER` | `openrouter` \| `anthropic` \| `openai` \| `google` |
+| `AI_MODEL` | Model string passed to provider |
+| `IS_DOCKER` | Set by docker-compose — switches Chrome to `/usr/bin/chromium` |
+
 ## Known Limitations
 - Single WhatsApp number per instance (Pro tier will support multi-number)
-- Agent must stay running (Mac must stay awake, Terminal open)
+- Agent must stay running (container must be up)
 - No Windows support yet (`start.bat` needed)
-- No cloud deployment yet (planned)
 - followups.json is in-memory + file — survives restarts but not corruption

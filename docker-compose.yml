@@ -8,6 +8,8 @@ services:
     environment:
       - IS_DOCKER=true
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    ports:
+      - "3000:3000"
     volumes:
       # WhatsApp session — survives restarts, only re-scan if deleted
       - ./.wwebjs_auth:/app/.wwebjs_auth
