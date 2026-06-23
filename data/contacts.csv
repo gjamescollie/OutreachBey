@@ -1,0 +1,22 @@
+number,name,business,tags,notes,last_contacted,email,industry
+12425550101,John Smith,Smith Hardware,lead,Interested in bulk order on tools and supplies,2026-05-10,jsmith@smithhardware.bs,Retail
+12425550102,Mary Johnson,MJ Catering,client,Regular client — loves the service. Wants seasonal menu promos,2026-06-01,mary@mjcatering.bs,Food & Beverage
+12425550103,David Brown,,prospect,Met at Nassau Business Expo June 2026. Looking for marketing help,,david.brown@gmail.com,
+12428279632,Norman Cartwright,Norman's Cay Boutique,vip stage:exploring,High-value client. Loves designer clothing. Very particular about personalized service,2026-06-18,norman@normanscay.bs,Retail
+12425254093,James Collie,Mutru Logistics,lead,Owns a delivery company. Pain point: getting repeat customers to book again,,jcollie@mutrulogistics.bs,Logistics
+12425550110,Sandra Clarke,Clarke Real Estate,lead stage:prospect,First-time agency owner. Needs help with lead follow-up on listings,2026-04-20,sclarke@clarkeresort.bs,Real Estate
+12425550111,Reggie Thompson,Island Tours Co,client stage:customer,Books seasonal whale-watching tours. Wants automated reminder messages for tourists,2026-06-10,reggie@islandtours.bs,Tourism
+12425550112,Yvonne Forbes,YF Hair Studio,prospect,Walk-in salon. Pain point: customers ghost after first visit and don't rebook,2026-03-15,yvonne@yfhairstudio.bs,Beauty & Wellness
+12425550113,Kevin Rolle,Rolle Auto Rentals,lead,Car rental with 12 vehicles. Wants to follow up with tourists after their rental,2026-05-05,kevin@rolleautos.bs,Transportation
+12425550114,Tamara Missick,Aqua Dive School,lead stage:demo,Dive school owner. Pain point: inconsistent bookings in low season. Saw demo May 2026,,tamara@aquadive.bs,Tourism
+12425550115,Patrick Adderley,Adderley Pharmacy,client stage:customer,Has 2 locations. Uses agent for prescription reminder messages to regulars,2026-06-12,padderley@adderlyrx.bs,Healthcare
+12425550116,Lisa Turnquest,Turnquest Insurance,prospect,Insurance broker. Wants to follow up with policy renewal leads every 90 days,,lturnquest@turnquestins.bs,Finance
+12425550117,Marco Sands,Sands Construction,lead,Mid-size contractor. Pain point: winning repeat bids from previous clients,2026-04-08,marco@sandsconstruct.bs,Construction
+12425550118,Deborah Hanna,D's Pastry Shop,client,Bakery with strong walk-in traffic but no digital follow-up strategy,2026-06-15,deborah@dpastry.bs,Food & Beverage
+12425550119,Charles Rolle,CharlesRolle.com,vip stage:customer,Top real estate agent. Sends 15-20 follow-up messages per week using the agent,2026-06-17,charles@charlesrolle.com,Real Estate
+12425550120,Michelle Gibson,Gibson Law Firm,prospect,Attorney. Skeptical of AI but open to a demo. Pain point: intake follow-up after consultations,,mgibson@gibsonlaw.bs,Legal
+12425550121,Anthony Butler,Butler Boat Charters,lead stage:demo,Charter captain with 3 boats. Wants booking confirmations and tourist outreach automated,2026-05-30,tony@butlercharters.bs,Tourism
+12425550122,Nadia Saunders,NadiaSkin Spa,client,Skincare spa. Strong repeat clients — uses agent for loyalty check-ins and seasonal offers,2026-06-14,nadia@nadiaskin.bs,Beauty & Wellness
+12425550123,Elroy Bain,Bain Electrical Services,prospect,Electrical contractor. Pain point: no system to follow up after quote submissions,,ebain@bainelectric.bs,Trades & Services
+12425550124,Carolyn Brown,Nassau Wedding Co,lead,Event planner. Books 6 months in advance. Needs a nurture system for warm leads,,carolyn@nassauwedding.bs,Events
+12423610974,Denise Home,,Prospect,Works at KFC.,,,F&B

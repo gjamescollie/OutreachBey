@@ -1,0 +1,9 @@
+node_modules
+.wwebjs_auth
+data
+logs
+followups.json
+*.env
+.env
+clients/
+TestDockerDeployment/clients/

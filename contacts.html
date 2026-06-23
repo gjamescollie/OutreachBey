@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OutreachBey — Contact Manager</title>
+  <meta name="description" content="OutreachBey CRM — manage your WhatsApp contacts and outreach pipeline">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #111; }
+    header { background: #25D366; color: white; padding: 18px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+    header span { font-size: 1.5rem; }
+    .container { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
+    .notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px; font-size: 0.9rem; color: #856404; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 18px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 12px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.82rem; font-weight: 500; color: #555; }
+    input, select, textarea { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 0.9rem; font-family: inherit; transition: border 0.2s; width: 100%; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #25D366; }
+    textarea { resize: vertical; min-height: 70px; }
+    .btn { padding: 11px 22px; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #25D366; color: white; }
+    .btn-primary:hover { background: #1da851; }
+    .btn-danger { background: #ff4444; color: white; }
+    .btn-danger:hover { background: #cc0000; }
+    .btn-secondary { background: #f0f2f5; color: #333; }
+    .btn-secondary:hover { background: #e0e2e5; }
+    .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 10px 12px; background: #f8f9fa; font-weight: 600; color: #555; border-bottom: 2px solid #eee; white-space: nowrap; }
+    td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    tr:hover td { background: #fafffe; }
+    .tag { display: inline-block; background: #e8f5e9; color: #2e7d32; border-radius: 20px; padding: 2px 9px; font-size: 0.76rem; font-weight: 500; margin: 2px; }
+    .tag.lead { background: #e3f2fd; color: #1565c0; }
+    .tag.client { background: #e8f5e9; color: #2e7d32; }
+    .tag.prospect { background: #fff8e1; color: #f57f17; }
+    .tag.vip { background: #fce4ec; color: #880e4f; }
+    .tag.inactive { background: #eeeeee; color: #757575; }
+    .empty { text-align: center; color: #aaa; padding: 40px; font-size: 0.95rem; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .toolbar input { flex: 1; min-width: 200px; }
+    .toolbar select { min-width: 130px; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+    .toast.show { opacity: 1; }
+    .toast.success { background: #25D366; }
+    .toast.error { background: #ff4444; }
+    .csv-hint { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .stat-card .val { font-size: 1.8rem; font-weight: 700; color: #25D366; }
+    .stat-card .lbl { font-size: 0.78rem; color: #888; margin-top: 2px; }
+    .truncate { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .score-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 0.78rem; font-weight: 700; }
+    .score-hi { background: #e8f5e9; color: #2e7d32; }
+    .score-mid { background: #fff8e1; color: #f57f17; }
+    .score-lo { background: #ffebee; color: #c62828; }
+    .funnel-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .funnel-stage { flex: 1; min-width: 110px; background: #f8f9fa; border-radius: 10px; padding: 14px 16px; text-align: center; border-top: 3px solid #25D366; }
+    .funnel-stage.stuck { border-top-color: #ff4444; }
+    .funnel-stage .fn { font-size: 1.5rem; font-weight: 700; color: #333; }
+    .funnel-stage .fl { font-size: 0.76rem; color: #888; margin-top: 2px; }
+    .funnel-stage .fst { font-size: 0.72rem; color: #ff4444; margin-top: 4px; }
+    .edit-btn { padding: 5px 10px; font-size: 0.78rem; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border-radius: 12px; padding: 28px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 1rem; font-weight: 600; margin-bottom: 18px; }
+    .modal .actions { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>💬</span>
+  <h1>OutreachBey — Contact Manager</h1>
+</header>
+
+<div class="container">
+
+  <div class="notice">
+    ⚠️ This tool manages your <strong>contacts.csv</strong> file. Use <em>Export CSV</em> to download and replace the file in your <code>data/</code> folder — changes are picked up by the agent automatically (no restart needed).
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row" id="stats-row"></div>
+
+  <!-- ADD CONTACT -->
+  <div class="card">
+    <h2>➕ Add New Contact</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Phone Number *</label>
+        <input type="text" id="new-number" placeholder="12425550100">
+        <span class="csv-hint">International format, no + or spaces</span>
+      </div>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="new-name" placeholder="John Smith">
+      </div>
+      <div class="form-group">
+        <label>Business Name</label>
+        <input type="text" id="new-business" placeholder="Smith Hardware">
+      </div>
+      <div class="form-group">
+        <label>Industry</label>
+        <select id="new-industry">
+          <option value="">— Select industry —</option>
+          <option>Tourism</option>
+          <option>Real Estate</option>
+          <option>Food & Beverage</option>
+          <option>Retail</option>
+          <option>Beauty & Wellness</option>
+          <option>Transportation</option>
+          <option>Logistics</option>
+          <option>Healthcare</option>
+          <option>Finance</option>
+          <option>Construction</option>
+          <option>Trades & Services</option>
+          <option>Legal</option>
+          <option>Events</option>
+          <option>Education</option>
+          <option>Technology</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tags (space-separated)</label>
+        <input type="text" id="new-tags" placeholder="lead prospect vip">
+        <span class="csv-hint">e.g. lead, client, vip, inactive, stage:demo</span>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="new-email" placeholder="john@example.com">
+      </div>
+      <div class="form-group full">
+        <label>Notes / Pain Points</label>
+        <textarea id="new-notes" placeholder="e.g. Met at Expo June 2026. Interested in bulk orders. Pain point: no follow-up system."></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="addContact()">Add Contact</button>
+      <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+    </div>
+  </div>
+
+  <!-- CSV IMPORT -->
+  <div class="card">
+    <h2>📥 Import from CSV</h2>
+    <p style="font-size:0.88rem;color:#555;margin-bottom:14px">
+      Upload any CSV file. Columns are matched by header name — only <strong>number</strong> and <strong>name</strong> are required.
+      Supported headers: <code>number, name, business, tags, notes, last_contacted, email, industry</code>.
+      Duplicates (same number) are skipped.
+    </p>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <input type="file" id="csv-upload" accept=".csv" onchange="previewImport()" style="flex:1;min-width:200px">
+      <button class="btn btn-secondary" onclick="downloadTemplate()">⬇ Download Template</button>
+    </div>
+    <div id="import-preview" style="margin-top:16px;display:none">
+      <div id="import-summary" style="font-size:0.88rem;color:#555;margin-bottom:10px"></div>
+      <div style="overflow-x:auto;max-height:240px;overflow-y:auto;border:1px solid #eee;border-radius:8px">
+        <table id="import-table" style="width:100%;border-collapse:collapse;font-size:0.82rem">
+          <thead id="import-thead"></thead>
+          <tbody id="import-tbody"></tbody>
+        </table>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn btn-primary" onclick="confirmImport()">Import Contacts</button>
+        <button class="btn btn-secondary" onclick="cancelImport()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE FUNNEL -->
+  <div class="card">
+    <h2>🔵 Pipeline Funnel</h2>
+    <div class="funnel-row" id="funnel-row"><div style="color:#aaa;font-size:0.88rem">Loading…</div></div>
+  </div>
+
+  <!-- CONTACTS TABLE -->
+  <div class="card">
+    <h2>📋 Contacts</h2>
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="Search name, number, business, industry, tag…" oninput="renderTable()">
+      <select id="filter-tag" onchange="renderTable()">
+        <option value="">All tags</option>
+        <option value="lead">lead</option>
+        <option value="client">client</option>
+        <option value="prospect">prospect</option>
+        <option value="vip">vip</option>
+        <option value="inactive">inactive</option>
+      </select>
+      <select id="filter-industry" onchange="renderTable()">
+        <option value="">All industries</option>
+      </select>
+      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+    <div id="table-container">
+      <div class="empty">Loading contacts…</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>✏️ Edit Contact</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input type="text" id="edit-number" disabled>
+      </div>
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="form-group">
+        <label>Business Name</label>
+        <input type="text" id="edit-business">
+      </div>
+      <div class="form-group">
+        <label>Industry</label>
+        <select id="edit-industry">
+          <option value="">— Select industry —</option>
+          <option>Tourism</option>
+          <option>Real Estate</option>
+          <option>Food & Beverage</option>
+          <option>Retail</option>
+          <option>Beauty & Wellness</option>
+          <option>Transportation</option>
+          <option>Logistics</option>
+          <option>Healthcare</option>
+          <option>Finance</option>
+          <option>Construction</option>
+          <option>Trades & Services</option>
+          <option>Legal</option>
+          <option>Events</option>
+          <option>Education</option>
+          <option>Technology</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tags</label>
+        <input type="text" id="edit-tags">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="edit-email">
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="edit-notes"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let contacts = [];
+  let editingNumber = null;
+  const STORAGE_KEY = 'outreachbey_contacts_v2';
+
+  const DEFAULT_CONTACTS = [
+    { number:'12425550101', name:'John Smith',       business:'Smith Hardware',        tags:'lead',          notes:'Interested in bulk order on tools and supplies',                          last_contacted:'2026-05-10', email:'jsmith@smithhardware.bs',   industry:'Retail' },
+    { number:'12425550102', name:'Mary Johnson',     business:'MJ Catering',           tags:'client',        notes:'Regular client — loves the service. Wants seasonal menu promos',          last_contacted:'2026-06-01', email:'mary@mjcatering.bs',         industry:'Food & Beverage' },
+    { number:'12425550103', name:'David Brown',      business:'',                      tags:'prospect',      notes:'Met at Nassau Business Expo June 2026. Looking for marketing help',        last_contacted:'',           email:'david.brown@gmail.com',       industry:'' },
+    { number:'12428279632', name:'Norman Cartwright',business:"Norman's Cay Boutique", tags:'vip',           notes:'High-value client. Loves designer clothing. Very particular about service',last_contacted:'2026-06-18', email:'norman@normanscay.bs',        industry:'Retail' },
+    { number:'12425254093', name:'James Collie',     business:'Mutru Logistics',       tags:'lead',          notes:'Owns a delivery company. Pain point: getting repeat customers to rebook',  last_contacted:'2026-06-16', email:'jcollie@mutrulogistics.bs',   industry:'Logistics' },
+    { number:'12425550110', name:'Sandra Clarke',    business:'Clarke Real Estate',    tags:'lead stage:prospect', notes:'First-time agency owner. Needs help with lead follow-up on listings',last_contacted:'2026-04-20', email:'sclarke@clarkeresort.bs',     industry:'Real Estate' },
+    { number:'12425550111', name:'Reggie Thompson',  business:'Island Tours Co',       tags:'client stage:customer', notes:'Books seasonal whale-watching tours. Wants automated reminders',  last_contacted:'2026-06-10', email:'reggie@islandtours.bs',       industry:'Tourism' },
+    { number:'12425550112', name:'Yvonne Forbes',    business:'YF Hair Studio',        tags:'prospect',      notes:'Walk-in salon. Pain point: customers ghost after first visit and do not rebook', last_contacted:'2026-03-15', email:'yvonne@yfhairstudio.bs', industry:'Beauty & Wellness' },
+    { number:'12425550113', name:'Kevin Rolle',      business:'Rolle Auto Rentals',    tags:'lead',          notes:'Car rental with 12 vehicles. Wants to follow up with tourists after rental', last_contacted:'2026-05-05', email:'kevin@rolleautos.bs',       industry:'Transportation' },
+    { number:'12425550114', name:'Tamara Missick',   business:'Aqua Dive School',      tags:'lead stage:demo', notes:'Dive school owner. Pain point: inconsistent bookings in low season',  last_contacted:'',           email:'tamara@aquadive.bs',           industry:'Tourism' },
+    { number:'12425550115', name:'Patrick Adderley', business:'Adderley Pharmacy',     tags:'client stage:customer', notes:'Has 2 locations. Uses agent for prescription reminder messages', last_contacted:'2026-06-12', email:'padderley@adderlyrx.bs',       industry:'Healthcare' },
+    { number:'12425550116', name:'Lisa Turnquest',   business:'Turnquest Insurance',   tags:'prospect',      notes:'Insurance broker. Wants to follow up with policy renewal leads every 90 days', last_contacted:'', email:'lturnquest@turnquestins.bs',industry:'Finance' },
+    { number:'12425550117', name:'Marco Sands',      business:'Sands Construction',    tags:'lead',          notes:'Mid-size contractor. Pain point: winning repeat bids from previous clients', last_contacted:'2026-04-08', email:'marco@sandsconstruct.bs',   industry:'Construction' },
+    { number:'12425550118', name:'Deborah Hanna',    business:"D's Pastry Shop",       tags:'client',        notes:'Bakery with strong walk-in traffic but no digital follow-up strategy',    last_contacted:'2026-06-15', email:'deborah@dpastry.bs',           industry:'Food & Beverage' },
+    { number:'12425550119', name:'Charles Rolle',    business:'CharlesRolle.com',      tags:'vip stage:customer', notes:'Top real estate agent. Sends 15-20 follow-up messages per week',   last_contacted:'2026-06-17', email:'charles@charlesrolle.com',      industry:'Real Estate' },
+    { number:'12425550120', name:'Michelle Gibson',  business:'Gibson Law Firm',       tags:'prospect',      notes:'Attorney. Skeptical of AI but open to demo. Pain point: intake follow-up', last_contacted:'', email:'mgibson@gibsonlaw.bs',          industry:'Legal' },
+    { number:'12425550121', name:'Anthony Butler',   business:'Butler Boat Charters',  tags:'lead stage:demo', notes:'Charter captain with 3 boats. Wants booking confirmations automated', last_contacted:'2026-05-30', email:'tony@butlercharters.bs',      industry:'Tourism' },
+    { number:'12425550122', name:'Nadia Saunders',   business:'NadiaSkin Spa',         tags:'client',        notes:'Skincare spa. Strong repeat clients — uses agent for loyalty check-ins', last_contacted:'2026-06-14', email:'nadia@nadiaskin.bs',            industry:'Beauty & Wellness' },
+    { number:'12425550123', name:'Elroy Bain',       business:'Bain Electrical Services', tags:'prospect',   notes:'Electrical contractor. Pain point: no system to follow up after quote submissions', last_contacted:'', email:'ebain@bainelectric.bs', industry:'Trades & Services' },
+    { number:'12425550124', name:'Carolyn Brown',    business:'Nassau Wedding Co',     tags:'lead',          notes:'Event planner. Books 6 months in advance. Needs nurture system for warm leads', last_contacted:'', email:'carolyn@nassauwedding.bs', industry:'Events' },
+  ];
+
+  // Engagement Score 1-10 based on recency, tags, and stage
+  function engagementScore(c) {
+    let score = 0;
+    const tags = (c.tags || '').toLowerCase();
+
+    // Tag value
+    if (tags.includes('vip')) score += 3;
+    else if (tags.includes('client')) score += 2;
+    else if (tags.includes('lead')) score += 1;
+
+    // Stage tag
+    if (tags.includes('stage:customer')) score += 2;
+    else if (tags.includes('stage:demo')) score += 2;
+    else if (tags.includes('stage:prospect')) score += 1;
+
+    // Recency
+    if (c.last_contacted) {
+      const days = Math.floor((Date.now() - new Date(c.last_contacted).getTime()) / 86400000);
+      if (days <= 7) score += 3;
+      else if (days <= 30) score += 2;
+      else if (days <= 90) score += 1;
+    }
+
+    // Completeness bonus
+    if (c.email) score += 1;
+    if (c.business) score += 1;
+
+    // Inactive penalty
+    if (tags.includes('inactive')) score = Math.max(0, score - 4);
+
+    return Math.min(10, Math.max(1, score));
+  }
+
+  function renderFunnel() {
+    const stages = ['prospect', 'demo', 'customer', 'inactive'];
+    const stageLabels = { prospect: 'Prospect', demo: 'Demo', customer: 'Customer', inactive: 'Inactive' };
+    const now = Date.now();
+    const thirtyDays = 30 * 86400000;
+
+    // Contacts not in any explicit stage (just 'lead' tag counts as uncategorized)
+    const uncategorized = contacts.filter(c => {
+      const t = (c.tags||'').toLowerCase();
+      return !stages.some(s => t.includes(`stage:${s}`) || (s === 'inactive' && t.includes('inactive')));
+    });
+
+    const stageData = [
+      { key: 'lead', label: 'Lead', contacts: uncategorized },
+      ...stages.filter(s => s !== 'inactive').map(s => ({
+        key: s,
+        label: stageLabels[s],
+        contacts: contacts.filter(c => (c.tags||'').toLowerCase().includes(`stage:${s}`))
+      })),
+      {
+        key: 'inactive',
+        label: 'Inactive',
+        contacts: contacts.filter(c => (c.tags||'').toLowerCase().includes('inactive'))
+      }
+    ];
+
+    const el = document.getElementById('funnel-row');
+    el.innerHTML = stageData.map(sd => {
+      const stuck = sd.contacts.filter(c => {
+        if (!c.last_contacted) return true;
+        return (now - new Date(c.last_contacted).getTime()) > thirtyDays;
+      }).length;
+      const isStuck = stuck > 0 && sd.key !== 'inactive';
+      return `<div class="funnel-stage${isStuck ? ' stuck' : ''}">
+        <div class="fn">${sd.contacts.length}</div>
+        <div class="fl">${sd.label}</div>
+        ${isStuck ? `<div class="fst">⚠ ${stuck} stuck 30d+</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function loadContacts() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try { contacts = JSON.parse(saved); } catch(e) { contacts = []; }
+    } else {
+      contacts = DEFAULT_CONTACTS;
+      saveContacts();
+    }
+    populateIndustryFilter();
+    renderStats();
+    renderFunnel();
+    renderTable();
+  }
+
+  function saveContacts() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+    populateIndustryFilter();
+    renderStats();
+    renderFunnel();
+    renderTable();
+  }
+
+  function populateIndustryFilter() {
+    const sel = document.getElementById('filter-industry');
+    const current = sel.value;
+    const industries = [...new Set(contacts.map(c => c.industry).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All industries</option>' + industries.map(i => `<option${i===current?' selected':''}>${i}</option>`).join('');
+  }
+
+  function renderStats() {
+    const total = contacts.length;
+    const leads = contacts.filter(c => c.tags.includes('lead')).length;
+    const clients = contacts.filter(c => c.tags.includes('client')).length;
+    const vips = contacts.filter(c => c.tags.includes('vip')).length;
+    const inactive = contacts.filter(c => c.tags.includes('inactive')).length;
+    const contacted = contacts.filter(c => c.last_contacted).length;
+    document.getElementById('stats-row').innerHTML = [
+      [total, 'Total Contacts'],
+      [leads, 'Leads'],
+      [clients, 'Clients'],
+      [vips, 'VIPs'],
+      [inactive, 'Inactive'],
+      [contacted, 'Ever Contacted'],
+    ].map(([v,l]) => `<div class="stat-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
+  }
+
+  function addContact() {
+    const number = document.getElementById('new-number').value.trim().replace(/\D/g,'');
+    const name = document.getElementById('new-name').value.trim();
+    const business = document.getElementById('new-business').value.trim();
+    const industry = document.getElementById('new-industry').value.trim();
+    const tags = document.getElementById('new-tags').value.trim() || 'lead';
+    const email = document.getElementById('new-email').value.trim();
+    const notes = document.getElementById('new-notes').value.trim();
+
+    if (!number || number.length < 7) { showToast('Enter a valid phone number', 'error'); return; }
+    if (!name) { showToast('Name is required', 'error'); return; }
+    if (contacts.find(c => c.number === number)) { showToast('A contact with this number already exists', 'error'); return; }
+
+    contacts.push({ number, name, business, tags, notes, last_contacted: '', email, industry });
+    saveContacts();
+    clearForm();
+    showToast('Contact added!', 'success');
+  }
+
+  function openEdit(number) {
+    const c = contacts.find(x => x.number === number);
+    if (!c) return;
+    editingNumber = number;
+    document.getElementById('edit-number').value = c.number;
+    document.getElementById('edit-name').value = c.name;
+    document.getElementById('edit-business').value = c.business || '';
+    document.getElementById('edit-industry').value = c.industry || '';
+    document.getElementById('edit-tags').value = c.tags || '';
+    document.getElementById('edit-email').value = c.email || '';
+    document.getElementById('edit-notes').value = c.notes || '';
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function saveEdit() {
+    const c = contacts.find(x => x.number === editingNumber);
+    if (!c) return;
+    const name = document.getElementById('edit-name').value.trim();
+    if (!name) { showToast('Name is required', 'error'); return; }
+    c.name = name;
+    c.business = document.getElementById('edit-business').value.trim();
+    c.industry = document.getElementById('edit-industry').value.trim();
+    c.tags = document.getElementById('edit-tags').value.trim();
+    c.email = document.getElementById('edit-email').value.trim();
+    c.notes = document.getElementById('edit-notes').value.trim();
+    saveContacts();
+    closeModal();
+    showToast('Contact updated!', 'success');
+  }
+
+  function closeModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    editingNumber = null;
+  }
+
+  function deleteContact(number) {
+    if (!confirm('Delete this contact?')) return;
+    contacts = contacts.filter(c => c.number !== number);
+    saveContacts();
+    showToast('Contact deleted', 'success');
+  }
+
+  function clearForm() {
+    ['new-number','new-name','new-business','new-notes','new-email'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('new-tags').value = '';
+    document.getElementById('new-industry').value = '';
+  }
+
+  function renderTable() {
+    const search = document.getElementById('search').value.toLowerCase();
+    const filterTag = document.getElementById('filter-tag').value;
+    const filterIndustry = document.getElementById('filter-industry').value;
+
+    const filtered = contacts.filter(c => {
+      const matchSearch = !search || [c.name, c.number, c.business, c.tags, c.industry, c.notes, c.email].some(v => (v||'').toLowerCase().includes(search));
+      const matchTag = !filterTag || c.tags.toLowerCase().includes(filterTag);
+      const matchIndustry = !filterIndustry || c.industry === filterIndustry;
+      return matchSearch && matchTag && matchIndustry;
+    });
+
+    const container = document.getElementById('table-container');
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty">No contacts found</div>';
+      return;
+    }
+
+    const rows = filtered.map(c => {
+      const tags = (c.tags||'').split(' ').filter(Boolean).map(t => `<span class="tag ${t}">${t}</span>`).join('');
+      const sc = engagementScore(c);
+      const scClass = sc >= 7 ? 'score-hi' : sc >= 4 ? 'score-mid' : 'score-lo';
+      return `<tr>
+        <td><strong>${esc(c.name)}</strong></td>
+        <td>${esc(c.number)}</td>
+        <td class="truncate">${esc(c.business||'—')}</td>
+        <td>${esc(c.industry||'—')}</td>
+        <td>${tags}</td>
+        <td class="truncate">${esc(c.email||'—')}</td>
+        <td class="truncate">${esc(c.notes||'—')}</td>
+        <td>${c.last_contacted||'Never'}</td>
+        <td><span class="score-badge ${scClass}" title="Engagement score">${sc}</span></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary edit-btn" onclick="openEdit('${c.number}')">Edit</button>
+          <button class="btn btn-danger edit-btn" onclick="deleteContact('${c.number}')">Del</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Number</th><th>Business</th><th>Industry</th><th>Tags</th><th>Email</th><th>Notes</th><th>Last Contacted</th><th title="Engagement Score 1-10">Score</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>
+      <p style="margin-top:12px;font-size:0.82rem;color:#aaa">${filtered.length} of ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}</p>
+    `;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function exportCSV() {
+    const header = 'number,name,business,tags,notes,last_contacted,email,industry';
+    const rows = contacts.map(c =>
+      [c.number, c.name, c.business||'', c.tags||'', (c.notes||'').replace(/,/g,' '), c.last_contacted||'', c.email||'', c.industry||''].join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'contacts.csv'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('contacts.csv downloaded — replace the file in your data/ folder', 'success');
+  }
+
+  function showToast(msg, type='') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => toast.className = 'toast', 3000);
+  }
+
+  document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  loadContacts();
+
+  // ── CSV IMPORT ────────────────────────────────────────────────────────────────
+  const KNOWN_HEADERS = ['number','name','business','tags','notes','last_contacted','email','industry'];
+  let pendingImport = [];
+
+  function parseCSVText(text) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return { headers: [], rows: [] };
+    // Simple CSV parse — handles quoted fields
+    function splitLine(line) {
+      const result = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') { inQ = !inQ; }
+        else if (line[i] === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+        else { cur += line[i]; }
+      }
+      result.push(cur.trim());
+      return result;
+    }
+    const headers = splitLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g,'_'));
+    const rows = lines.slice(1).map(l => {
+      const vals = splitLine(l);
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
+      return obj;
+    });
+    return { headers, rows };
+  }
+
+  function normalizeRow(raw) {
+    // Map common alternate column names to our schema
+    const aliases = { phone:'number', phone_number:'number', mobile:'number', cell:'number',
+                      full_name:'name', first_name:'name', contact_name:'name',
+                      company:'business', organization:'business', org:'business',
+                      tag:'tags', label:'tags', category:'tags',
+                      note:'notes', description:'notes', comments:'notes',
+                      last_contact:'last_contacted', contacted:'last_contacted',
+                      email_address:'email', mail:'email',
+                      sector:'industry', type:'industry' };
+    const out = {};
+    for (const [k, v] of Object.entries(raw)) {
+      const mapped = aliases[k] || (KNOWN_HEADERS.includes(k) ? k : null);
+      if (mapped && !out[mapped]) out[mapped] = v;
+    }
+    // Clean number
+    if (out.number) out.number = out.number.replace(/\D/g, '');
+    return out;
+  }
+
+  function previewImport() {
+    const file = document.getElementById('csv-upload').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const { rows } = parseCSVText(e.target.result);
+      const normalized = rows.map(normalizeRow).filter(r => r.number && r.number.length >= 7 && r.name);
+      const skipped = rows.length - normalized.length;
+      const dupes = normalized.filter(r => contacts.find(c => c.number === r.number)).length;
+      const toImport = normalized.filter(r => !contacts.find(c => c.number === r.number));
+
+      pendingImport = toImport;
+
+      const summary = document.getElementById('import-summary');
+      summary.innerHTML = `Found <strong>${rows.length}</strong> rows — ` +
+        `<span style="color:#25D366"><strong>${toImport.length}</strong> ready to import</span>, ` +
+        `<span style="color:#f57f17"><strong>${dupes}</strong> duplicates (will skip)</span>` +
+        (skipped ? `, <strong>${skipped}</strong> invalid (missing number or name)` : '');
+
+      const previewRows = toImport.slice(0, 10);
+      document.getElementById('import-thead').innerHTML =
+        '<tr>' + ['Number','Name','Business','Tags','Email','Industry'].map(h => `<th style="padding:8px;background:#f8f9fa;border-bottom:2px solid #eee;font-size:0.8rem">${h}</th>`).join('') + '</tr>';
+      document.getElementById('import-tbody').innerHTML = previewRows.map(r =>
+        `<tr>${[r.number,r.name,r.business||'',r.tags||'',r.email||'',r.industry||''].map(v =>
+          `<td style="padding:7px 8px;border-bottom:1px solid #f0f0f0">${esc(v||'—')}</td>`).join('')}</tr>`
+      ).join('') + (toImport.length > 10 ? `<tr><td colspan="6" style="padding:8px;color:#aaa;font-size:0.8rem">...and ${toImport.length - 10} more</td></tr>` : '');
+
+      document.getElementById('import-preview').style.display = toImport.length > 0 ? 'block' : 'none';
+      if (toImport.length === 0) showToast('No new contacts to import', 'error');
+    };
+    reader.readAsText(file);
+  }
+
+  function confirmImport() {
+    if (!pendingImport.length) return;
+    const fullRows = pendingImport.map(r => ({
+      number: r.number || '',
+      name: r.name || '',
+      business: r.business || '',
+      tags: r.tags || 'lead',
+      notes: r.notes || '',
+      last_contacted: r.last_contacted || '',
+      email: r.email || '',
+      industry: r.industry || '',
+    }));
+    contacts.push(...fullRows);
+    saveContacts();
+    cancelImport();
+    showToast(`✅ Imported ${fullRows.length} contact${fullRows.length !== 1 ? 's' : ''}!`, 'success');
+  }
+
+  function cancelImport() {
+    pendingImport = [];
+    document.getElementById('import-preview').style.display = 'none';
+    document.getElementById('csv-upload').value = '';
+  }
+
+  function downloadTemplate() {
+    const header = 'number,name,business,tags,notes,last_contacted,email,industry';
+    const example = '12425550100,John Smith,Smith Hardware,lead,Met at expo June 2026,,john@example.com,Retail';
+    const csv = `${header}\n${example}\n`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'contacts_template.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>

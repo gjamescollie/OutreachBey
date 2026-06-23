@@ -1,0 +1,16 @@
+# Credentials & secrets
+settings.csv
+.env
+.env.local
+credentials.json
+session.json
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# System
+.DS_Store
+*.swp
+.vscode/

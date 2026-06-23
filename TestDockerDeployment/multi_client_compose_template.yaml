@@ -1,0 +1,88 @@
+version: '3.8'
+
+# ─────────────────────────────────────────────────────────────
+# OutreachBey — Multi-Client Docker Compose Template
+#
+# How to use:
+#   1. Copy this file to your server as docker-compose.yml
+#   2. For each client, create  clients/<slug>/<slug>.env
+#      (copy client.env.template and fill in real values)
+#   3. Create the data directories:
+#        mkdir -p clients/<slug>/{data,logs,.wwebjs_auth}
+#        echo '[]' > clients/<slug>/followups.json
+#   4. Run: docker compose up -d
+#
+# See DOCKER_SETUP.md for the full deployment guide.
+# ─────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Client 1: Norman's Cay Boutique ──────────────────────
+  normans-cay:
+    build:
+      context: ..          # root of the repo (where index.js lives)
+      dockerfile: TestDockerDeployment/production_dockerfile.dockerfile
+    container_name: outreachbey-normans-cay
+    restart: unless-stopped
+    env_file:
+      - ./clients/normans-cay/normans-cay.env   # secrets live here, not in this file
+    environment:
+      - NODE_ENV=production
+      - IS_DOCKER=true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - ./clients/normans-cay/.wwebjs_auth:/usr/src/app/.wwebjs_auth
+      - ./clients/normans-cay/data:/usr/src/app/data
+      - ./clients/normans-cay/logs:/usr/src/app/logs
+      - ./clients/normans-cay/followups.json:/usr/src/app/followups.json
+
+  # ── Client 2: Butler Boat Charters ───────────────────────
+  butler-boats:
+    build:
+      context: ..
+      dockerfile: TestDockerDeployment/production_dockerfile.dockerfile
+    container_name: outreachbey-butler-boats
+    restart: unless-stopped
+    env_file:
+      - ./clients/butler-boats/butler-boats.env
+    environment:
+      - NODE_ENV=production
+      - IS_DOCKER=true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - ./clients/butler-boats/.wwebjs_auth:/usr/src/app/.wwebjs_auth
+      - ./clients/butler-boats/data:/usr/src/app/data
+      - ./clients/butler-boats/logs:/usr/src/app/logs
+      - ./clients/butler-boats/followups.json:/usr/src/app/followups.json
+
+  # ── Add more clients by copying a block above ─────────────
+  # Pattern:
+  #   <slug>:
+  #     build:
+  #       context: ..
+  #       dockerfile: TestDockerDeployment/production_dockerfile.dockerfile
+  #     container_name: outreachbey-<slug>
+  #     restart: unless-stopped
+  #     env_file:
+  #       - ./clients/<slug>/<slug>.env
+  #     environment:
+  #       - NODE_ENV=production
+  #       - IS_DOCKER=true
+  #     logging:
+  #       driver: "json-file"
+  #       options:
+  #         max-size: "10m"
+  #         max-file: "3"
+  #     volumes:
+  #       - ./clients/<slug>/.wwebjs_auth:/usr/src/app/.wwebjs_auth
+  #       - ./clients/<slug>/data:/usr/src/app/data
+  #       - ./clients/<slug>/logs:/usr/src/app/logs
+  #       - ./clients/<slug>/followups.json:/usr/src/app/followups.json

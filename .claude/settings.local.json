@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(node -e ' *)",
+      "Bash(node --check \"/Users/granvillemutru.com/Downloads/GJC WA agent Premium v1/index.js\")",
+      "Bash(node --check index.js)",
+      "Bash(node --test tests/index.test.js)",
+      "Bash(grep -n \"isValidNumber\\\\|1-9\\\\]\\\\\\\\\\\\\\\\d{6,14}\" \"/Users/granvillemutru.com/Downloads/GJC WA agent Premium v1/index.js\")",
+      "Bash(chmod +x \"/Users/granvillemutru.com/Downloads/GJC WA agent Premium v1/scripts/new-client.sh\")",
+      "Bash(chmod +x \"/Users/granvillemutru.com/Downloads/GJC WA agent Premium v1/TestDockerDeployment/new-client.sh\")"
+    ]
+  }
+}
