@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
+const path = require('path');
 
 // ─── FILE PATHS ───────────────────────────────────────────────────────────────
 const FOLLOWUPS_FILE = './followups.json';
