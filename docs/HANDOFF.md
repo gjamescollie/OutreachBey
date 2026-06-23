@@ -1,11 +1,11 @@
-# OutreachBey — Handoff Guide
+# Cay AI — Handoff Guide
 
-This document contains everything a new developer (or future-you returning after a break) needs to understand, run, and extend OutreachBey without re-reading the full conversation history.
+This document contains everything a new developer (or future-you returning after a break) needs to understand, run, and extend Cay AI without re-reading the full conversation history.
 
 ---
 
 ## The Short Version
-OutreachBey is a Node.js WhatsApp agent that:
+Cay AI is a Node.js WhatsApp agent that:
 1. Connects to WhatsApp via a linked device (QR scan, like WhatsApp Web)
 2. Lets the owner send AI-written outreach messages via WhatsApp commands
 3. Automatically classifies and responds to inbound messages using AI
@@ -15,8 +15,8 @@ It runs on a Mac. One instance per client. Each client has their own WhatsApp nu
 
 ---
 
-## Credentials & Keys (OutreachBey instance)
-- **WhatsApp number:** 12425254093 (GJC Digital)
+## Credentials & Keys (Cay AI instance)
+- **WhatsApp number:** 12425254093 (Lucayan Labs)
 - **OpenRouter API key:** in `.env` as `OPENROUTER_API_KEY`
 - **AI model:** `anthropic/claude-haiku-4-5` via OpenRouter
 - **Calendar:** https://calendly.com/gjamescollie/30min
@@ -26,7 +26,7 @@ It runs on a Mac. One instance per client. Each client has their own WhatsApp nu
 
 ## Quick Start
 ```bash
-cd '/path/to/outreachbey-agent'
+cd '/path/to/cayai-agent'
 npm install --ignore-scripts       # first time only
 # then double-click start.command
 # or:
@@ -37,7 +37,7 @@ PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google
 
 ## How to Test the AI Connection
 ```bash
-cd '/path/to/outreachbey-agent'
+cd '/path/to/cayai-agent'
 node -e "
 require('dotenv').config();
 fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -45,8 +45,8 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
   headers: {
     'Authorization': 'Bearer ' + process.env.OPENROUTER_API_KEY,
     'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://gjcdigital.com',
-    'X-Title': 'OutreachBey',
+    'HTTP-Referer': 'https://lucayanlabs.com',
+    'X-Title': 'Cay AI',
   },
   body: JSON.stringify({
     model: process.env.AI_MODEL || 'anthropic/claude-haiku-4-5',

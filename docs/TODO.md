@@ -1,10 +1,10 @@
-# OutreachBey — Future Plans
+# Cay AI — Future Plans
 
 ## Immediate (before using with real clients)
 
 - [x] **Remove debug logging from inbound listener** — stripped from `index.js`.
 - [ ] **Test all 20 KB entries** — run through the comprehensive test plan in SETUP.md section 6 to confirm each FAQ auto-answers correctly at 75%+ confidence.
-- [ ] **Fill in real OutreachBey answers in settings.csv** — some entries still have placeholder-quality answers. Review and sharpen each one.
+- [ ] **Fill in real Cay AI answers in settings.csv** — some entries still have placeholder-quality answers. Review and sharpen each one.
 - [ ] **Test !setup wizard end-to-end** — run `!setup`, complete all 18 steps, and confirm settings.csv is written correctly without wiping calendar link or token settings.
 - [ ] **Test re-running !setup** — confirm it preserves `calendar_link`, `response_window`, and token limits from the existing file.
 

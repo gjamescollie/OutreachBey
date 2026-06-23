@@ -1,4 +1,4 @@
-# OutreachBey — Architecture
+# Cay AI — Architecture
 
 ## Stack
 - **Runtime:** Node.js v18+ (tested on v24)
@@ -10,7 +10,7 @@
 
 ## File Structure
 ```
-outreachbey-agent/
+cayai-agent/
 ├── index.js              ← All agent logic
 ├── package.json          ← Dependencies
 ├── start.command         ← Mac double-click launcher

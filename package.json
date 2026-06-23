@@ -1,7 +1,7 @@
 {
   "name": "gjc-whatsapp-agent",
   "version": "2.0.0",
-  "description": "GJC Digital WhatsApp outreach agent — Premium tier",
+  "description": "Lucayan Labs WhatsApp outreach agent — Premium tier",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

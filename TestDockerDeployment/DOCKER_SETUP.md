@@ -1,6 +1,6 @@
-# OutreachBey — Docker Deployment Guide
+# Cay AI — Docker Deployment Guide
 
-This guide covers deploying OutreachBey to a Linux server (Ubuntu 22.04 recommended) 
+This guide covers deploying Cay AI to a Linux server (Ubuntu 22.04 recommended) 
 using Docker, with one container per client. Each client is fully isolated — separate 
 WhatsApp session, data, logs, and API key.
 

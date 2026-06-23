@@ -34,8 +34,8 @@ async function callAI(systemPrompt, userPrompt, maxTokens = 300) {
         headers: {
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://gjcdigital.com',
-          'X-Title': 'GJC Digital WhatsApp Agent',
+          'HTTP-Referer': 'https://lucayanlabs.com',
+          'X-Title': 'Cay AI WhatsApp Agent',
         },
         body: JSON.stringify({
           model: AI_MODEL,
@@ -243,7 +243,7 @@ const CANNED = {
     `${name ? `${name}! ` : ``}Now we're talking! 🔥 Let's get you set up properly — book a free call here:\n${link}\n\nOr fire away any questions, we're right here.\n\n${sig}`,
     `${name ? `Hey ${name}! ` : `Hey! `}You're asking the right questions. 💯 Here's how to get started:\n${link}\n\nWe'll handle the rest.\n\n${sig}`,
     `${name ? `${name}, ` : ``}we love to see it! 🙌 Book a quick call and we'll get everything moving:\n${link}\n\n${sig}`,
-    `${name ? `Hey ${name}! ` : `Hey! `}This is exactly what OutreachBey was built for — your business, on autopilot. 🚀\n\nLet's talk:\n${link}\n\n${sig}`,
+    `${name ? `Hey ${name}! ` : `Hey! `}This is exactly what Cay AI was built for — your business, on autopilot. 🚀\n\nLet's talk:\n${link}\n\n${sig}`,
     `${name ? `${name}! ` : ``}Great timing. Businesses in the Bahamas are already using this to win more clients every week. Let's get you in:\n${link}\n\n${sig}`,
     `${name ? `${name}, ` : ``}you're one call away from having this running for your business. 🇧🇸 Book here:\n${link}\n\nWe keep it simple.\n\n${sig}`,
     `${name ? `Hi ${name}! ` : `Hi! `}Ready to see what's possible? Let's get on a quick call:\n${link}\n\nWe'll show you exactly how it works for businesses like yours.\n\n${sig}`,
@@ -281,7 +281,7 @@ const CANNED = {
 
   wrongNumber: (sig) => pick([
     `Hey! Looks like this might've come to the wrong number — no worries at all. 😊 If we can ever help your business grow, we're right here.\n\n${sig}`,
-    `Hi there! This might be a wrong number, but no stress. Feel free to reach back out if OutreachBey can ever help your business. 🇧🇸\n\n${sig}`,
+    `Hi there! This might be a wrong number, but no stress. Feel free to reach back out if Cay AI can ever help your business. 🇧🇸\n\n${sig}`,
     `Hey! We think this message may have been meant for someone else, but no harm done. 😊 Reach out anytime if we can help!\n\n${sig}`,
     `Hi! Looks like a wrong turn — happens to the best of us. 😄 If you ever want to see what we do, we're always here.\n\n${sig}`,
     `Hey there! Wrong number perhaps, but if you're ever looking to grow your business with AI, we'd love to chat. 🚀\n\n${sig}`,
@@ -835,7 +835,7 @@ function saveSettings(data) {
       `response_window,${keep('response_window', 'Monday to Friday 9am to 5pm')}`,
       '',
       '# ── CALENDAR & CTA ────────────────────────────────────────────────────────────',
-      `calendar_link,${keep('calendar_link', 'https://calendly.com/outreachbey')}`,
+      `calendar_link,${keep('calendar_link', 'https://calendly.com/gjamescollie')}`,
       '',
       '# ── TOKEN SETTINGS ────────────────────────────────────────────────────────────',
       `token_limit_send,${keep('token_limit_send', '300')}`,
@@ -878,7 +878,7 @@ async function fetchNewsHeadlines() {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OutreachBey/1.0)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CayAI/1.0)' },
         signal: controller.signal,
       });
       clearTimeout(timer);
@@ -907,7 +907,7 @@ async function startDemoMenu(msg, from, session = {}) {
   const firstName = (session.demoName || '').split(' ')[0];
   const greeting = firstName ? `Welcome, *${firstName}!* 👋\n\n` : '';
   await msg.reply(
-    `🚀 *OutreachBey Live Demo* 🇧🇸\n\n` +
+    `🚀 *Cay AI Live Demo* 🇧🇸\n\n` +
     `${greeting}` +
     `I'm a live AI automation engine built to help Nassau small businesses convert leads, save time, and book more clients — on autopilot.\n\n` +
     `Pick a feature to experience right here in this chat:\n\n` +
@@ -933,9 +933,9 @@ async function showDemoBooking(msg, from, calendarLink, ownerNumber, signature, 
   }
   appendToLog(from, from, 'Demo booking link sent', 'demo-booking', '', '', 'out', 'demo');
   const bookingBody = pick([
-    `Our AI automation team will look at *${session.demoBusiness || 'your business'}* specifically, understand your needs, and determine exactly how OutreachBey can work for you. 30 minutes, no pitch, no pressure.`,
-    `Our automation professionals will dig into *${session.demoBusiness || 'your business'}* — understand what you need and map out exactly how OutreachBey fits. 30 minutes, no pitch, no pressure.`,
-    `We'll have one of our AI professionals look at *${session.demoBusiness || 'your business'}* specifically, understand your setup, and show you exactly how OutreachBey can work for you. 30 minutes, no pitch, no pressure.`,
+    `Our AI automation team will look at *${session.demoBusiness || 'your business'}* specifically, understand your needs, and determine exactly how Cay AI can work for you. 30 minutes, no pitch, no pressure.`,
+    `Our automation professionals will dig into *${session.demoBusiness || 'your business'}* — understand what you need and map out exactly how Cay AI fits. 30 minutes, no pitch, no pressure.`,
+    `We'll have one of our AI professionals look at *${session.demoBusiness || 'your business'}* specifically, understand your setup, and show you exactly how Cay AI can work for you. 30 minutes, no pitch, no pressure.`,
   ]);
   await msg.reply(
     `📅 *Free AI Strategy Call*\n\n` +
@@ -951,7 +951,7 @@ async function runDealCloser(msg, from, businessInfo, session = {}) {
   demoSessions[from] = { ...demoSessions[from], state: 'feature_done' };
   await msg.reply('⏳ Simulating live lead intake...', null, { linkPreview: false });
   const result = await callAI(
-    `You are demonstrating the OutreachBey WhatsApp AI agent. Generate a realistic simulation of an incoming lead for the given business. Reply ONLY in this exact format with no extra text:
+    `You are demonstrating the Cay AI WhatsApp agent. Generate a realistic simulation of an incoming lead for the given business. Reply ONLY in this exact format with no extra text:
 LEAD_MESSAGE: [realistic incoming WhatsApp from a customer, 2-3 sentences, specific Nassau scenario]
 PSYCHOLOGY: [one sentence on the unstated desire behind the message]
 INTENT: [exactly one of: HOT_LEAD / QUESTION / CALL / BOOKING]
@@ -971,7 +971,7 @@ DRAFT: [perfect reply the owner would approve — warm, specific, ends with a qu
   await msg.reply(
     `🚨 *SIMULATED LIVE INBOUND LEAD!* 🚨\n\n` +
     `_"${leadMsg}"_\n\n` +
-    `Here's what OutreachBey does in milliseconds:\n\n` +
+    `Here's what Cay AI does in milliseconds:\n\n` +
     `*1️⃣ Unstated Psychology:* ${psychology}\n\n` +
     `*2️⃣ Intent Classified:* \`[${intent}]\` 🔥\n\n` +
     `🟢 *AI-drafted reply — sent to your phone for one-tap approval:*\n\n` +
@@ -988,7 +988,7 @@ async function handleDemoFlow(msg, from, body, settings) {
   if (session) { session.lastActivity = Date.now(); session.nudged = false; delete session.nudgedAt; }
   const lower = body.toLowerCase().trim();
   const calendarLink = getCalendarLink(settings);
-  const signature = `- The OutreachBey Team`;
+  const signature = `- The Cay AI Team`;
   const ownerNumber = formatNumber(settings.owner_number || '');
 
   if (lower === 'menu') {
@@ -1043,7 +1043,7 @@ async function handleDemoFlow(msg, from, body, settings) {
           `💨 Wind: ${w.windspeed_10m} mph\n` +
           `☁️ ${condition}\n\n` +
           `---\n\n` +
-          `🤖 *OutreachBey just auto-drafted this for ${bizContext}:*\n\n` +
+          `🤖 *Cay AI just auto-drafted this for ${bizContext}:*\n\n` +
           `_"${draft}"_\n\n` +
           `*The Value:* You don\'t lift a finger — the AI monitors conditions and keeps your clients informed on autopilot.\n\n` +
           `_Reply *MENU* to go back, or *4* to book your strategy call._`,
@@ -1087,7 +1087,7 @@ async function handleDemoFlow(msg, from, body, settings) {
           `📰 *Nassau & Local News Brief — ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}*\n\n` +
           `${brief}\n\n` +
           `---\n\n` +
-          `*The Value:* OutreachBey can send your clients timely updates like this automatically — keeping your business top of mind without any manual effort.\n\n` +
+          `*The Value:* Cay AI can send your clients timely updates like this automatically — keeping your business top of mind without any manual effort.\n\n` +
           `_Reply *MENU* to go back, or *4* to book your strategy call._`,
           null, { linkPreview: false }
         );
@@ -1331,7 +1331,7 @@ client.on('qr', (qr) => {
 client.on('authenticated', () => console.log('✅ Authenticated'));
 client.on('ready', () => {
   const settings = getSettings();
-  console.log(`🚀 ${settings.business_name || 'GJC Digital'} WhatsApp Agent is live!`);
+  console.log(`🚀 ${settings.business_name || 'Lucayan Labs'} WhatsApp Agent is live!`);
   console.log(`🤖 AI Provider: ${AI_PROVIDER} | Model: ${AI_MODEL}`);
   startFollowUpChecker();
   startInactivityChecker();
@@ -1374,8 +1374,8 @@ client.on('disconnected', (reason) => {
     console.error('❌ Max reconnect attempts reached. Sending desktop notification.');
     const { execFile } = require('child_process');
     // Write a temp AppleScript file to avoid quote-escaping issues
-    const script = '/tmp/outreachbey_notify.scpt';
-    fs.writeFileSync(script, 'display notification "OutreachBey disconnected. Restart required." with title "OutreachBey Agent" sound name "Basso"');
+    const script = '/tmp/cayai_notify.scpt';
+    fs.writeFileSync(script, 'display notification "Cay AI disconnected. Restart required." with title "Cay AI Agent" sound name "Basso"');
     execFile('osascript', [script], (err) => { if (err) console.error('Notification failed:', err.message); });
     const settings = getSettings();
     const ownerNumber = (settings.owner_number || '').replace(/\D/g, '');
@@ -1392,7 +1392,7 @@ client.on('message_create', async (msg) => {
   const body = msg.body.trim();
   const lower = body.toLowerCase();
   const settings = getSettings();
-  const bizName = settings.business_name || 'GJC Digital';
+  const bizName = settings.business_name || 'Lucayan Labs';
 
   // ── LOG ALL OWNER MESSAGES WITHOUT DISCRIMINATION ──
   // Every message the owner sends — commands, replies to agent prompts, manual texts — is recorded.
@@ -1727,7 +1727,7 @@ client.on('message_create', async (msg) => {
       ? ` (${((stats.optOuts / stats.rangeInbound) * 100).toFixed(1)}%)`
       : '';
     await msg.reply(
-      `📊 *${days}-Day Report — OutreachBey*\n\n` +
+      `📊 *${days}-Day Report — Cay AI*\n\n` +
       `*Sent:* ${stats.rangeSent} messages\n` +
       `*Inbound:* ${stats.rangeInbound} received\n` +
       `*Auto-Replied:* ${stats.autoReplied}\n` +
@@ -1941,7 +1941,7 @@ function writeReviewHTML({ received, autoReplied, unhandled, optOuts, lowConf, f
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OutreachBey — Daily Review</title>
+<title>Cay AI — Daily Review</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6f9;margin:0;padding:20px;color:#222}
   h1{font-size:1.4rem;margin-bottom:4px}
@@ -1964,7 +1964,7 @@ function writeReviewHTML({ received, autoReplied, unhandled, optOuts, lowConf, f
 </style>
 </head>
 <body>
-<h1>📊 OutreachBey — Daily Review</h1>
+<h1>📊 Cay AI — Daily Review</h1>
 <p class="sub">Generated ${dateStr}${settings.business_name ? ' · ' + escHtml(settings.business_name) : ''}</p>
 
 <div class="stats">
@@ -2076,7 +2076,7 @@ function startReviewAgent() {
       const fallSample = fallthroughs.map(r => `"${(r.message || '').slice(0, 80).replace(/\[.*?\]/g, '').trim()}" (${r.status})`).join('\n');
       const kbSample   = kbGaps.map(r => `"${(r.message || '').slice(0, 80).replace(/\[.*?\]/g, '').trim()}"`).join('\n');
 
-      const systemPrompt = `You are a WhatsApp AI agent performance analyst for ${settings.business_name || 'OutreachBey'}, a WhatsApp AI outreach tool for small businesses in Nassau, Bahamas.
+      const systemPrompt = `You are a WhatsApp AI agent performance analyst for ${settings.business_name || 'Cay AI'}, a WhatsApp AI outreach tool for small businesses in Nassau, Bahamas.
 
 Review the last 24 hours of agent activity and return a short WhatsApp-ready digest for the business owner. Be direct and practical. No fluff. Max 250 words total.
 
@@ -2152,13 +2152,13 @@ function startInactivityChecker() {
         session.nudged = true;
         session.nudgedAt = now;
         await client.sendMessage(from,
-          `Still there? 👋 Reply *menu* to jump back in, or just send a message to continue.\n\n- The ${settings.business_name || 'OutreachBey'} Team`,
+          `Still there? 👋 Reply *menu* to jump back in, or just send a message to continue.\n\n- The ${settings.business_name || 'Cay AI'} Team`,
           { linkPreview: false }
         ).catch(() => {});
       } else if (session.nudged && now - session.nudgedAt >= INACTIVITY_EXPIRE_MS) {
         delete demoSessions[from];
         await client.sendMessage(from,
-          `Looks like we got cut off! Feel free to message us anytime to start fresh. 🙂\n\n- The ${settings.business_name || 'OutreachBey'} Team`,
+          `Looks like we got cut off! Feel free to message us anytime to start fresh. 🙂\n\n- The ${settings.business_name || 'Cay AI'} Team`,
           { linkPreview: false }
         ).catch(() => {});
         appendToLog(from, from, '[DEMO] Session expired (inactivity)', 'demo:expired', '', '', 'out', 'demo');
@@ -2222,7 +2222,7 @@ function humanDelay(fast = false) {
 const HARD_OPT_OUT = ['stop messages', 'stop messaging', 'stop texting', 'stop contacting', 'unsubscribe', 'remove me from', 'opt out', 'optout'];
 
 function getCalendarLink(settings) {
-  return settings.calendar_link || 'https://calendly.com/outreachbey';
+  return settings.calendar_link || 'https://calendly.com/gjamescollie';
 }
 
 // Hard opt-out check — requires a clear multi-word phrase to avoid accidental funnel drop-off
@@ -2245,7 +2245,7 @@ function buildKBSummary(settings) {
 // ─── AI INTENT CLASSIFIER ────────────────────────────────────────────────────
 // Returns: { intent, confidence, kb_index, reasoning }
 async function classifyIntent(message, contact, settings) {
-  const bizName = settings.business_name || 'OutreachBey';
+  const bizName = settings.business_name || 'Cay AI';
   const kbSummary = buildKBSummary(settings);
   const stage = getContactStage(contact);
   const contactInfo = contact
@@ -2404,7 +2404,7 @@ function getTopKBCandidates(body, settings, n = 2) {
 }
 
 async function generateAssessment(contact, stage, body, intent, settings) {
-  const bizName = settings.business_name || 'OutreachBey';
+  const bizName = settings.business_name || 'Cay AI';
   const tone = settings.tone || 'friendly-pro';
   const language = settings.language_style || 'standard';
   const signature = settings.signature || `- The ${bizName} Team`;
@@ -2509,7 +2509,7 @@ async function handleInbound(msg) {
   const firstName = contact ? contact.name.split(' ')[0] : '';
   // Neutralize any formula injection from inbound body before any further use
   const body = msg.body.trim().replace(/^[=+\-@]/, "'$&");
-  const bizName = settings.business_name || 'OutreachBey';
+  const bizName = settings.business_name || 'Cay AI';
   const calendarLink = getCalendarLink(settings);
   const signature = settings.signature || `- The ${bizName} Team`;
 
@@ -2552,7 +2552,7 @@ async function handleInbound(msg) {
     appendToLog(from, contactName, 'Demo started', 'demo', '', '', 'in', 'auto');
     await humanDelay();
     await msg.reply(
-      `🚀 *Welcome to OutreachBey!* 🇧🇸\n\n` +
+      `🚀 *Welcome to Cay AI!* 🇧🇸\n\n` +
       `Before I show you what I can do, let me make this personal.\n\n` +
       `Reply with your *Name*, *Business Name*, and *what you sell* — separated by commas.\n\n` +
       `_(Example: James, Marlin Charters, Boat Tours)_`,

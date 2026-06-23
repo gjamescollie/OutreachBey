@@ -1,21 +1,21 @@
-# OutreachBey — Privacy & Data Usage Policy
+# Cay AI — Privacy & Data Usage Policy
 
 **Version:** 1.0  
 **Effective:** June 2026  
-**Operator:** GJC Digital (Granville James Collie) — gjamescollie@gmail.com  
+**Operator:** Lucayan Labs (Granville James Collie) — gjamescollie@gmail.com  
 
 ---
 
-## What OutreachBey Is
+## What Cay AI Is
 
-OutreachBey is a private, locally-operated WhatsApp AI outreach agent deployed on behalf of individual small businesses in Nassau, Bahamas. It is **not a cloud service** — each deployment runs on a single Mac, is linked to one WhatsApp number, and stores all data in local files on that machine.
+Cay AI is a private, locally-operated WhatsApp AI outreach agent deployed on behalf of individual small businesses in Nassau, Bahamas. It is **not a cloud service** — each deployment runs on a single Mac, is linked to one WhatsApp number, and stores all data in local files on that machine.
 
 ---
 
 ## Data Collected
 
 ### From Your Contacts (Inbound Messages)
-When a person sends a WhatsApp message to a business using OutreachBey, the following is recorded:
+When a person sends a WhatsApp message to a business using Cay AI, the following is recorded:
 
 | Data | Where Stored | Purpose |
 |------|-------------|---------|
@@ -33,7 +33,7 @@ Every message the owner sends through the linked WhatsApp number is logged, incl
 
 ---
 
-## What OutreachBey Does NOT Collect
+## What Cay AI Does NOT Collect
 
 - No passwords, PINs, or financial data
 - No location data
@@ -57,7 +57,7 @@ Message content (inbound customer messages and business context) is sent to the 
 **You should not store sensitive personal data in the Knowledge Base (FAQ) fields**, as this content is sent to the AI provider on every classification request.
 
 ### WhatsApp (via whatsapp-web.js)
-OutreachBey connects to WhatsApp using the linked-device protocol (QR code scan). It operates as a WhatsApp client, subject to WhatsApp's Terms of Service and Privacy Policy. The business owner is responsible for ensuring their use of WhatsApp Business messaging complies with WhatsApp's policies.
+Cay AI connects to WhatsApp using the linked-device protocol (QR code scan). It operates as a WhatsApp client, subject to WhatsApp's Terms of Service and Privacy Policy. The business owner is responsible for ensuring their use of WhatsApp Business messaging complies with WhatsApp's policies.
 
 ---
 
@@ -73,13 +73,13 @@ All data is stored locally on the Mac running the agent:
 | `followups.json` | Scheduled messages | Cleared on send or manual cancel |
 | `.wwebjs_auth/` | WhatsApp session token | Kept until manually deleted or re-scanned |
 
-Data is **not backed up to the cloud** by OutreachBey. The business operator is responsible for their own backups.
+Data is **not backed up to the cloud** by Cay AI. The business operator is responsible for their own backups.
 
 ---
 
 ## Opt-Out Handling
 
-OutreachBey implements a mandatory opt-out system:
+Cay AI implements a mandatory opt-out system:
 
 - Contacts who send any of the following phrases are **immediately and permanently removed from outreach**: "stop messages", "stop messaging", "stop texting", "stop contacting", "unsubscribe", "remove me from", "opt out"
 - The contact is tagged `inactive` in `contacts.csv` — the agent will not message them again
@@ -105,7 +105,7 @@ To exercise these rights, contacts should message the business directly. The bus
 
 ## Business Operator Responsibilities
 
-By deploying OutreachBey, the business operator agrees to:
+By deploying Cay AI, the business operator agrees to:
 
 1. **Obtain consent** before adding contacts to the outreach list — recipients should expect to receive WhatsApp messages from the business
 2. **Honor opt-out requests** immediately (handled automatically by the agent)
@@ -123,19 +123,19 @@ By deploying OutreachBey, the business operator agrees to:
 - The `.wwebjs_auth/` session directory must be kept private — it grants WhatsApp access
 - Log files may contain message content; treat `data/` as sensitive
 - The `contacts.html` and `dashboard.html` tools are local-only and not exposed to the internet
-- No remote access to the agent is provided by GJC Digital
+- No remote access to the agent is provided by Lucayan Labs
 
 ---
 
 ## Changes to This Policy
 
-GJC Digital may update this document as the product evolves. Changes will be noted with a new version date at the top of this file.
+Lucayan Labs may update this document as the product evolves. Changes will be noted with a new version date at the top of this file.
 
 ---
 
 ## Contact
 
-**GJC Digital**  
+**Lucayan Labs**  
 Granville James Collie  
 Nassau, Bahamas  
 gjamescollie@gmail.com

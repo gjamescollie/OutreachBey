@@ -1,4 +1,4 @@
-# OutreachBey — Decisions Log
+# Cay AI — Decisions Log
 
 Key decisions made during development. Each entry explains what was chosen, what was rejected, and why.
 
@@ -113,7 +113,7 @@ Without purpose context, the AI defaulted to promotional/sales-y language regard
 ## Knowledge Base: 10 Entries vs 20 Entries
 
 **Chosen:** 20 entries
-**Reasoning:** More KB entries directly improve AI classifier accuracy for the QUESTION intent. Each entry is a potential auto-answer. For a product like OutreachBey with many common pre-sales questions, 20 entries covers the full buyer journey from awareness to objection handling.
+**Reasoning:** More KB entries directly improve AI classifier accuracy for the QUESTION intent. Each entry is a potential auto-answer. For a product like Cay AI with many common pre-sales questions, 20 entries covers the full buyer journey from awareness to objection handling.
 
 ---
 

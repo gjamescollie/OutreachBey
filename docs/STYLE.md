@@ -1,7 +1,7 @@
-# OutreachBey — Style Guide
+# Cay AI — Style Guide
 
 ## Brand Voice
-OutreachBey communicates as a trusted, knowledgeable local partner — not a faceless tech company. The voice is warm, direct, and grounded in the Bahamian context.
+Cay AI communicates as a trusted, knowledgeable local partner — not a faceless tech company. The voice is warm, direct, and grounded in the Bahamian context.
 
 **Core traits:**
 - Friendly and professional, never stiff or corporate
@@ -80,7 +80,7 @@ Auto-replies should feel human and warm, never robotic. They use the business na
 
 ### Demo response
 When someone asks for a demo, the agent reveals itself as the AI:
-> "You are actually chatting with the OutreachBey AI agent right now — this IS the demo!"
+> "You are actually chatting with the Cay AI AI agent right now — this IS the demo!"
 
 This is the only case where the AI nature is disclosed, and it's intentional — it's the selling point.
 
@@ -95,7 +95,7 @@ Clear, no-pressure, leaves the door open:
 ---
 
 ## Signature Conventions
-- Default: `- The OutreachBey Team`
+- Default: `- The Cay AI Team`
 - Client instances: `- [Business Name]` or custom value from settings
 - Always on its own line with a dash prefix
 - Can include an emoji if the client wants (e.g. `- Island Bites 🍽️`)

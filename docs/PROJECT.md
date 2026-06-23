@@ -1,11 +1,11 @@
-# OutreachBey — Project Overview
+# Cay AI — Project Overview
 
 ## What It Is
-OutreachBey is a WhatsApp AI outreach and automation platform built for small businesses and entrepreneurs in Nassau, Bahamas. It runs as a locally-hosted Node.js agent that connects to an existing WhatsApp number via linked device, uses AI to write personalized messages, and handles inbound customer messages automatically.
+Cay AI is a WhatsApp AI outreach and automation platform built for small businesses and entrepreneurs in Nassau, Bahamas. It runs as a locally-hosted Node.js agent that connects to an existing WhatsApp number via linked device, uses AI to write personalized messages, and handles inbound customer messages automatically.
 
 ## The Business
-- **Brand:** OutreachBey
-- **Company:** GJC Digital
+- **Brand:** Cay AI
+- **Company:** Lucayan Labs
 - **Owner:** Granville
 - **WhatsApp number:** 12425254093
 - **Market:** Nassau, Bahamas — small businesses and solo entrepreneurs
@@ -35,7 +35,7 @@ Each client gets their own instance of the agent connected to their own WhatsApp
 11. Pharmacies and health clinics
 
 ## Competitive Positioning
-OutreachBey is built specifically for the Bahamian market. WhatsApp is the primary business communication channel in Nassau. Most international tools (WATI, Interakt) are too complex, too expensive, and not built for this market. OutreachBey is affordable, locally supported, and speaks the local language.
+Cay AI is built specifically for the Bahamian market. WhatsApp is the primary business communication channel in Nassau. Most international tools (WATI, Interakt) are too complex, too expensive, and not built for this market. Cay AI is affordable, locally supported, and speaks the local language.
 
 ## Call to Action
 - **Primary:** Reply DEMO — agent self-demos live on WhatsApp

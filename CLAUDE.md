@@ -1,7 +1,7 @@
-# OutreachBey — Claude Code Project Brief
+# Cay AI — Claude Code Project Brief
 
 ## What This Is
-OutreachBey is a Node.js WhatsApp AI outreach agent for small businesses in Nassau, Bahamas. It is a managed SaaS product built and operated by GJC Digital (Granville). Each client gets their own instance connected to their own WhatsApp number.
+Cay AI is a Node.js WhatsApp AI outreach agent for small businesses in Nassau, Bahamas. It is a managed SaaS product built and operated by Lucayan Labs (Granville). Each client gets their own instance connected to their own WhatsApp number.
 
 The agent does two things:
 1. Lets the business owner send AI-written WhatsApp messages via `!commands` from their own phone
@@ -23,7 +23,7 @@ The agent does two things:
 
 ## File Structure
 ```
-outreachbey-agent/
+cayai-agent/
 ├── index.js              ← ALL agent logic — ~1,340 lines, one file by design
 ├── package.json
 ├── start.command         ← Mac double-click launcher

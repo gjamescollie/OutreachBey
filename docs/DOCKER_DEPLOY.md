@@ -1,4 +1,4 @@
-# Docker Deployment Guide — OutreachBey
+# Docker Deployment Guide — Cay AI
 
 ## Prerequisites
 - Docker Desktop installed (Mac/Windows/Linux)

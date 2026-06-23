@@ -1,4 +1,4 @@
-# OutreachBey — Setup & Operations Guide
+# Cay AI — Setup & Operations Guide
 
 ## Requirements
 - Mac with Apple Silicon (M1/M2/M3/M4)
@@ -12,7 +12,7 @@
 
 ### 1. Prepare the folder
 ```
-outreachbey-agent/
+cayai-agent/
 ├── index.js
 ├── package.json
 ├── start.command
@@ -42,7 +42,7 @@ Available models (paste into AI_MODEL):
 
 ### 3. Make the launcher executable (one time per new download)
 ```bash
-chmod +x '/path/to/outreachbey-agent/start.command'
+chmod +x '/path/to/cayai-agent/start.command'
 ```
 Tip: type `chmod +x ` then drag the file from Finder into Terminal to auto-fill the path.
 
@@ -77,7 +77,7 @@ Or edit `data/settings.csv` directly.
 ## Starting the Agent (Daily Use)
 Double-click `start.command`. The agent will reconnect without a QR scan and show:
 ```
-🚀 OutreachBey WhatsApp Agent is live!
+🚀 Cay AI WhatsApp Agent is live!
 🤖 AI Provider: openrouter | Model: anthropic/claude-haiku-4-5
 ```
 

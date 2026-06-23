@@ -1,7 +1,7 @@
-# OutreachBey — Future Plans
+# Cay AI — Future Plans
 
 ## Overview
-Add two things to make OutreachBey production-ready for uptime:
+Add two things to make Cay AI production-ready for uptime:
 1. **Daily WhatsApp status report** — agent messages the owner every morning with a health summary
 2. **pm2 config** — process manager that auto-restarts on crash and survives Mac reboots
 
@@ -49,7 +49,7 @@ function startHeartbeat() {
       const uptimeMins  = Math.floor((process.uptime() % 3600) / 60);
 
       const lines = [
-        `✅ *OutreachBey is live* — ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        `✅ *Cay AI is live* — ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
         ``,
         `📊 *Today:* ${stats?.today ?? 0} messages sent`,
         `📅 *Scheduled:* ${pending} pending`,
@@ -74,7 +74,7 @@ Find this block in `index.js`:
 ```javascript
 client.on('ready', () => {
   const settings = getSettings();
-  console.log(`🚀 ${settings.business_name || 'GJC Digital'} WhatsApp Agent is live!`);
+  console.log(`🚀 ${settings.business_name || 'Lucayan Labs'} WhatsApp Agent is live!`);
   console.log(`🤖 AI Provider: ${AI_PROVIDER} | Model: ${AI_MODEL}`);
   startFollowUpChecker();
 });
@@ -84,7 +84,7 @@ Change it to:
 ```javascript
 client.on('ready', () => {
   const settings = getSettings();
-  console.log(`🚀 ${settings.business_name || 'GJC Digital'} WhatsApp Agent is live!`);
+  console.log(`🚀 ${settings.business_name || 'Lucayan Labs'} WhatsApp Agent is live!`);
   console.log(`🤖 AI Provider: ${AI_PROVIDER} | Model: ${AI_MODEL}`);
   startFollowUpChecker();
   startHeartbeat();
@@ -166,7 +166,7 @@ Replace the existing `start.command` content with this updated version that uses
 #!/bin/bash
 cd "$(dirname "$0")"
 
-echo "🚀 Starting OutreachBey..."
+echo "🚀 Starting Cay AI..."
 
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
