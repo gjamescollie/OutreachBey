@@ -8,6 +8,7 @@ services:
     environment:
       - IS_DOCKER=true
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PROXY_URL=${PROXY_URL:-}
     ports:
       - "3000:3000"
     volumes:

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # deploy.sh — One-command client deployment for Cay AI
-# Usage: bash deploy.sh <client_name> <api_key> <whatsapp_number>
-# Example: bash deploy.sh acme sk-or-xxxx 12425550100
+# Usage: bash deploy.sh <client_name> <api_key> <whatsapp_number> [proxy_url]
+# Example: bash deploy.sh acme sk-or-xxxx 12425550100 http://user:pass@123.45.67.89:8080
 set -euo pipefail
 
-CLIENT_NAME="${1:?Usage: deploy.sh <client_name> <api_key> <whatsapp_number>}"
+CLIENT_NAME="${1:?Usage: deploy.sh <client_name> <api_key> <whatsapp_number> [proxy_url]}"
 API_KEY="${2:?Missing api_key}"
 WHATSAPP_NUMBER="${3:?Missing whatsapp_number}"
+PROXY_URL="${4:-}"
 
 REPO_URL="https://github.com/gjamescollie/OutreachBey"
 DEPLOY_DIR="$HOME/cay-$CLIENT_NAME"
@@ -35,6 +36,12 @@ cd "$DEPLOY_DIR"
 cp .env.template .env
 sed -i "s/^CLIENT_ID=.*/CLIENT_ID=$CLIENT_NAME/" .env
 sed -i "s/^OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=$API_KEY/" .env
+if [ -n "$PROXY_URL" ]; then
+  sed -i "s|# PROXY_URL=.*|PROXY_URL=$PROXY_URL|" .env
+  echo "==> Proxy configured: $PROXY_URL"
+else
+  echo "==> No proxy configured (direct connection)"
+fi
 
 # ─── Scaffold data directory ──────────────────────────────────────────────────
 mkdir -p data
