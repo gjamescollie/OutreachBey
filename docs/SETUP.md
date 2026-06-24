@@ -1,14 +1,21 @@
 # Cay AI — Setup & Operations Guide
 
-## Requirements
-- Mac with Apple Silicon (M1/M2/M3/M4)
-- Google Chrome installed at `/Applications/Google Chrome.app`
-- Node.js LTS installed (https://nodejs.org)
-- An OpenRouter API key (https://openrouter.ai) or Anthropic/OpenAI/Google key
+Two deployment paths are supported. Choose one:
+
+| Path | When to use |
+|---|---|
+| **Mac (local)** | Development, testing, owner running on their own machine |
+| **DigitalOcean (Docker)** | Live client deployments — see [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md) |
 
 ---
 
-## First-Time Setup
+## Mac Setup (Local)
+
+### Requirements
+- Mac with Apple Silicon (M1/M2/M3/M4)
+- Google Chrome installed at `/Applications/Google Chrome.app`
+- Node.js LTS (https://nodejs.org)
+- An API key from OpenRouter, Anthropic, OpenAI, or Google
 
 ### 1. Prepare the folder
 ```
@@ -17,30 +24,37 @@ cayai-agent/
 ├── package.json
 ├── start.command
 ├── contacts.html
-├── .env
-├── followups.json        ← create this as an empty file containing: []
+├── .env                  ← copy from .env.template, fill in your key
+├── followups.json        ← create containing: []
 └── data/
-    ├── settings.csv
-    ← contacts.csv
-    └── log.csv           ← create with header: timestamp,to_number,to_name,message,status,tokens
+    ├── settings.csv      ← key,value (header only to start)
+    ├── contacts.csv      ← number,name,business,tags,notes,last_contacted
+    └── log.csv           ← timestamp,to_number,to_name,message,status,tokens
 ```
 
-### 2. Configure your API key
-Open `.env` and set:
-```
+### 2. Configure `.env`
+Copy `.env.template` to `.env` and fill in your values:
+
+```env
+CLIENT_ID=my-business
+
 AI_PROVIDER=openrouter
 AI_MODEL=anthropic/claude-haiku-4-5
-OPENROUTER_API_KEY=your-key-here
+OPENROUTER_API_KEY=sk-or-v1-xxxx
 ```
 
-Available models (paste into AI_MODEL):
-- `anthropic/claude-haiku-4-5` — fast, cheap, recommended default
-- `anthropic/claude-sonnet-4-6` — best balance of quality and cost
-- `anthropic/claude-opus-4-6` — highest quality
-- `openai/gpt-4o-mini` — fast and affordable
-- `google/gemini-flash-1.5` — budget option
+**AI_PROVIDER options:** `openrouter` | `anthropic` | `openai` | `google`
 
-### 3. Make the launcher executable (one time per new download)
+**Recommended models (set as AI_MODEL):**
+
+| Model | Notes |
+|---|---|
+| `anthropic/claude-haiku-4-5` | Fast, cheap — recommended default |
+| `anthropic/claude-sonnet-4-6` | Best balance of quality and cost |
+| `openai/gpt-4o-mini` | Fast and affordable |
+| `google/gemini-flash-1.5` | Budget option |
+
+### 3. Make the launcher executable (one time only)
 ```bash
 chmod +x '/path/to/cayai-agent/start.command'
 ```
@@ -50,48 +64,40 @@ Tip: type `chmod +x ` then drag the file from Finder into Terminal to auto-fill 
 Double-click `start.command`. First run installs dependencies automatically (`npm install --ignore-scripts`).
 
 ### 5. Scan the QR code
-When the QR code appears:
-- Open WhatsApp → Settings → Linked Devices → Link a Device → Scan
+When the QR appears:
+- WhatsApp → Settings → Linked Devices → Link a Device → Scan
 
-Session is saved. QR scan is only needed once unless you log out or clear `/.wwebjs_auth/`.
+Session is saved to `/.wwebjs_auth/`. QR only needed once unless you clear that folder.
 
-### 6. Star the self-chat as a Favorite (recommended)
-So the owner remembers to route everything through the bot instead of replying to customers directly:
-1. Open WhatsApp (phone or Web) → open the **"Message Yourself"** chat (the one the bot reads commands from)
-2. Tap/click **⋮** (or right-click on Web) → **Add to Favorites**
-3. On WhatsApp Web, use the **Favorites** tab instead of "All" as the default view
-
-This filters the chat list down to just the starred chat(s) — customer threads and other clutter disappear from view, making it much easier to stick to the bot's command flow instead of accidentally replying to a customer directly (which bypasses logging and the approval flow).
+### 6. Star your self-chat as a Favorite (recommended)
+This keeps the owner's command channel visible while hiding customer threads:
+1. Open WhatsApp → open the **"Message Yourself"** chat
+2. Tap ⋮ → **Add to Favorites**
+3. On WhatsApp Web, use the **Favorites** tab as the default view
 
 ### 7. Configure your business
-Send yourself `!setup` on WhatsApp and follow the 18-step wizard:
-- Business name, owner number, business context
-- Tone, message length, language style
-- Signature, custom instructions
-- 10 knowledge base entries (answers only — questions are pre-filled)
-
-Or edit `data/settings.csv` directly.
+Send `!setup` to yourself on WhatsApp and follow the 18-step wizard. Or edit `data/settings.csv` directly.
 
 ---
 
-## Starting the Agent (Daily Use)
-Double-click `start.command`. The agent will reconnect without a QR scan and show:
+## Daily Use (Mac)
+Double-click `start.command`. The agent reconnects without a QR scan and shows:
 ```
 🚀 Cay AI WhatsApp Agent is live!
 🤖 AI Provider: openrouter | Model: anthropic/claude-haiku-4-5
 ```
 
-Keep the Terminal window open while running. Close it to stop the agent.
+Keep Terminal open while running. Close it to stop.
 
 ---
 
-## Commands (send to yourself on WhatsApp)
+## Commands
 
 ### Outbound
 | Command | What it does |
 |---|---|
 | `!send [name/number] [intent]` | AI writes a message → purpose selection → preview → approve |
-| `!schedule [name/number] [time] [intent]` | AI message sent at a specific time (e.g. 3pm, 15:00) |
+| `!schedule [name/number] [time] [intent]` | AI message sent at a specific time (e.g. `3pm`, `15:00`) |
 | `!checkin [name/number]` | AI check-in tailored to contact info → preview → approve |
 | `!broadcast [tag] [intent]` | AI message to all contacts with a tag → sample preview → approve |
 | `!sendnoai [name/number] [message]` | Send a direct message without AI (no preview) |
@@ -102,6 +108,7 @@ Keep the Terminal window open while running. Close it to stop the agent.
 | `!faq [question]` | Look up an answer from the knowledge base |
 | `!stats` | Messages sent today / this week / all time / unique contacts / failed |
 | `!settings` | Current business name, tone, AI model, calendar link, owner number |
+| `!followuplist` | Contacts not messaged in 30+ days |
 | `!list` | All pending scheduled messages with IDs and times |
 | `!help` | Full command list |
 
@@ -128,7 +135,7 @@ Every `!send`, `!schedule`, and `!checkin` asks for a purpose:
 4️⃣ Information
 5️⃣ Support
 ```
-Reply with the number. The AI adjusts tone and messaging strategy accordingly.
+Reply with the number. The AI adjusts tone and strategy accordingly.
 
 ---
 
@@ -143,7 +150,7 @@ Open `data/contacts.csv` in Excel or Numbers. Columns:
 number, name, business, tags, notes, last_contacted
 ```
 - `tags` — used for `!broadcast`. Common values: `lead`, `client`, `prospect`, `vip`, `inactive`
-- `inactive` — tag applied automatically on opt-out
+- `inactive` — applied automatically on opt-out
 - Numbers in international format, no + or spaces (e.g. `12425550100`)
 
 ---
@@ -155,7 +162,7 @@ The agent classifies every incoming message using AI and acts based on confidenc
 | Confidence | Action |
 |---|---|
 | 75%+ | Auto-acts (replies, sends links, answers KB questions) |
-| 45-75% | Notifies owner with suggested reply |
+| 45–75% | Notifies owner with suggested reply |
 | Under 45% | Escalates to owner, no auto-action |
 
 **Intent categories:**
@@ -163,6 +170,7 @@ The agent classifies every incoming message using AI and acts based on confidenc
 - **Demo** — self-demo + calendar link
 - **Call** — calendar link
 - **Hot lead** — 🔥 interest reply + calendar link + urgent owner alert
+- **On the fence** — soft nudge + owner review notification
 - **Question** — auto-answers from knowledge base if confident
 - **Complaint** — holding reply, escalates to owner (never auto-resolves)
 - **Booking confirmation** — polite acknowledgement
@@ -170,52 +178,59 @@ The agent classifies every incoming message using AI and acts based on confidenc
 - **Greeting** — friendly welcome
 - **Other** — owner notification
 
-**Opt-out triggers** (instant, no AI):
+**Hard opt-out triggers** (instant, no AI):
 `stop messages`, `stop messaging`, `stop texting`, `stop contacting`, `unsubscribe`, `remove me from`, `opt out`
 
 A bare "stop" does NOT trigger opt-out.
 
 ---
 
-## Updating Settings
+## Settings Reference
+
 Edit `data/settings.csv` — changes take effect immediately, no restart needed.
 
-Key fields:
-- `business_name` — appears in messages and notifications
-- `tone` — `friendly-pro` | `formal` | `casual` | `sales`
-- `signature` — sign-off on all messages
-- `business_context` — describes your business for the AI
-- `custom_instructions` — extra AI rules (max 200 characters)
-- `message_length` — `short` | `medium` | `long`
-- `language_style` — `standard` | `bahamian` | `formal-english`
-- `response_window` — when owner is available (AI uses this to set expectations)
-- `calendar_link` — Calendly or any booking link
-- `avoid_words` — comma-separated words AI must never use
-- `faq_1_q` to `faq_20_q` / `faq_1_a` to `faq_20_a` — knowledge base
+| Key | Options / Notes |
+|---|---|
+| `business_name` | Appears in messages and notifications |
+| `tone` | `friendly-pro` \| `formal` \| `casual` \| `sales` |
+| `signature` | Sign-off appended to every AI message |
+| `business_context` | Describes your business for the AI |
+| `custom_instructions` | Extra AI rules (max 200 characters) |
+| `message_length` | `short` (<50 words) \| `medium` (<80 words) \| `long` (<120 words) |
+| `language_style` | `standard` \| `bahamian` \| `formal-english` |
+| `response_window` | When owner is available — AI sets expectations from this |
+| `calendar_link` | Calendly or any booking URL |
+| `avoid_words` | Comma-separated words AI must never use |
+| `faq_1_q` … `faq_20_q` | Knowledge base questions |
+| `faq_1_a` … `faq_20_a` | Knowledge base answers |
+| `token_limit_send` | Default 300 |
+| `token_limit_checkin` | Default 150 |
+| `token_limit_broadcast` | Default 250 |
 
 ---
 
-## Switching AI Models
-Edit `AI_MODEL` in `.env`. See model list in step 2 above. Restart the agent after changing `.env`.
-
-## Switching AI Providers
-Edit `AI_PROVIDER` in `.env` to `openrouter`, `anthropic`, `openai`, or `google`. Add the corresponding API key. Restart agent.
+## Switching AI Providers / Models
+Edit `AI_PROVIDER` and `AI_MODEL` in `.env`. Add the matching API key. Restart the agent (or rebuild the container on Docker).
 
 ---
 
 ## Troubleshooting
 
+### Mac
 | Problem | Fix |
 |---|---|
-| `start.command` — no appropriate access privileges | Run `chmod +x start.command` in Terminal |
-| QR code appears every time | Delete `/.wwebjs_auth/` folder and re-scan |
-| AI unavailable, using template fallback | Check `.env` API key and `AI_MODEL` name. Run the direct API test in HANDOFF.md |
-| Inbound messages not triggering | Check Terminal for `📩 Raw message event` — if showing `@lid` suffix, code handles it. If not showing at all, agent may be disconnected |
+| `start.command` — no access privileges | Run `chmod +x start.command` in Terminal |
+| QR appears every time | Delete `/.wwebjs_auth/` and re-scan |
+| AI unavailable, template fallback used | Check `.env` API key and `AI_MODEL`. Run the API test in HANDOFF.md |
+| Inbound messages not triggering | Check Terminal for `📩 Raw message event` — if absent, agent may be disconnected |
 | `Cannot find module 'dotenv'` | Run `npm install --ignore-scripts` in Terminal |
+
+### Docker
+See [DOCKER_DEPLOY.md — Troubleshooting](DOCKER_DEPLOY.md#troubleshooting).
 
 ---
 
-## Comprehensive Test Checklist
+## Test Checklist
 
 ### Startup
 - [ ] Agent starts and shows correct business name + AI provider
@@ -225,20 +240,18 @@ Edit `AI_PROVIDER` in `.env` to `openrouter`, `anthropic`, `openai`, or `google`
 ### Outbound
 - [ ] `!send [name]` resolves name correctly
 - [ ] `!send [number]` works with raw number
-- [ ] Purpose prompt appears (1-5)
+- [ ] Purpose prompt appears (1–5)
 - [ ] Each purpose produces noticeably different tone
 - [ ] Preview shows before sending
 - [ ] `yes` sends, `no` cancels
-- [ ] `!sendnoai John Hi` sends immediately with no AI
+- [ ] `!sendnoai John Hi` sends immediately, no AI
 - [ ] Unknown name returns "no contact found"
-- [ ] Ambiguous name lists matches and asks for number
 
 ### Scheduling
 - [ ] `!schedule John 3pm [intent]` confirms with ID
 - [ ] `!list` shows pending message
 - [ ] `!cancel [id]` removes it
 - [ ] Scheduled message fires at correct time
-- [ ] Owner gets "sent" notification when fired
 
 ### Broadcast
 - [ ] `!broadcast lead [intent]` shows sample for approval
@@ -250,21 +263,20 @@ Edit `AI_PROVIDER` in `.env` to `openrouter`, `anthropic`, `openai`, or `google`
 - [ ] "can we book a call" → calendar link
 - [ ] "how much does this cost" → hot lead response
 - [ ] "what are your hours" → auto-answers from KB
-- [ ] "what is outreachbey" → auto-answers from KB
 - [ ] "this isn't working" → complaint holding reply + owner alert
 - [ ] "my friend needs this" → referral thank you + owner alert
 - [ ] "hi there" → greeting
 - [ ] "stop messages" → opt-out confirmation
 - [ ] "stop" (alone) → NOT an opt-out
-- [ ] Random gibberish → escalates to owner
 
 ### Safety
 - [ ] Messaging agent from own phone → no auto-reply loop
 - [ ] Group message → agent ignores it
 - [ ] Opt-out → contact tagged `inactive` in contacts.csv
-- [ ] `!setup` re-run → calendar link and tokens preserved
+- [ ] `!setup` re-run → calendar link and token limits preserved
 
-### Logs
-- [ ] `data/log.csv` populates with sent messages + tokens
-- [ ] Inbound messages logged with intent
-- [ ] `!stats` returns accurate counts
+### Docker-specific
+- [ ] `curl http://<droplet-ip>:3000/health` returns `{ status: "ok", ... }`
+- [ ] Container auto-restarts after `docker kill <container>`
+- [ ] Data survives `docker compose down && docker compose up -d`
+- [ ] Proxy IP confirmed: `curl --proxy $PROXY_URL https://ifconfig.me` returns residential IP

@@ -122,7 +122,9 @@ timestamp, to_number, to_name, message, status, tokens
 Status values: `sent`, `received`, `auto-replied`, `opt-out`, `hot-lead`, `demo`, `call`, `complaint`, `booking`, `referral`, `greeting`, `needs-reply`, `unhandled`, `possible-opt-out`
 
 ## Mac-Specific Setup
-- Chrome path hardcoded: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+- Chrome path: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` — selected automatically when `IS_DOCKER` is not set
+- Docker path: `/usr/bin/chromium` — selected when `IS_DOCKER=true` (set by docker-compose)
+- `PROXY_URL` env var injects `--proxy-server=<url>` into Chromium args at launch (both Mac and Docker)
 - `start.command` is a bash launcher that handles dependencies, quarantine flags, and Chrome path
 - Must run `chmod +x start.command` after each fresh download
 - `npm install --ignore-scripts` prevents Puppeteer from downloading its own Chrome
@@ -161,6 +163,7 @@ Hook this into UptimeRobot (5-min interval) for uptime alerts.
 | `FOLLOWUPS_FILE` | Override followups.json path |
 | `AI_PROVIDER` | `openrouter` \| `anthropic` \| `openai` \| `google` |
 | `AI_MODEL` | Model string passed to provider |
+| `PROXY_URL` | `http://user:pass@ip:port` — static residential proxy injected into Chromium |
 | `IS_DOCKER` | Set by docker-compose — switches Chrome to `/usr/bin/chromium` |
 
 ## Known Limitations
