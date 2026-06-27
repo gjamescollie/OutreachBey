@@ -37,7 +37,14 @@ COPY index.js ./
 COPY contacts.html ./
 COPY dashboard.html ./
 
+# Default seed data — copied to the volume on first run by entrypoint.sh
+COPY defaults/ ./defaults/
+
+# Entrypoint seeds data/ if empty, then starts the agent
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
 # data/ and .wwebjs_auth/ are mounted as volumes — not baked in
 # followups.json is also mounted so it survives restarts
 
-CMD ["node", "index.js"]
+CMD ["./entrypoint.sh"]

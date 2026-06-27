@@ -1,5 +1,6 @@
 # Credentials & secrets
 settings.csv
+!defaults/settings.csv
 .env
 .env.local
 credentials.json
