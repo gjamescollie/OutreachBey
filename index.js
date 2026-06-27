@@ -2822,12 +2822,33 @@ async function handleInbound(msg) {
 // ─── HEALTH + DASHBOARD ───────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   const http = require('http');
-  const url  = require('url');
   const START_TIME = Date.now();
   const DASH_PASS = process.env.DASHBOARD_PASSWORD || 'cayai2024';
 
   // Random per-process session token — never equals the password
   const SESSION_TOKEN = require('crypto').randomBytes(32).toString('hex');
+
+  // In-memory brute-force protection for /login, keyed by client IP.
+  // After MAX_FAILS failed attempts, lock that IP out for LOCKOUT_MS.
+  const loginAttempts = new Map();
+  const MAX_FAILS = 5;
+  const LOCKOUT_MS = 15 * 60 * 1000;
+  function clientIp(req) {
+    return (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || req.socket.remoteAddress || 'unknown';
+  }
+  function isLockedOut(ip) {
+    const rec = loginAttempts.get(ip);
+    return rec && rec.count >= MAX_FAILS && (Date.now() - rec.first) < LOCKOUT_MS;
+  }
+  function recordFail(ip) {
+    const rec = loginAttempts.get(ip);
+    if (!rec || (Date.now() - rec.first) >= LOCKOUT_MS) {
+      loginAttempts.set(ip, { count: 1, first: Date.now() });
+    } else {
+      rec.count++;
+    }
+  }
 
   function authOk(req) {
     const cookie = req.headers.cookie || '';
@@ -2912,10 +2933,11 @@ if (process.env.NODE_ENV !== 'test') {
     const filterOptions = ['','inbound','outbound','demo','opt-out','outside','owner'].map(f =>
       `<option value="${f}" ${filter===f?'selected':''}>${f||'All'}</option>`).join('');
 
+    const filterParam = encodeURIComponent(filter);
     const pagerPrev = pageNum > 1
-      ? `<a href="/?page=${pageNum-1}&filter=${filter}" style="color:#7c3aed">← Prev</a>` : '';
+      ? `<a href="/?page=${pageNum-1}&filter=${filterParam}" style="color:#7c3aed">← Prev</a>` : '';
     const pagerNext = pageNum < totalPages
-      ? `<a href="/?page=${pageNum+1}&filter=${filter}" style="color:#7c3aed">Next →</a>` : '';
+      ? `<a href="/?page=${pageNum+1}&filter=${filterParam}" style="color:#7c3aed">Next →</a>` : '';
 
     const currentModel = settings.ai_model || process.env.AI_MODEL || 'anthropic/claude-haiku-4-5';
     const modelOptions = [
@@ -3067,40 +3089,45 @@ async function setModel(m){
   }
 
   http.createServer((req, res) => {
-    const parsed = url.parse(req.url, true);
+    const parsed = new URL(req.url, 'http://localhost');
     const pathname = parsed.pathname;
+    const query = parsed.searchParams;
 
     // Health endpoint (no auth)
     if (pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'ok',
-        client_id: process.env.CLIENT_ID || 'default',
-        uptime: Math.floor((Date.now() - START_TIME) / 1000),
-      }));
+      res.end(JSON.stringify({ status: 'ok' }));
       return;
     }
 
     // Login page
     if (pathname === '/login') {
       if (req.method === 'POST') {
+        const ip = clientIp(req);
+        if (isLockedOut(ip)) {
+          res.writeHead(429, { 'Content-Type': 'text/html' });
+          res.end('Too many failed attempts. Try again in 15 minutes.');
+          return;
+        }
         let body = '';
         req.on('data', d => { if (body.length < 4096) body += d; });
         req.on('end', () => {
           const pass = new URLSearchParams(body).get('password');
           if (pass === DASH_PASS) {
+            loginAttempts.delete(ip);
             res.writeHead(302, {
               'Set-Cookie': `dash_session=${SESSION_TOKEN}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`,
               'Location': '/',
             });
           } else {
+            recordFail(ip);
             res.writeHead(302, { 'Location': '/login?err=1' });
           }
           res.end();
         });
         return;
       }
-      const err = parsed.query.err ? '<p style="color:#ef4444;margin-bottom:12px">Incorrect password.</p>' : '';
+      const err = query.get('err') ? '<p style="color:#ef4444;margin-bottom:12px">Incorrect password.</p>' : '';
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cay AI Login</title>
 <style>*{box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;color:#e2e8f0}
@@ -3124,8 +3151,8 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
 
     // Dashboard
     if (pathname === '/' || pathname === '') {
-      const page   = parseInt(parsed.query.page  || '1');
-      const filter = parsed.query.filter || '';
+      const page   = parseInt(query.get('page') || '1');
+      const filter = query.get('filter') || '';
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(buildDashboard(page, filter));
       return;
@@ -3193,13 +3220,20 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
           try {
             const contacts = JSON.parse(body);
             if (!Array.isArray(contacts)) throw new Error('Expected an array of contacts');
+            // Neutralize commas/newlines (CSV structure) and formula-injection
+            // characters so the exported file is safe to open in Excel.
+            const cell = (s) => String(s || '')
+              .replace(/,/g, ';').replace(/[\r\n]/g, ' ').replace(/^[=+\-@]/, "'$&");
             const header = 'number,name,business,tags,notes,last_contacted,email,industry';
             const rows = contacts.map(c => [
-              c.number || '', c.name || '', c.business || '', c.tags || '',
-              (c.notes || '').replace(/,/g, ';').replace(/\n/g, ' '),
-              c.last_contacted || '', c.email || '', c.industry || '',
+              cell(c.number), cell(c.name), cell(c.business), cell(c.tags),
+              cell(c.notes), cell(c.last_contacted), cell(c.email), cell(c.industry),
             ].join(','));
-            fs.writeFileSync(CONTACTS_FILE, [header, ...rows].join('\n') + '\n');
+            // Atomic write: write to a temp file then rename, so a crash
+            // mid-write can't truncate or corrupt the contacts database.
+            const tmp = CONTACTS_FILE + '.tmp';
+            fs.writeFileSync(tmp, [header, ...rows].join('\n') + '\n');
+            fs.renameSync(tmp, CONTACTS_FILE);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true, count: contacts.length }));
           } catch(e) {
