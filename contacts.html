@@ -484,7 +484,7 @@
     }
 
     const rows = filtered.map(c => {
-      const tags = (c.tags||'').split(' ').filter(Boolean).map(t => `<span class="tag ${t}">${t}</span>`).join('');
+      const tags = (c.tags||'').split(' ').filter(Boolean).map(t => `<span class="tag ${esc(t)}">${esc(t)}</span>`).join('');
       const sc = engagementScore(c);
       const scClass = sc >= 7 ? 'score-hi' : sc >= 4 ? 'score-mid' : 'score-lo';
       return `<tr>
@@ -498,8 +498,8 @@
         <td>${c.last_contacted||'Never'}</td>
         <td><span class="score-badge ${scClass}" title="Engagement score">${sc}</span></td>
         <td style="white-space:nowrap">
-          <button class="btn btn-secondary edit-btn" onclick="openEdit('${c.number}')">Edit</button>
-          <button class="btn btn-danger edit-btn" onclick="deleteContact('${c.number}')">Del</button>
+          <button class="btn btn-secondary edit-btn" onclick="openEdit('${esc(c.number)}')">Edit</button>
+          <button class="btn btn-danger edit-btn" onclick="deleteContact('${esc(c.number)}')">Del</button>
         </td>
       </tr>`;
     }).join('');

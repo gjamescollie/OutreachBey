@@ -11,8 +11,8 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 157.245.242.255
-          username: root
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             cd /root/cay-cay-ai-client1

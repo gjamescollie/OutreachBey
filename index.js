@@ -2181,8 +2181,9 @@ KEY PHRASE EXAMPLES (use these to calibrate intent):
 - Confidence for ON_THE_FENCE_BUYER: 0.90+ = clear interest + clear hesitation + business pain; 0.75–0.89 = clear interest + either hesitation or pain; 0.60–0.74 = possible but vague — lower confidence; below 0.60 = use QUESTION or OTHER instead.
 - Bahamas local context (Nassau, Freeport, local business, tour, salon, barber, restaurant, car rental, real estate, Airbnb) increases confidence for ON_THE_FENCE_BUYER.`;
 
-  // Delimiters prevent prompt injection: instructions inside <message> cannot override the system prompt
-  const userPrompt = `Classify this incoming message:\n\n<inbound_message>\n${message}\n</inbound_message>\n\nReturn ONLY valid JSON.`;
+  // Strip delimiter tags from user content to prevent prompt injection
+  const safeMessage = message.replace(/<\/?inbound_message>/gi, '');
+  const userPrompt = `Classify this incoming message:\n\n<inbound_message>\n${safeMessage}\n</inbound_message>\n\nReturn ONLY valid JSON.`;
 
   const result = await callAI(systemPrompt, userPrompt, 250);
   if (!result.text) return null;
@@ -2289,7 +2290,8 @@ Given a contact's funnel stage, their message, and the classified intent, return
 
 Return ONLY valid JSON. No other text.`;
 
-  const userPrompt = `Contact: ${contactLabel}\nStage: ${stage}\nIntent: ${intent}\n\n<inbound_message>\n${body}\n</inbound_message>`;
+  const safeBody = body.replace(/<\/?inbound_message>/gi, '');
+  const userPrompt = `Contact: ${contactLabel}\nStage: ${stage}\nIntent: ${intent}\n\n<inbound_message>\n${safeBody}\n</inbound_message>`;
 
   const result = await callAI(systemPrompt, userPrompt, 200);
   if (!result.text) return null;
@@ -2824,9 +2826,19 @@ if (process.env.NODE_ENV !== 'test') {
   const START_TIME = Date.now();
   const DASH_PASS = process.env.DASHBOARD_PASSWORD || 'cayai2024';
 
+  // Random per-process session token — never equals the password
+  const SESSION_TOKEN = require('crypto').randomBytes(32).toString('hex');
+
   function authOk(req) {
     const cookie = req.headers.cookie || '';
-    return cookie.includes(`dash_auth=${DASH_PASS}`);
+    const match = cookie.match(/(?:^|;\s*)dash_session=([^;]+)/);
+    return match ? match[1] === SESSION_TOKEN : false;
+  }
+
+  function htmlEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function fmtUptime(s) {
@@ -2879,22 +2891,22 @@ if (process.env.NODE_ENV !== 'test') {
 
     const activeDemos = Object.entries(demoSessions).map(([num, s]) => `
       <tr>
-        <td>${num}</td>
-        <td>${s.keyword || '—'}</td>
-        <td>${s.persona || '—'}</td>
-        <td>${s.messageCount || 0}</td>
-        <td>${s.state || '—'}</td>
-        <td>${new Date(s.lastActivity).toLocaleTimeString()}</td>
+        <td>${htmlEsc(num)}</td>
+        <td>${htmlEsc(s.keyword || '—')}</td>
+        <td>${htmlEsc(s.persona || '—')}</td>
+        <td>${htmlEsc(s.messageCount || 0)}</td>
+        <td>${htmlEsc(s.state || '—')}</td>
+        <td>${htmlEsc(new Date(s.lastActivity).toLocaleTimeString())}</td>
       </tr>`).join('') || '<tr><td colspan="6" style="color:#888;text-align:center">No active demo sessions</td></tr>';
 
     const logRows = pageLogs.map(r => `
       <tr>
-        <td style="white-space:nowrap;color:#aaa">${r.ts}</td>
-        <td style="color:#e2e8f0">${r.number}</td>
-        <td style="color:#e2e8f0">${r.name}</td>
-        <td style="color:#cbd5e1;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.message.replace(/"/g,'&quot;')}">${r.message}</td>
-        <td><span style="background:${statusColor(r.status)};padding:2px 6px;border-radius:4px;font-size:11px;color:#fff">${r.status}</span></td>
-        <td style="color:#aaa">${r.tokens}</td>
+        <td style="white-space:nowrap;color:#aaa">${htmlEsc(r.ts)}</td>
+        <td style="color:#e2e8f0">${htmlEsc(r.number)}</td>
+        <td style="color:#e2e8f0">${htmlEsc(r.name)}</td>
+        <td style="color:#cbd5e1;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${htmlEsc(r.message)}">${htmlEsc(r.message)}</td>
+        <td><span style="background:${statusColor(r.status)};padding:2px 6px;border-radius:4px;font-size:11px;color:#fff">${htmlEsc(r.status)}</span></td>
+        <td style="color:#aaa">${htmlEsc(r.tokens)}</td>
       </tr>`).join('');
 
     const filterOptions = ['','inbound','outbound','demo','opt-out','outside','owner'].map(f =>
@@ -2966,7 +2978,7 @@ a{text-decoration:none}
 <div class="header">
   <div>
     <h1>🤖 Cay AI Dashboard</h1>
-    <div style="color:#475569;font-size:12px;margin-top:3px">${settings.business_name || 'Agent'} · ${process.env.CLIENT_ID || 'default'}</div>
+    <div style="color:#475569;font-size:12px;margin-top:3px">${htmlEsc(settings.business_name || 'Agent')} · ${htmlEsc(process.env.CLIENT_ID || 'default')}</div>
   </div>
   <div style="display:flex;gap:12px;align-items:center">
     <div class="refresh-wrap">
@@ -3073,12 +3085,12 @@ async function setModel(m){
     if (pathname === '/login') {
       if (req.method === 'POST') {
         let body = '';
-        req.on('data', d => { body += d; });
+        req.on('data', d => { if (body.length < 4096) body += d; });
         req.on('end', () => {
           const pass = new URLSearchParams(body).get('password');
           if (pass === DASH_PASS) {
             res.writeHead(302, {
-              'Set-Cookie': `dash_auth=${DASH_PASS}; Path=/; HttpOnly`,
+              'Set-Cookie': `dash_session=${SESSION_TOKEN}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`,
               'Location': '/',
             });
           } else {
@@ -3167,10 +3179,20 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       }
       if (req.method === 'POST') {
         let body = '';
-        req.on('data', d => { body += d; });
+        let bodyTooLarge = false;
+        req.on('data', d => {
+          if (body.length < 1024 * 1024) { body += d; }
+          else { bodyTooLarge = true; req.destroy(); }
+        });
         req.on('end', () => {
+          if (bodyTooLarge) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'Request too large' }));
+            return;
+          }
           try {
             const contacts = JSON.parse(body);
+            if (!Array.isArray(contacts)) throw new Error('Expected an array of contacts');
             const header = 'number,name,business,tags,notes,last_contacted,email,industry';
             const rows = contacts.map(c => [
               c.number || '', c.name || '', c.business || '', c.tags || '',
@@ -3191,12 +3213,23 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
 
     // Model selector API
     if (pathname === '/api/model' && req.method === 'POST') {
+      const ALLOWED_MODELS = new Set([
+        'anthropic/claude-haiku-4-5',
+        'anthropic/claude-haiku-4-5:beta',
+        'anthropic/claude-sonnet-4-5',
+        'anthropic/claude-sonnet-4-5:beta',
+        'openai/gpt-4o-mini',
+        'openai/gpt-4o',
+        'google/gemini-flash-1.5',
+        'google/gemini-pro-1.5',
+      ]);
       let body = '';
-      req.on('data', d => { body += d; });
+      req.on('data', d => { if (body.length < 1024) body += d; });
       req.on('end', () => {
         try {
           const { model } = JSON.parse(body);
-          if (!model || typeof model !== 'string') throw new Error('invalid');
+          if (!model || typeof model !== 'string' || !ALLOWED_MODELS.has(model))
+            throw new Error('invalid model');
           // Persist to settings.csv so it survives restarts
           const cur = getSettings();
           cur.ai_model = model;
@@ -3214,7 +3247,7 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
     res.writeHead(404);
     res.end();
   }).listen(3000);
-  console.log(`🩺 Dashboard on :3000  (password: ${DASH_PASS})`);
+  console.log(`🩺 Dashboard on :3000`);
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
