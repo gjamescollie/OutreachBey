@@ -19,4 +19,5 @@ jobs:
             git pull origin main
             docker compose build --no-cache
             docker compose up -d
-            echo "✅ Deploy complete"
+            tailscale serve --bg http://localhost:3000 || true
+            echo "✅ Deploy complete — dashboard: http://$(tailscale ip -4):3000"
