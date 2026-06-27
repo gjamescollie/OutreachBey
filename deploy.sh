@@ -21,6 +21,22 @@ if ! command -v docker &>/dev/null; then
   systemctl enable --now docker
 fi
 
+# ─── Install Tailscale if missing ─────────────────────────────────────────────
+if ! command -v tailscale &>/dev/null; then
+  echo "==> Installing Tailscale..."
+  curl -fsSL https://tailscale.com/install.sh | sh
+fi
+
+# Bring Tailscale up if not already connected
+if ! tailscale status &>/dev/null; then
+  echo ""
+  echo "==> Tailscale not connected. Run the following to authenticate:"
+  echo "    tailscale up"
+  echo "    Then visit the URL it prints to authorise this machine."
+  echo "    Re-run deploy.sh after connecting."
+  echo ""
+fi
+
 # ─── Clone or pull repo ───────────────────────────────────────────────────────
 if [ -d "$DEPLOY_DIR/.git" ]; then
   echo "==> Pulling latest..."
@@ -56,6 +72,15 @@ docker compose build
 
 echo "==> Starting container..."
 docker compose up -d
+
+# ─── Expose dashboard via Tailscale ──────────────────────────────────────────
+if tailscale status &>/dev/null; then
+  tailscale serve --bg http://localhost:3000
+  TS_IP=$(tailscale ip -4 2>/dev/null || echo "<tailscale-ip>")
+  echo ""
+  echo "==> Dashboard available at: http://${TS_IP}:3000"
+  echo "    (only reachable from devices on your Tailscale network)"
+fi
 
 # ─── Show QR code ─────────────────────────────────────────────────────────────
 echo ""
