@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # deploy.sh — One-command client deployment for Cay AI
-# Usage: bash deploy.sh <client_name> <api_key> <whatsapp_number> [proxy_url]
-# Example: bash deploy.sh acme sk-or-xxxx 12425550100 http://user:pass@123.45.67.89:8080
+# Usage: bash deploy.sh <client_name> <whatsapp_number> [proxy_url]
+# Example: bash deploy.sh acme 12425550100 http://user:pass@123.45.67.89:8080
+#
+# The API key is NOT a CLI argument (that would expose it in `ps aux` and
+# shell history). Provide it via the OPENROUTER_API_KEY environment variable,
+# or the script will prompt for it securely.
 set -euo pipefail
 
-CLIENT_NAME="${1:?Usage: deploy.sh <client_name> <api_key> <whatsapp_number> [proxy_url]}"
-API_KEY="${2:?Missing api_key}"
-WHATSAPP_NUMBER="${3:?Missing whatsapp_number}"
-PROXY_URL="${4:-}"
+CLIENT_NAME="${1:?Usage: deploy.sh <client_name> <whatsapp_number> [proxy_url]}"
+WHATSAPP_NUMBER="${2:?Missing whatsapp_number}"
+PROXY_URL="${3:-}"
+
+API_KEY="${OPENROUTER_API_KEY:-}"
+if [ -z "$API_KEY" ]; then
+  read -rsp "Enter OpenRouter API key: " API_KEY
+  echo ""
+fi
+[ -n "$API_KEY" ] || { echo "Missing API key (set OPENROUTER_API_KEY or enter when prompted)"; exit 1; }
 
 REPO_URL="https://github.com/gjamescollie/OutreachBey"
 DEPLOY_DIR="$HOME/cay-$CLIENT_NAME"
@@ -19,6 +29,22 @@ if ! command -v docker &>/dev/null; then
   echo "==> Installing Docker..."
   curl -fsSL https://get.docker.com | sh
   systemctl enable --now docker
+fi
+
+# ─── Install Tailscale if missing ─────────────────────────────────────────────
+if ! command -v tailscale &>/dev/null; then
+  echo "==> Installing Tailscale..."
+  curl -fsSL https://tailscale.com/install.sh | sh
+fi
+
+# Bring Tailscale up if not already connected
+if ! tailscale status &>/dev/null; then
+  echo ""
+  echo "==> Tailscale not connected. Run the following to authenticate:"
+  echo "    tailscale up"
+  echo "    Then visit the URL it prints to authorise this machine."
+  echo "    Re-run deploy.sh after connecting."
+  echo ""
 fi
 
 # ─── Clone or pull repo ───────────────────────────────────────────────────────
@@ -56,6 +82,15 @@ docker compose build
 
 echo "==> Starting container..."
 docker compose up -d
+
+# ─── Expose dashboard via Tailscale ──────────────────────────────────────────
+if tailscale status &>/dev/null; then
+  tailscale serve --bg http://localhost:3000
+  TS_IP=$(tailscale ip -4 2>/dev/null || echo "<tailscale-ip>")
+  echo ""
+  echo "==> Dashboard available at: http://${TS_IP}:3000"
+  echo "    (only reachable from devices on your Tailscale network)"
+fi
 
 # ─── Show QR code ─────────────────────────────────────────────────────────────
 echo ""
