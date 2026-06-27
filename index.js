@@ -562,14 +562,6 @@ const pendingPreviews = {};
 const demoSessions = {};   // tracks contacts inside the interactive demo flow
 const pendingDisambiguation = {}; // { [from]: { options: [{index, question}], expires: timestamp } }
 
-const WMO_CODES = {
-  0: 'Clear skies ☀️', 1: 'Mainly clear 🌤️', 2: 'Partly cloudy ⛅', 3: 'Overcast ☁️',
-  45: 'Foggy 🌫️', 48: 'Icy fog 🌫️',
-  51: 'Light drizzle 🌧️', 53: 'Drizzle 🌧️', 55: 'Heavy drizzle 🌧️',
-  61: 'Light rain 🌧️', 63: 'Rain 🌧️', 65: 'Heavy rain 🌧️',
-  80: 'Rain showers 🌦️', 81: 'Rain showers 🌦️', 82: 'Heavy showers 🌦️',
-  95: 'Thunderstorm ⛈️', 96: 'Thunderstorm ⛈️', 99: 'Thunderstorm ⛈️',
-};
 
 // ─── PURPOSE SELECTION ────────────────────────────────────────────────────────
 const pendingPurpose = {}; // stores intent/contact/type while awaiting purpose selection
@@ -866,267 +858,140 @@ function saveSettings(data) {
   }
 }
 
-// ─── DEMO STATE MACHINE ──────────────────────────────────────────────────────
+// ─── ⚡ CAY AI INDUSTRY DEMO SYSTEM ─────────────────────────────────────────
+// TO REMOVE FOR CLIENT DEPLOYMENT: delete this entire block and the
+// handleIndustryDemo() call in handleInbound(). Also delete the demo/ folder.
+// The agent will revert to full production behaviour automatically.
 
-async function fetchNewsHeadlines() {
-  const feeds = [
-    'https://www.tribune242.com/rss/headlines/local-news/',
-    'https://www.bahamaslocal.com/rss/',
-    'https://feeds.bbci.co.uk/news/world/rss.xml',
-  ];
-  for (const url of feeds) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CayAI/1.0)' },
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      const xml = await res.text();
-      const items = [...xml.matchAll(/<item[\s\S]*?<\/item>/g)].slice(0, 3);
-      const parsed = items.map(m => {
-        const decodeEntities = s => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;#x27;/g, "'");
-        const title = decodeEntities((m[0].match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/) || m[0].match(/<title>([\s\S]*?)<\/title>/))?.[1]?.trim().replace(/\s+/g, ' ') || '');
-        const desc  = (m[0].match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/) || m[0].match(/<description>([\s\S]*?)<\/description>/))?.[1]?.replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ').slice(0, 120) || '';
-        return { title, desc };
-      }).filter(i => i.title);
-      if (parsed.length > 0) return parsed;
-    } catch (_) { /* try next feed */ }
+const DEMO_KEYWORDS = ['TOUR', 'FOOD', 'REALTY', 'DRIVE', 'BEAUTY'];
+const DEMO_VERTICAL_MAP = {
+  TOUR:   { file: 'tour',   persona: 'Blue Cay Charters',   industry: 'water tour'  },
+  FOOD:   { file: 'food',   persona: 'Solemar Nassau',       industry: 'restaurant'  },
+  REALTY: { file: 'realty', persona: 'Bahamas Realty',       industry: 'real estate' },
+  DRIVE:  { file: 'drive',  persona: 'A2B Car Rentals',      industry: 'car rental'  },
+  BEAUTY: { file: 'beauty', persona: 'The Nail Lounge',      industry: 'salon'       },
+};
+
+function loadDemoVertical(keyword) {
+  const vertical = DEMO_VERTICAL_MAP[keyword];
+  if (!vertical) return null;
+  try {
+    const settingsRows = parseCSV(`./demo/settings_${vertical.file}.csv`);
+    const settings = {};
+    settingsRows.forEach(r => { settings[r.key] = r.value; });
+    const kb = JSON.parse(fs.readFileSync(`./demo/kb/kb_${vertical.file}.json`, 'utf8'));
+    return { settings, kb, ...vertical };
+  } catch (e) {
+    console.error(`[DEMO] Failed to load vertical ${keyword}:`, e.message);
+    return null;
   }
-  return null;
 }
 
-async function fetchNassauWeather() {
-  const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.06&longitude=-77.34&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&windspeed_unit=mph');
-  const data = await res.json();
-  return data.current;
-}
-
-async function startDemoMenu(msg, from, session = {}) {
-  demoSessions[from] = { state: 'menu', ...session, lastActivity: Date.now() };
-  const firstName = (session.demoName || '').split(' ')[0];
-  const greeting = firstName ? `Welcome, *${firstName}!* 👋\n\n` : '';
-  await msg.reply(
-    `🚀 *Cay AI Live Demo* 🇧🇸\n\n` +
-    `${greeting}` +
-    `I'm a live AI automation engine built to help Nassau small businesses convert leads, save time, and book more clients — on autopilot.\n\n` +
-    `Pick a feature to experience right here in this chat:\n\n` +
-    `1️⃣ *[SMART-UPDATES]* — Watch me pull live Nassau weather and auto-draft a proactive client message. 🌤️\n\n` +
-    `2️⃣ *[DEAL-CLOSER]* — I'll simulate a real inbound lead for your business and generate the perfect reply. 🎯\n\n` +
-    `3️⃣ *[NEWS BRIEF]* — 30-second brief on what's happening in Nassau right now. 📰\n\n` +
-    `4️⃣ *[BOOK]* — Schedule your free AI strategy consultation. 📅\n\n` +
-    `_Reply *1*, *2*, *3*, or *4* — or type the option name._`,
-    null, { linkPreview: false }
+function isDemoBookingIntent(body) {
+  const t = body.toLowerCase();
+  return (
+    t.includes('book') || t.includes('yes') || t.includes('sounds good') ||
+    t.includes('let\'s do it') || t.includes("let's do it") || t.includes('sign me up') ||
+    t.includes('i\'m in') || t.includes("i'm in") || t.includes('confirm') ||
+    t.includes('reserve') || t.includes('schedule') || t.includes('perfect') ||
+    (t.includes('great') && body.length < 30)
   );
 }
 
-async function showDemoBooking(msg, from, calendarLink, ownerNumber, signature, session = {}) {
-  const firstName = (session.demoName || '').split(' ')[0];
-  const bizLine = session.demoBusiness ? ` for *${session.demoBusiness}*` : '';
-  delete demoSessions[from];
-  if (ownerNumber) {
-    const notifyExtra = session.demoName ? `\n*Name:* ${session.demoName}\n*Business:* ${session.demoBusiness || 'N/A'}\n*Sells:* ${session.demoSells || 'N/A'}` : '';
-    await client.sendMessage(ownerNumber,
-      `📅 *Demo Booking Triggered*\n\n*Number:* ${from}${notifyExtra}\n\nThey selected Book in the demo and were sent the calendar link.`,
+function buildDemoReveal(persona, industry, calendarLink) {
+  return (
+    `Before I send that over — I have to be straight with you. 😊\n\n` +
+    `You weren't actually talking to ${persona} just now.\n\n` +
+    `You were talking to *Cay AI* — an AI employee built for Nassau businesses by *Lucayan Labs*. 🇧🇸\n\n` +
+    `Every question you just asked? A real ${industry} operator gets those same questions on WhatsApp dozens of times a week — while they're busy serving customers, unavailable, losing bookings.\n\n` +
+    `Cay AI answers instantly, 24/7, and routes serious enquiries straight to the owner for follow-up. One recovered booking or lead can cover the entire monthly fee.\n\n` +
+    `Want to see what this looks like set up for *your* business?\n\n` +
+    `📅 Book a free 20-minute call — we'll show you exactly how it works:\n${calendarLink}\n\n` +
+    `— Granville Collie, Founder & CEO\n` +
+    `Lucayan Labs | Building the AI Workforce for the Caribbean 🇧🇸`
+  );
+}
+
+function buildDemoFollowUp(industry, calendarLink) {
+  return (
+    `Hey — just following up from yesterday's demo. 👋\n\n` +
+    `If a call doesn't work for you, I can send a short voice note walking you through what Cay AI would look like set up for your ${industry} business specifically.\n\n` +
+    `Just reply *YES* and I'll send it over.\n\n` +
+    `— Granville, Lucayan Labs 🇧🇸`
+  );
+}
+
+async function handleIndustryDemo(msg, from, body, mainSettings) {
+  const session = demoSessions[from];
+  const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+  // Timeout check
+  if (session.lastActivity < Date.now() - TWELVE_HOURS) {
+    delete demoSessions[from];
+    return false;
+  }
+
+  session.lastActivity = Date.now();
+
+  // Already revealed — send CTA reminder
+  if (session.state === 'revealed' || session.state === 'done') {
+    const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
+    await client.sendMessage(from,
+      `Still interested? Book your free 20-minute call here:\n${calendarLink}\n\n— Granville, Lucayan Labs 🇧🇸`,
       { linkPreview: false }
     ).catch(() => {});
-  }
-  appendToLog(from, from, 'Demo booking link sent', 'demo-booking', '', '', 'out', 'demo');
-  const bookingBody = pick([
-    `Our AI automation team will look at *${session.demoBusiness || 'your business'}* specifically, understand your needs, and determine exactly how Cay AI can work for you. 30 minutes, no pitch, no pressure.`,
-    `Our automation professionals will dig into *${session.demoBusiness || 'your business'}* — understand what you need and map out exactly how Cay AI fits. 30 minutes, no pitch, no pressure.`,
-    `We'll have one of our AI professionals look at *${session.demoBusiness || 'your business'}* specifically, understand your setup, and show you exactly how Cay AI can work for you. 30 minutes, no pitch, no pressure.`,
-  ]);
-  await msg.reply(
-    `📅 *Free AI Strategy Call*\n\n` +
-    `${firstName ? `${firstName} — ` : ''}${bookingBody}\n\n` +
-    `👇 *Pick your slot:*\n` +
-    `${calendarLink}\n\n` +
-    `${signature}`,
-    null, { linkPreview: false }
-  );
-}
-
-async function runDealCloser(msg, from, businessInfo, session = {}) {
-  demoSessions[from] = { ...demoSessions[from], state: 'feature_done' };
-  await msg.reply('⏳ Simulating live lead intake...', null, { linkPreview: false });
-  const result = await callAI(
-    `You are demonstrating the Cay AI WhatsApp agent. Generate a realistic simulation of an incoming lead for the given business. Reply ONLY in this exact format with no extra text:
-LEAD_MESSAGE: [realistic incoming WhatsApp from a customer, 2-3 sentences, specific Nassau scenario]
-PSYCHOLOGY: [one sentence on the unstated desire behind the message]
-INTENT: [exactly one of: HOT_LEAD / QUESTION / CALL / BOOKING]
-DRAFT: [perfect reply the owner would approve — warm, specific, ends with a question to lock the booking, under 60 words, no subject line, no hashtags]`,
-    `Business: ${businessInfo}${session.demoName ? `\nOwner first name: ${session.demoName.split(' ')[0]}` : ''}`,
-    450
-  );
-  if (!result.text) {
-    await msg.reply('❌ Simulation failed. Reply *MENU* to try another option.', null, { linkPreview: false });
-    return;
-  }
-  const t = result.text;
-  const leadMsg = (t.match(/LEAD_MESSAGE:\s*(.+)/)?.[1] || '').trim();
-  const psychology = (t.match(/PSYCHOLOGY:\s*(.+)/)?.[1] || '').trim();
-  const intent = (t.match(/INTENT:\s*(\S+)/)?.[1] || 'HOT_LEAD').trim();
-  const draft = (t.match(/DRAFT:\s*([\s\S]+)/)?.[1] || '').trim();
-  await msg.reply(
-    `🚨 *SIMULATED LIVE INBOUND LEAD!* 🚨\n\n` +
-    `_"${leadMsg}"_\n\n` +
-    `Here's what Cay AI does in milliseconds:\n\n` +
-    `*1️⃣ Unstated Psychology:* ${psychology}\n\n` +
-    `*2️⃣ Intent Classified:* \`[${intent}]\` 🔥\n\n` +
-    `🟢 *AI-drafted reply — sent to your phone for one-tap approval:*\n\n` +
-    `_"${draft}"_\n\n` +
-    `*The Value:* You type "yes" and the booking is locked — while you're on a job.\n\n` +
-    `_Reply *MENU* to go back, or *4* to book your strategy call._`,
-    null, { linkPreview: false }
-  );
-  appendToLog(from, from, `[DEMO] Deal-Closer simulation for: ${businessInfo}`, 'demo', '', '', 'out', 'demo');
-}
-
-async function handleDemoFlow(msg, from, body, settings) {
-  const session = demoSessions[from];
-  if (session) { session.lastActivity = Date.now(); session.nudged = false; delete session.nudgedAt; }
-  const lower = body.toLowerCase().trim();
-  const calendarLink = getCalendarLink(settings);
-  const signature = `- The Cay AI Team`;
-  const ownerNumber = formatNumber(settings.owner_number || '');
-
-  if (lower === 'menu') {
-    await startDemoMenu(msg, from, { demoName: session.demoName, demoBusiness: session.demoBusiness, demoSells: session.demoSells });
-    appendToLog(from, from, '[DEMO] Returned to menu', 'demo', '', '', 'out', 'demo');
-    return;
+    return true;
   }
 
-  // ── INTRO: collect name, business, what they sell ──
-  if (session.state === 'intro') {
-    // Accept freeform "Name, Business, What they sell" or just store raw and parse
-    const parts = body.split(',').map(s => s.trim()).filter(Boolean);
-    const demoName = parts[0] || body.trim();
-    const demoBusiness = parts[1] || '';
-    const demoSells = parts[2] || '';
-    appendToLog(from, from, `[DEMO] Intro: ${demoName} | ${demoBusiness} | ${demoSells}`, 'demo', '', '', 'out', 'demo');
-    await startDemoMenu(msg, from, { demoName, demoBusiness, demoSells });
-    return;
-  }
+  session.messageCount = (session.messageCount || 0) + 1;
 
-  // Helper: resolve menu selection by number or name
-  const resolveMenuChoice = (input) => {
-    const t = input.trim().toLowerCase();
-    if (t === '1' || t.includes('smart') || t.includes('weather') || t.includes('update')) return '1';
-    if (t === '2' || t.includes('deal') || t.includes('closer') || t.includes('lead') || t.includes('mind')) return '2';
-    if (t === '3' || t.includes('news') || t.includes('brief') || t.includes('headline')) return '3';
-    if (t === '4' || t.includes('book') || t.includes('consult') || t.includes('schedule') || t.includes('slot')) return '4';
-    return null;
-  };
+  const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
+  const shouldReveal = session.messageCount >= 6 || isDemoBookingIntent(body);
 
-  // ── MENU: waiting for selection ──
-  if (session.state === 'menu') {
-    const choice = resolveMenuChoice(body);
-    if (choice === '1') {
-      const bizContext = session.demoBusiness && session.demoSells
-        ? `${session.demoBusiness} (sells: ${session.demoSells})`
-        : session.demoBusiness || 'a Nassau small business';
-      try {
-        const w = await fetchNassauWeather();
-        const condition = WMO_CODES[w.weathercode] || 'Variable conditions';
-        const weatherContext = `Temp: ${w.temperature_2m}°F, ${condition}, wind ${w.windspeed_10m} mph, humidity ${w.relative_humidity_2m}%`;
-        const draftResult = await callAI(
-          `You are the AI agent for ${bizContext} based in Nassau, Bahamas. Write a short proactive WhatsApp message to today's clients that naturally mentions the actual current weather conditions. Keep it casual, warm, and local. Under 40 words. End with a relevant emoji. No subject line, no greeting prefix, no signature. You MUST reference the specific temperature and sky conditions provided.`,
-          `Current Nassau conditions as of ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}: ${weatherContext}`,
-          120
-        );
-        const draft = draftResult.text || `Hey! It\'s ${w.temperature_2m}°F and ${condition.toLowerCase()} out today — great time to connect. ☀️`;
-        await msg.reply(
-          `🌤️ *Nassau Weather — ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}*\n` +
-          `🌡️ Temp: ${w.temperature_2m}°F\n` +
-          `💧 Humidity: ${w.relative_humidity_2m}%\n` +
-          `💨 Wind: ${w.windspeed_10m} mph\n` +
-          `☁️ ${condition}\n\n` +
-          `---\n\n` +
-          `🤖 *Cay AI just auto-drafted this for ${bizContext}:*\n\n` +
-          `_"${draft}"_\n\n` +
-          `*The Value:* You don\'t lift a finger — the AI monitors conditions and keeps your clients informed on autopilot.\n\n` +
-          `_Reply *MENU* to go back, or *4* to book your strategy call._`,
-          null, { linkPreview: false }
-        );
-        demoSessions[from].state = 'feature_done';
-        appendToLog(from, from, '[DEMO] Viewed weather smart-update feature', 'demo', '', '', 'out', 'demo');
-      } catch (e) {
-        await msg.reply('❌ Could not fetch live weather right now. Reply *MENU* to try another option.', null, { linkPreview: false });
-      }
-    } else if (choice === '2') {
-      demoSessions[from].state = 'mind_reader_input';
-      appendToLog(from, from, '[DEMO] Started Deal-Closer feature', 'demo', '', '', 'out', 'demo');
-      if (session.demoBusiness && session.demoSells) {
-        // We already have their info — go straight to simulation
-        await runDealCloser(msg, from, `${session.demoBusiness}, ${session.demoSells}`, session);
-      } else {
-        await msg.reply(
-          `🧠 *The Deal-Closer*\n\n` +
-          `Let\'s simulate a live lead for your business. Reply with your *Business Name and what you sell*.\n\n` +
-          `_(Example: Marlin Charters, Boat Tours — or — Glow Salon, Hair & Nails)_`,
-          null, { linkPreview: false }
-        );
-      }
-    } else if (choice === '3') {
-      demoSessions[from].state = 'news';
-      appendToLog(from, from, '[DEMO] Started News Brief feature', 'demo', '', '', 'out', 'demo');
-      await msg.reply('📰 Pulling the latest Nassau headlines...', null, { linkPreview: false });
-      try {
-        const headlines = await fetchNewsHeadlines();
-        if (!headlines || headlines.length === 0) throw new Error('no headlines');
-        const briefResult = await callAI(
-          `You are a sharp Nassau-based news anchor. Summarise the 3 headlines below in 3 punchy bullet points for a Nassau small-business audience. Each bullet: one relevant emoji + bold headline fragment + one tight sentence of context. Under 80 words total. No intro line, just the bullets.`,
-          `Headlines:\n${headlines.map(h => `- ${h.title}: ${h.desc}`).join('\n')}`,
-          160
-        );
-        const headlineFallback = headlines.map((h, i) => `${i + 1}. *${h.title}*`).join('\n');
-        const brief = briefResult.text || headlineFallback;
-        demoSessions[from].state = 'feature_done';
-        await msg.reply(
-          `📰 *Nassau & Local News Brief — ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}*\n\n` +
-          `${brief}\n\n` +
-          `---\n\n` +
-          `*The Value:* Cay AI can send your clients timely updates like this automatically — keeping your business top of mind without any manual effort.\n\n` +
-          `_Reply *MENU* to go back, or *4* to book your strategy call._`,
-          null, { linkPreview: false }
-        );
-        appendToLog(from, from, '[DEMO] Viewed News Brief feature', 'demo', '', '', 'out', 'demo');
-      } catch (e) {
-        demoSessions[from].state = 'feature_done';
-        await msg.reply('❌ Could not fetch news right now. Reply *MENU* to try another option.', null, { linkPreview: false });
-      }
-    } else if (choice === '4') {
-      await showDemoBooking(msg, from, calendarLink, ownerNumber, signature, session);
-    } else {
-      await msg.reply('_Reply with *1*, *2*, *3*, or *4* — or type the option name (e.g. "news" or "book")._', null, { linkPreview: false });
+  if (shouldReveal) {
+    session.state = 'revealed';
+    const revealMsg = buildDemoReveal(session.persona, session.industry, calendarLink);
+    await humanDelay();
+    await client.sendMessage(from, revealMsg, { linkPreview: false }).catch(() => {});
+    appendToLog(from, from, '[DEMO] Reveal sent', 'demo:revealed', '', '', 'out', 'demo');
+    const ownerNumber = formatNumber(mainSettings.owner_number || '');
+    if (ownerNumber) {
+      await client.sendMessage(ownerNumber,
+        `🎯 *[DEMO REVEAL]* ${from} completed the *${session.keyword}* demo path (${session.messageCount} messages). Reveal sent.`,
+        { linkPreview: false }
+      ).catch(() => {});
     }
-    return;
+    return true;
   }
 
-  // ── FEATURE DONE: only accept book or MENU ──
-  if (session.state === 'feature_done' || session.state === 'news') {
-    const choice = resolveMenuChoice(body);
-    if (choice === '4') {
-      await showDemoBooking(msg, from, calendarLink, ownerNumber, signature, session);
-    } else if (choice) {
-      // Let them jump to another feature
-      demoSessions[from].state = 'menu';
-      await handleDemoFlow(msg, from, body, settings);
-    } else {
-      await msg.reply('_Reply *MENU* to go back, or *4* to book your strategy call._', null, { linkPreview: false });
-    }
-    return;
-  }
+  // Generate AI response in persona
+  const demoSystemPrompt =
+    `You are the WhatsApp receptionist for ${session.persona}, a real Nassau business.\n` +
+    `Your job: answer customer enquiries naturally and helpfully, as if you work there.\n` +
+    `NEVER mention AI, automation, Cay AI, or Lucayan Labs.\n` +
+    `NEVER break character.\n` +
+    `Sound like a real local team member — warm, knowledgeable, helpful.\n` +
+    `Keep replies under 80 words. Max 1 emoji. No hashtags. No subject lines.\n` +
+    `Sign off with: ${session.settings.signature}\n` +
+    `KNOWLEDGE BASE (use these to answer questions accurately):\n` +
+    session.kb.map((e, i) => `${i + 1}. Q: ${e.q}\nA: ${e.a}`).join('\n\n') + '\n\n' +
+    `Tone: ${session.settings.tone || 'friendly-pro'}\n` +
+    `Language: ${session.settings.language_style || 'standard'}\n` +
+    `Business context: ${session.settings.business_context || ''}`;
 
-  // ── DEAL-CLOSER: waiting for business type (only if not already collected) ──
-  if (session.state === 'mind_reader_input') {
-    await runDealCloser(msg, from, body.trim(), session);
-    return;
-  }
+  const demoUserPrompt = `Customer message: "${body}"\n\nReply naturally as ${session.persona}.`;
 
+  const result = await callAI(demoSystemPrompt, demoUserPrompt, 200);
+  const reply = result.text || `Thanks for reaching out! We'll get back to you shortly.\n\n${session.settings.signature}`;
+
+  await humanDelay();
+  await client.sendMessage(from, reply, { linkPreview: false }).catch(() => {});
+  appendToLog(from, from, reply, 'demo:active', result.tokens || '', '', 'out', 'demo');
+  return true;
 }
+
+// ─── END CAY AI INDUSTRY DEMO SYSTEM ────────────────────────────────────────
+
 
 async function handleSetup(msg, body) {
   const userId = msg.from;
@@ -2146,23 +2011,26 @@ function startInactivityChecker() {
     const now = Date.now();
     const settings = getSettings();
 
-    // ── DEMO SESSIONS (customer-facing) ──
+    // ── DEMO SESSIONS (industry persona) ──
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
     for (const [from, session] of Object.entries(demoSessions)) {
-      const idle = now - (session.lastActivity || now);
-      if (!session.nudged && idle >= INACTIVITY_NUDGE_MS) {
-        session.nudged = true;
-        session.nudgedAt = now;
-        await client.sendMessage(from,
-          `Still there? 👋 Reply *menu* to jump back in, or just send a message to continue.\n\n- The ${settings.business_name || 'Cay AI'} Team`,
-          { linkPreview: false }
-        ).catch(() => {});
-      } else if (session.nudged && now - session.nudgedAt >= INACTIVITY_EXPIRE_MS) {
+      // 12-hour hard timeout
+      if (session.lastActivity < now - TWELVE_HOURS_MS) {
         delete demoSessions[from];
-        await client.sendMessage(from,
-          `Looks like we got cut off! Feel free to message us anytime to start fresh. 🙂\n\n- The ${settings.business_name || 'Cay AI'} Team`,
-          { linkPreview: false }
-        ).catch(() => {});
-        appendToLog(from, from, '[DEMO] Session expired (inactivity)', 'demo:expired', '', '', 'out', 'demo');
+        continue;
+      }
+      // 24-hour follow-up for revealed sessions
+      if (
+        session.state === 'revealed' &&
+        !session.followUpSent &&
+        session.lastActivity < now - TWENTY_FOUR_HOURS_MS
+      ) {
+        const calendarLink = (session.settings && session.settings.calendar_link) || 'https://calendly.com/gjamescollie/30min';
+        const followUpMsg = buildDemoFollowUp(session.industry || 'Nassau business', calendarLink);
+        await client.sendMessage(from, followUpMsg, { linkPreview: false }).catch(() => {});
+        session.followUpSent = true;
+        appendToLog(from, from, '[DEMO] Follow-up sent', 'demo:followup', '', '', 'out', 'demo');
       }
     }
 
@@ -2541,25 +2409,58 @@ async function handleInbound(msg) {
     return;
   }
 
-  // ── DEMO STATE MACHINE (intercept before AI) ──
+  // ── INDUSTRY DEMO INTERCEPT ──
   if (demoSessions[from]) {
-    await handleDemoFlow(msg, from, body, settings);
-    return;
+    const handled = await handleIndustryDemo(msg, from, body, settings);
+    if (handled) return;
+    // Session timed out — fall through to normal handling
   }
-  if (body.toLowerCase().trim() === 'demo') {
-    demoSessions[from] = { state: 'intro', lastActivity: Date.now() };
-    setContactStage(from, 'demo');
-    if (ownerNumber) await client.sendMessage(ownerNumber, `🎯 *Demo Started*\n\n*From:* ${contactName} (${from})\n\nThey entered the interactive demo flow.`, { linkPreview: false }).catch(() => {});
-    appendToLog(from, contactName, 'Demo started', 'demo', '', '', 'in', 'auto');
-    await humanDelay();
-    await msg.reply(
-      `🚀 *Welcome to Cay AI!* 🇧🇸\n\n` +
-      `Before I show you what I can do, let me make this personal.\n\n` +
-      `Reply with your *Name*, *Business Name*, and *what you sell* — separated by commas.\n\n` +
-      `_(Example: James, Marlin Charters, Boat Tours)_`,
-      null, { linkPreview: false }
-    );
-    return;
+  const upperBody = body.trim().toUpperCase();
+  const matchedKeyword = DEMO_KEYWORDS.find(k => upperBody === k);
+  const isUnknownContact = !contact;
+  const isOptOutLike = /stop messages|stop messaging|stop texting|stop contacting|unsubscribe|remove me from|opt out/i.test(body);
+  const isOwnerCmd = body.trim().startsWith('!');
+
+  if (matchedKeyword || (isUnknownContact && !isOptOutLike && !isOwnerCmd && !demoSessions[from])) {
+    const keyword = matchedKeyword || DEMO_KEYWORDS[Math.floor(Math.random() * DEMO_KEYWORDS.length)];
+    const vertical = loadDemoVertical(keyword);
+    if (vertical) {
+      demoSessions[from] = {
+        state: 'active',
+        keyword,
+        persona: vertical.persona,
+        industry: vertical.industry,
+        settings: vertical.settings,
+        kb: vertical.kb,
+        messageCount: 0,
+        lastActivity: Date.now(),
+        followUpSent: false,
+      };
+      if (ownerNumber) {
+        await client.sendMessage(ownerNumber,
+          `🎯 *[DEMO STARTED]* ${from} entered the *${keyword}* demo path (${vertical.persona})`,
+          { linkPreview: false }
+        ).catch(() => {});
+      }
+      appendToLog(from, from, `[DEMO] Session started — ${keyword} (${vertical.persona})`, 'demo:started', '', '', 'in', 'demo');
+
+      // Generate opening message
+      const openingPrompt =
+        `You are the WhatsApp receptionist for ${vertical.persona}.\n` +
+        `Write a warm, natural opening reply to a prospect who just texted you.\n` +
+        `Under 30 words. Friendly greeting. Ask how you can help. One emoji max.\n` +
+        `Sign off: ${vertical.settings.signature}\n` +
+        `Do NOT mention AI or automation.`;
+      const openingUser = `The prospect just texted: "${body}". Reply as ${vertical.persona}.`;
+      const openingResult = await callAI(openingPrompt, openingUser, 100);
+      const openingMsg = openingResult.text || `Hi there! Thanks for reaching out. How can we help you today?\n\n${vertical.settings.signature}`;
+
+      await humanDelay();
+      await client.sendMessage(from, openingMsg, { linkPreview: false }).catch(() => {});
+      appendToLog(from, from, openingMsg, 'demo:active', openingResult.tokens || '', '', 'out', 'demo');
+      return;
+    }
+    // If vertical load failed, fall through to normal handling
   }
 
   // ── DISAMBIGUATION RESOLUTION ──
@@ -2673,11 +2574,42 @@ async function handleInbound(msg) {
     }
 
     case 'DEMO': {
-      await humanDelay(true);
-      await startDemoMenu(msg, from);
-      setContactStage(from, 'demo');
-      await notifyOwner('auto', 'Demo Started', `\nThey entered the interactive demo flow.`);
-      appendToLog(from, contactName, 'Demo started', 'demo', '', confStr, 'in', 'auto');
+      // Route AI-classified DEMO intent into a random industry vertical
+      const demoKeyword = DEMO_KEYWORDS[Math.floor(Math.random() * DEMO_KEYWORDS.length)];
+      const demoVertical = loadDemoVertical(demoKeyword);
+      if (demoVertical && !demoSessions[from]) {
+        demoSessions[from] = {
+          state: 'active',
+          keyword: demoKeyword,
+          persona: demoVertical.persona,
+          industry: demoVertical.industry,
+          settings: demoVertical.settings,
+          kb: demoVertical.kb,
+          messageCount: 0,
+          lastActivity: Date.now(),
+          followUpSent: false,
+        };
+        if (ownerNumber) {
+          await client.sendMessage(ownerNumber,
+            `🎯 *[DEMO STARTED]* ${contactName} (${from}) entered the *${demoKeyword}* demo path (${demoVertical.persona})`,
+            { linkPreview: false }
+          ).catch(() => {});
+        }
+        appendToLog(from, contactName, `[DEMO] Session started — ${demoKeyword}`, 'demo:started', '', confStr, 'in', 'demo');
+        const openingResult = await callAI(
+          `You are the WhatsApp receptionist for ${demoVertical.persona}. Write a warm, natural opening reply to a prospect. Under 30 words. One emoji max. Sign off: ${demoVertical.settings.signature}. Do NOT mention AI or automation.`,
+          `The prospect just texted: "${body}". Reply as ${demoVertical.persona}.`,
+          100
+        );
+        const openingMsg = openingResult.text || `Hi there! Thanks for reaching out. How can we help?\n\n${demoVertical.settings.signature}`;
+        await humanDelay(true);
+        await client.sendMessage(from, openingMsg, { linkPreview: false }).catch(() => {});
+        appendToLog(from, contactName, openingMsg, 'demo:active', openingResult.tokens || '', confStr, 'out', 'demo');
+      } else {
+        setContactStage(from, 'demo');
+        await notifyOwner('auto', 'Demo Interest', `\nThey asked about a demo. Consider following up.`);
+        appendToLog(from, contactName, 'Demo intent (no session started)', 'demo', '', confStr, 'in', 'auto');
+      }
       return;
     }
 
@@ -2917,11 +2849,9 @@ if (process.env.NODE_ENV === 'test') {
     // state
     setupSessions, pendingPreviews, demoSessions,
     // state machines
-    handleSetup, handleInbound, handleDemoFlow,
+    handleSetup, handleInbound, handleIndustryDemo,
     // data helpers
     getSettings, findContact, resolveRecipient, classifyIntent,
-    // network
-    fetchNewsHeadlines, fetchNassauWeather,
     // log path (so tests can inspect the file)
     LOG_FILE,
   };
