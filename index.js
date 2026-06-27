@@ -2815,23 +2815,236 @@ async function handleInbound(msg) {
   }
 }
 
-// ─── HEALTH ENDPOINT ──────────────────────────────────────────────────────────
+// ─── HEALTH + DASHBOARD ───────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   const http = require('http');
+  const url  = require('url');
   const START_TIME = Date.now();
+  const DASH_PASS = process.env.DASHBOARD_PASSWORD || 'cayai2024';
+
+  function authOk(req) {
+    const cookie = req.headers.cookie || '';
+    return cookie.includes(`dash_auth=${DASH_PASS}`);
+  }
+
+  function fmtUptime(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${h}h ${m}m ${sec}s`;
+  }
+
+  function readAllLogs() {
+    try {
+      const raw = fs.readFileSync(LOG_FILE, 'utf8').trim();
+      if (!raw) return [];
+      const lines = raw.split('\n').filter(Boolean);
+      // skip header
+      const rows = lines[0].startsWith('timestamp') ? lines.slice(1) : lines;
+      return rows.reverse().map(line => {
+        const parts = line.split(',');
+        return {
+          ts:        parts[0] || '',
+          number:    parts[1] || '',
+          name:      parts[2] || '',
+          message:   parts[3] || '',
+          status:    parts[4] || '',
+          tokens:    parts[5] || '',
+          direction: parts[7] || '',
+        };
+      });
+    } catch(_) { return []; }
+  }
+
+  function statusColor(status) {
+    if (!status) return '#888';
+    if (status.includes('demo'))         return '#8b5cf6';
+    if (status.includes('opt-out'))      return '#ef4444';
+    if (status.includes('outbound'))     return '#3b82f6';
+    if (status.includes('inbound'))      return '#10b981';
+    if (status.includes('owner'))        return '#f59e0b';
+    if (status.includes('outside'))      return '#6b7280';
+    return '#888';
+  }
+
+  function buildDashboard(page, filter) {
+    const settings = getSettings();
+    const uptime   = fmtUptime(Math.floor((Date.now() - START_TIME) / 1000));
+    const allLogs  = readAllLogs();
+    const filtered = filter ? allLogs.filter(r => r.status.includes(filter)) : allLogs;
+    const PAGE_SIZE = 100;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const pageNum    = Math.min(Math.max(1, page), totalPages);
+    const pageLogs   = filtered.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
+
+    const activeDemos = Object.entries(demoSessions).map(([num, s]) => `
+      <tr>
+        <td>${num}</td>
+        <td>${s.keyword || '—'}</td>
+        <td>${s.persona || '—'}</td>
+        <td>${s.messageCount || 0}</td>
+        <td>${s.state || '—'}</td>
+        <td>${new Date(s.lastActivity).toLocaleTimeString()}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="color:#888;text-align:center">No active demo sessions</td></tr>';
+
+    const logRows = pageLogs.map(r => `
+      <tr>
+        <td style="white-space:nowrap;color:#aaa">${r.ts}</td>
+        <td style="color:#e2e8f0">${r.number}</td>
+        <td style="color:#e2e8f0">${r.name}</td>
+        <td style="color:#cbd5e1;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.message.replace(/"/g,'&quot;')}">${r.message}</td>
+        <td><span style="background:${statusColor(r.status)};padding:2px 6px;border-radius:4px;font-size:11px;color:#fff">${r.status}</span></td>
+        <td style="color:#aaa">${r.tokens}</td>
+      </tr>`).join('');
+
+    const filterOptions = ['','inbound','outbound','demo','opt-out','outside','owner'].map(f =>
+      `<option value="${f}" ${filter===f?'selected':''}>${f||'All'}</option>`).join('');
+
+    const pagerPrev = pageNum > 1
+      ? `<a href="/?page=${pageNum-1}&filter=${filter}" style="color:#7c3aed">← Prev</a>` : '';
+    const pagerNext = pageNum < totalPages
+      ? `<a href="/?page=${pageNum+1}&filter=${filter}" style="color:#7c3aed">Next →</a>` : '';
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Cay AI — Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;font-size:13px}
+h1{font-size:20px;font-weight:700;color:#fff}
+h2{font-size:14px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.header{background:#1e293b;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155}
+.badge{background:#7c3aed;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:20px 24px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px}
+.card .val{font-size:22px;font-weight:700;color:#fff;margin-top:4px}
+.card .lbl{color:#94a3b8;font-size:11px;text-transform:uppercase}
+.section{padding:0 24px 24px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid #334155}
+td{padding:6px 8px;border-bottom:1px solid #1e293b;vertical-align:middle}
+tr:hover td{background:#1e293b}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+select,button{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 12px;border-radius:6px;cursor:pointer}
+button:hover{background:#334155}
+.pager{display:flex;gap:16px;align-items:center;padding:12px 0;color:#94a3b8}
+a{text-decoration:none}
+.refresh{font-size:11px;color:#64748b}
+</style>
+<meta http-equiv="refresh" content="30">
+</head><body>
+<div class="header">
+  <div>
+    <h1>🤖 Cay AI Dashboard</h1>
+    <div style="color:#94a3b8;font-size:12px;margin-top:2px">${settings.business_name || 'Agent'} · ${process.env.CLIENT_ID || 'default'}</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <span class="refresh">Auto-refresh 30s</span>
+    <span class="badge">LIVE</span>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="lbl">Uptime</div><div class="val" style="font-size:16px">${uptime}</div></div>
+  <div class="card"><div class="lbl">Total Log Entries</div><div class="val">${allLogs.length}</div></div>
+  <div class="card"><div class="lbl">Active Demo Sessions</div><div class="val">${Object.keys(demoSessions).length}</div></div>
+  <div class="card"><div class="lbl">AI Provider</div><div class="val" style="font-size:14px">${process.env.AI_PROVIDER || 'openrouter'}</div></div>
+  <div class="card"><div class="lbl">Model</div><div class="val" style="font-size:12px;margin-top:6px">${process.env.AI_MODEL || 'claude-haiku-4-5'}</div></div>
+</div>
+
+<div class="section">
+  <h2>Active Demo Sessions</h2>
+  <table>
+    <tr><th>Number</th><th>Keyword</th><th>Persona</th><th>Messages</th><th>State</th><th>Last Active</th></tr>
+    ${activeDemos}
+  </table>
+</div>
+
+<div class="section">
+  <h2>All Logs (${filtered.length} entries)</h2>
+  <div class="toolbar">
+    <form method="get" style="display:flex;gap:8px;align-items:center">
+      <label style="color:#94a3b8">Filter:</label>
+      <select name="filter" onchange="this.form.submit()">${filterOptions}</select>
+      <input type="hidden" name="page" value="1">
+    </form>
+  </div>
+  <table>
+    <tr><th>Timestamp</th><th>Number</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr>
+    ${logRows}
+  </table>
+  <div class="pager">${pagerPrev} <span>Page ${pageNum} of ${totalPages}</span> ${pagerNext}</div>
+</div>
+</body></html>`;
+  }
+
   http.createServer((req, res) => {
-    if (req.url === '/health') {
+    const parsed = url.parse(req.url, true);
+    const pathname = parsed.pathname;
+
+    // Health endpoint (no auth)
+    if (pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         status: 'ok',
         client_id: process.env.CLIENT_ID || 'default',
         uptime: Math.floor((Date.now() - START_TIME) / 1000),
       }));
-    } else {
-      res.writeHead(404);
-      res.end();
+      return;
     }
+
+    // Login page
+    if (pathname === '/login') {
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', d => { body += d; });
+        req.on('end', () => {
+          const pass = new URLSearchParams(body).get('password');
+          if (pass === DASH_PASS) {
+            res.writeHead(302, {
+              'Set-Cookie': `dash_auth=${DASH_PASS}; Path=/; HttpOnly`,
+              'Location': '/',
+            });
+          } else {
+            res.writeHead(302, { 'Location': '/login?err=1' });
+          }
+          res.end();
+        });
+        return;
+      }
+      const err = parsed.query.err ? '<p style="color:#ef4444;margin-bottom:12px">Incorrect password.</p>' : '';
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cay AI Login</title>
+<style>*{box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;color:#e2e8f0}
+.box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:36px;width:320px}
+h1{font-size:20px;margin-bottom:20px;color:#fff}
+input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px;border-radius:6px;margin-bottom:14px;font-size:14px}
+button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-radius:6px;font-size:14px;cursor:pointer}
+</style></head><body><div class="box">
+<h1>🤖 Cay AI</h1>${err}
+<form method="post"><input type="password" name="password" placeholder="Dashboard password" autofocus>
+<button type="submit">Sign In</button></form></div></body></html>`);
+      return;
+    }
+
+    // All other routes require auth
+    if (!authOk(req)) {
+      res.writeHead(302, { 'Location': '/login' });
+      res.end();
+      return;
+    }
+
+    // Dashboard
+    if (pathname === '/' || pathname === '') {
+      const page   = parseInt(parsed.query.page  || '1');
+      const filter = parsed.query.filter || '';
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(buildDashboard(page, filter));
+      return;
+    }
+
+    res.writeHead(404);
+    res.end();
   }).listen(3000);
+  console.log(`🩺 Dashboard on :3000  (password: ${DASH_PASS})`);
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
