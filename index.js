@@ -2913,6 +2913,10 @@ h1{font-size:20px;font-weight:700;color:#fff}
 h2{font-size:14px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
 .header{background:#1e293b;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155}
 .badge{background:#7c3aed;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.nav{background:#0f172a;padding:8px 24px;display:flex;gap:4px;border-bottom:1px solid #1e293b}
+.nav a{color:#94a3b8;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500}
+.nav a:hover{background:#1e293b;color:#e2e8f0}
+.nav a.active{background:#7c3aed;color:#fff}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:20px 24px}
 .card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px}
 .card .val{font-size:22px;font-weight:700;color:#fff;margin-top:4px}
@@ -2941,6 +2945,11 @@ a{text-decoration:none}
     <span class="badge">LIVE</span>
   </div>
 </div>
+<nav class="nav">
+  <a href="/" class="active">📊 Logs</a>
+  <a href="/analytics">📈 Analytics</a>
+  <a href="/contacts">👥 Contacts</a>
+</nav>
 
 <div class="grid">
   <div class="card"><div class="lbl">Uptime</div><div class="val" style="font-size:16px">${uptime}</div></div>
@@ -3039,6 +3048,76 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(buildDashboard(page, filter));
       return;
+    }
+
+    // Contacts page
+    if (pathname === '/contacts') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'contacts.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('contacts.html not found'); }
+      return;
+    }
+
+    // Analytics page
+    if (pathname === '/analytics') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('dashboard.html not found'); }
+      return;
+    }
+
+    // Raw CSV files for analytics page
+    if (pathname === '/data/log.csv') {
+      try {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(fs.readFileSync(LOG_FILE, 'utf8'));
+      } catch(_) { res.writeHead(404); res.end(''); }
+      return;
+    }
+    if (pathname === '/data/contacts.csv') {
+      try {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(fs.readFileSync(CONTACTS_FILE, 'utf8'));
+      } catch(_) { res.writeHead(404); res.end(''); }
+      return;
+    }
+
+    // Contacts API — GET returns JSON array, POST saves full array to contacts.csv
+    if (pathname === '/api/contacts') {
+      if (req.method === 'GET') {
+        try {
+          const rows = parseCSV(CONTACTS_FILE);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(rows));
+        } catch(_) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('[]'); }
+        return;
+      }
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', d => { body += d; });
+        req.on('end', () => {
+          try {
+            const contacts = JSON.parse(body);
+            const header = 'number,name,business,tags,notes,last_contacted,email,industry';
+            const rows = contacts.map(c => [
+              c.number || '', c.name || '', c.business || '', c.tags || '',
+              (c.notes || '').replace(/,/g, ';').replace(/\n/g, ' '),
+              c.last_contacted || '', c.email || '', c.industry || '',
+            ].join(','));
+            fs.writeFileSync(CONTACTS_FILE, [header, ...rows].join('\n') + '\n');
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, count: contacts.length }));
+          } catch(e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: e.message }));
+          }
+        });
+        return;
+      }
     }
 
     res.writeHead(404);
