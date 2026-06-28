@@ -40,6 +40,9 @@ COPY dashboard.html ./
 # Default seed data — copied to the volume on first run by entrypoint.sh
 COPY defaults/ ./defaults/
 
+# Industry demo personas (settings + KB) — loaded at runtime by the demo flow
+COPY demo/ ./demo/
+
 # Entrypoint seeds data/ if empty, then starts the agent
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
