@@ -7,7 +7,7 @@ The agent does two things:
 1. Lets the business owner send AI-written WhatsApp messages via `!commands` from their own phone
 2. Automatically classifies and responds to inbound customer messages using AI
 
-**This is not a web app. There is no server, no dashboard, no database.** It runs locally on a Mac, connects to WhatsApp via linked device (QR scan), and stores everything in CSV files.
+**This is not a web app and has no database.** Storage is CSV files only. It runs as a single Node.js process — locally on a Mac via linked device (QR scan), or in Docker on a cloud droplet for live clients. The process serves one **password-gated, read-only analytics dashboard** (`dashboard.html` on `:3000`, bound to localhost + Tailscale) — this is intentional and in scope. Do not grow it into a management UI or add any other server surface.
 
 ---
 
@@ -24,13 +24,22 @@ The agent does two things:
 ## File Structure
 ```
 cayai-agent/
-├── index.js              ← ALL agent logic — ~1,340 lines, one file by design
+├── index.js              ← ALL agent logic — one file by design (~3,350 lines)
 ├── package.json
 ├── start.command         ← Mac double-click launcher
 ├── contacts.html         ← Local browser-based contact manager
+├── dashboard.html        ← Read-only analytics dashboard (served on :3000, password-gated)
+├── Dockerfile            ← Cloud/Docker deployment
+├── docker-compose.yml    ← Container config (auto-restart: unless-stopped)
+├── entrypoint.sh         ← Container startup
+├── deploy.sh             ← One-command droplet deploy
+├── .github/workflows/    ← deploy.yml — auto-deploy to droplet on push to main
 ├── CLAUDE.md             ← This file
-├── .env                  ← API keys (never commit)
+├── .env                  ← API keys + DASHBOARD_PASSWORD (never commit)
 ├── followups.json        ← Scheduled messages (auto-managed)
+├── defaults/             ← Template settings.csv for new client onboarding
+├── demo/                 ← Industry demo verticals (tour/food/realty/drive/beauty)
+├── tests/                ← index.test.js (npm test)
 └── data/
     ├── settings.csv      ← Business config, tone, KB, token limits
     ├── contacts.csv      ← Contact list
@@ -253,7 +262,8 @@ Owner sends !send John follow up on proposal
 ## What Never To Do
 - Do not split index.js into multiple files
 - Do not add a database dependency
-- Do not add a web server or dashboard (not in scope)
+- Do not add any new server surface beyond the existing read-only analytics dashboard, and do not expand that dashboard into a management UI
+- Do not expose the dashboard without `DASHBOARD_PASSWORD` set (the agent refuses to start it otherwise)
 - Do not auto-send any message without owner preview and approval (except auto-replies to inbound)
 - Do not resolve a complaint automatically — always route to human
 - Do not trigger opt-out on a bare "stop" — requires multi-word phrase

@@ -33,9 +33,9 @@ and have been folded into §3, §4, §9:
 - **Onboarding scaffolding** — `defaults/settings.csv` template (generic, not tourism), the
   18-step `!setup` wizard, and `!addcontact`.
 
-> ⚠️ **Governance conflict to resolve:** `CLAUDE.md` still states "Do not add a web server or
-> dashboard (not in scope)," but a dashboard now ships in `index.js`. Founder should either
-> update `CLAUDE.md` to bless the dashboard or decide its future. Flagged, not changed here.
+> ✅ **Governance conflict resolved (v1.1):** the founder blessed the dashboard. `CLAUDE.md`
+> has been updated to permit the existing read-only, password-gated analytics dashboard while
+> still prohibiting any other server surface or expansion into a management UI.
 
 ---
 
@@ -182,7 +182,6 @@ run in parallel — that's what makes 30 days viable.
 - A strong `DASHBOARD_PASSWORD` set per client `.env` (the agent refuses to start the dashboard without one)
 - For client #1: operator's real FAQs, pricing, schedule, meeting point, booking link, and a second/personal number for the Cay Control channel
 - Final logo selection and brand-asset sign-off
-- Decision on the `CLAUDE.md` ↔ dashboard governance conflict (§0)
 
 ## 8. Risks & mitigations
 
