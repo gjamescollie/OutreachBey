@@ -2421,12 +2421,11 @@ async function handleInbound(msg) {
   }
   const upperBody = body.trim().toUpperCase();
   const matchedKeyword = DEMO_KEYWORDS.find(k => upperBody === k);
-  const isUnknownContact = !contact;
-  const isOptOutLike = /stop messages|stop messaging|stop texting|stop contacting|unsubscribe|remove me from|opt out/i.test(body);
-  const isOwnerCmd = body.trim().startsWith('!');
 
-  if (matchedKeyword || (isUnknownContact && !isOptOutLike && !isOwnerCmd && !demoSessions[from])) {
-    const keyword = matchedKeyword || DEMO_KEYWORDS[Math.floor(Math.random() * DEMO_KEYWORDS.length)];
+  // Demos start ONLY on an explicit industry keyword (TOUR/FOOD/REALTY/DRIVE/
+  // BEAUTY). We no longer drop every unknown contact into a random demo.
+  if (matchedKeyword && !demoSessions[from]) {
+    const keyword = matchedKeyword;
     const vertical = loadDemoVertical(keyword);
     if (vertical) {
       demoSessions[from] = {
@@ -2589,42 +2588,17 @@ async function handleInbound(msg) {
     }
 
     case 'DEMO': {
-      // Route AI-classified DEMO intent into a random industry vertical
-      const demoKeyword = DEMO_KEYWORDS[Math.floor(Math.random() * DEMO_KEYWORDS.length)];
-      const demoVertical = loadDemoVertical(demoKeyword);
-      if (demoVertical && !demoSessions[from]) {
-        demoSessions[from] = {
-          state: 'active',
-          keyword: demoKeyword,
-          persona: demoVertical.persona,
-          industry: demoVertical.industry,
-          settings: demoVertical.settings,
-          kb: demoVertical.kb,
-          messageCount: 0,
-          lastActivity: Date.now(),
-          followUpSent: false,
-        };
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber,
-            `🎯 *[DEMO STARTED]* ${contactName} (${from}) entered the *${demoKeyword}* demo path (${demoVertical.persona})`,
-            { linkPreview: false }
-          ).catch(() => {});
-        }
-        appendToLog(from, contactName, `[DEMO] Session started — ${demoKeyword}`, 'demo:started', '', confStr, 'in', 'demo');
-        const openingResult = await callAI(
-          `You are the WhatsApp receptionist for ${demoVertical.persona}. Write a warm, natural opening reply to a prospect. Under 30 words. One emoji max. Sign off: ${demoVertical.settings.signature}. Do NOT mention AI or automation.`,
-          `The prospect just texted: "${body}". Reply as ${demoVertical.persona}.`,
-          100
-        );
-        const openingMsg = openingResult.text || `Hi there! Thanks for reaching out. How can we help?\n\n${demoVertical.settings.signature}`;
-        await humanDelay(true);
-        await client.sendMessage(from, openingMsg, { linkPreview: false }).catch(() => {});
-        appendToLog(from, contactName, openingMsg, 'demo:active', openingResult.tokens || '', confStr, 'out', 'demo');
-      } else {
-        setContactStage(from, 'demo');
-        await notifyOwner('auto', 'Demo Interest', `\nThey asked about a demo. Consider following up.`);
-        appendToLog(from, contactName, 'Demo intent (no session started)', 'demo', '', confStr, 'in', 'auto');
-      }
+      // Don't auto-assign a random vertical — ask the prospect to pick one so
+      // the demo always reflects an explicitly chosen industry.
+      setContactStage(from, 'demo');
+      await humanDelay(true);
+      await msg.reply(
+        `Happy to show you a live demo right here! 🚀\n\nWhich type of business should I demo? Reply with one:\n\n` +
+        `🏝️ *TOUR* · 🍽️ *FOOD* · 🏡 *REALTY* · 🚗 *DRIVE* · 💅 *BEAUTY*`,
+        null, { linkPreview: false }
+      );
+      await notifyOwner('auto', 'Demo Interest', `\nThey asked about a demo — sent the keyword menu.`);
+      appendToLog(from, contactName, 'Demo intent — sent keyword menu', 'demo', '', confStr, 'in', 'auto');
       return;
     }
 
