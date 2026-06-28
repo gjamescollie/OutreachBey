@@ -3,7 +3,7 @@
 **Prepared for:** Granville Collie, Founder & CEO, Lucayan Labs
 **Prepared by:** Product (Claude Code), acting as senior PM
 **Date:** June 2026
-**Version:** 1.0 — Founder-confirmed, locked for build
+**Version:** 1.1 — Reconciled against repo audit (see §0 revision note)
 **Governing document:** *Lucayan Labs Brand Architecture v1.0* (all locked decisions inherited)
 
 ---
@@ -17,6 +17,25 @@ into a buildable, time-boxed plan to land and serve the **first paying tourism c
 
 Decisions captured in the scoping interview are recorded in Section 2. All twelve are now
 founder-confirmed; the SOW is locked for build.
+
+**Revision note (v1.1 — repo audit).** A review of the live `gjamescollie/OutreachBey`
+repo found the codebase materially ahead of v1.0's assumptions. The following already exist
+and have been folded into §3, §4, §9:
+
+- **Analytics dashboard** — a password-gated HTTP dashboard (`index.js` → `:3000`, serves
+  `dashboard.html`, bound to localhost + Tailscale). v1.0 wrongly listed "no dashboard" as a
+  constraint; it is now treated as a delivered asset that backs the §6 success metrics.
+- **Auto-restart** — `docker-compose.yml` `restart: unless-stopped` covers crash recovery.
+- **CI/CD deploy** — `.github/workflows/deploy.yml` auto-deploys to a DigitalOcean droplet on
+  push to `main` (git pull → `docker compose build/up` → `tailscale serve`).
+- **Tourism demo vertical** — `demo/settings_tour.csv` + the `TOUR` keyword demo path.
+- **Test suite** — `tests/index.test.js` + `npm test`.
+- **Onboarding scaffolding** — `defaults/settings.csv` template (generic, not tourism), the
+  18-step `!setup` wizard, and `!addcontact`.
+
+> ⚠️ **Governance conflict to resolve:** `CLAUDE.md` still states "Do not add a web server or
+> dashboard (not in scope)," but a dashboard now ships in `index.js`. Founder should either
+> update `CLAUDE.md` to bless the dashboard or decide its future. Flagged, not changed here.
 
 ---
 
@@ -56,13 +75,15 @@ gap is **product orientation**, not infrastructure.
 
 | Capability | Today | Needed for client #1 |
 |---|---|---|
-| Inbound classifier | Exists (10+ intents, confidence-gated) | Re-tuned for tourism inquiry language |
-| Outbound owner commands | Mature (`!send`, `!broadcast`, previews) | Kept, but de-emphasized — receptionist is inbound-first |
-| Knowledge base | 20-slot generic FAQ | Tourism KB template (pricing, schedule, meeting point, what's included, weather/cancellation, group size) |
-| Hosting | Local Mac **+ DigitalOcean Docker path (`deploy.sh`) already exists** | Harden Docker path + add restart/uptime + heartbeat |
-| Operator notifications | Notifies a single `owner_number` | Re-route to a **separate** control channel because the AI now shares the customer-facing number |
-| Reliability | Manual | Auto-restart on crash, daily heartbeat, uptime monitor |
-| Onboarding | Manual CSV editing | Repeatable tourism onboarding template + setup wizard pass |
+| Inbound classifier | Exists (10+ intents, confidence-gated); a `TOUR` demo vertical already exists | Re-tune for real tourism inquiry language |
+| Outbound owner commands | Mature (`!send`, `!broadcast`, `!addcontact`, previews) | Kept, but de-emphasized — receptionist is inbound-first |
+| Knowledge base | 40-slot KB; generic `defaults/settings.csv` + a tourism-flavoured `demo/settings_tour.csv` to seed from | Tourism KB template (pricing, schedule, meeting point, what's included, weather/cancellation, group size) |
+| Hosting / deploy | DigitalOcean Docker (`Dockerfile`, `docker-compose.yml`) **+ GitHub Actions auto-deploy to droplet on push to `main`** + Tailscale serving | Generalise from the single hardcoded droplet to **multi-client provisioning** |
+| Operator notifications | **`control_channel` + `getControlChannel()` route all operator pings off the shared line (B3 increment 1 — done)** | B3 increment 2: accept `!commands` from the Cay Control group |
+| Reliability | **Auto-restart via `docker-compose` `restart: unless-stopped`**; disconnect alert wired | Add daily heartbeat + external uptime monitor |
+| Operator visibility | **Password-gated analytics dashboard on `:3000` (localhost + Tailscale)** | Keep; point operator to it for the §6 metrics |
+| Onboarding | `defaults/settings.csv` template + 18-step `!setup` wizard + `!addcontact` | Tourism-specific onboarding template + a clean KB-build runbook |
+| Testing | `tests/index.test.js` + `npm test` harness exists | Add a tourism KB-confidence pass on top |
 
 **Key architectural note:** because the AI runs as a linked device on the operator's *main*
 WhatsApp number, the current "message the owner" pattern would message the customer-facing
@@ -93,18 +114,20 @@ of the problem, never with price. (Brand Voice §9, Locked Decisions §12.)
 
 | ID | Deliverable | Detail |
 |---|---|---|
-| B1 | Tourism intent tuning | Re-tune `classifyIntent()` prompt for boat-tour/charter inquiry phrasing; verify confidence gates (0.45 / 0.75) hold |
-| B2 | Tourism KB template | A reusable `settings.csv` KB pre-filled with the tourism question set, in natural customer language (fixes the known low-confidence KB issue) |
+| B1 | Tourism intent tuning | Re-tune `classifyIntent()` prompt for boat-tour/charter inquiry phrasing; verify confidence gates (0.45 / 0.75) hold. **Seed from the existing `demo/settings_tour.csv` tour vertical** rather than starting cold |
+| B2 | Tourism KB template | A reusable `settings.csv` KB pre-filled with the tourism question set, in natural customer language (fixes the known low-confidence KB issue). **Start from `demo/settings_tour.csv`; the current `defaults/settings.csv` is generic/self-referential and not reusable as-is** |
 | B3 | Shared-number control model | Route escalations + `!commands` to a dedicated **Cay Control** channel instead of the customer inbox. Define how the agent distinguishes operator messages from customer messages on one number. **Increment 1 (notification routing) — DONE:** `control_channel` setting + `getControlChannel()` route all operator notifications off the shared line. **Increment 2 (planned):** accept `!commands` from the Cay Control group |
 | B4 | Qualify + capture + handoff flow | On a real inquiry: answer, qualify (date, party size, trip type), capture contact to `contacts.csv`/log, hand warm lead to operator. Share operator booking link when configured. **No availability logic** (stays in Receptionist scope) |
-| B5 | Reliability layer | Daily heartbeat (already specced in `FUTURE_PLANS.md`), auto-restart on crash (pm2/Docker), uptime monitor |
-| B6 | Hosting hardening | Take the existing `deploy.sh` DigitalOcean Docker path to a clean one-command client deploy; document the per-client provisioning runbook |
-| B7 | Onboarding template | Blank annotated `settings.csv` + step list so a new tourism client is configured in under an hour |
-| B8 | Pre-flight test pass | Run the SETUP.md test plan: all KB entries auto-answer ≥75% confidence; setup wizard preserves locked fields; opt-out fast-path verified |
+| B5 | Reliability layer | **Auto-restart already done** via `docker-compose` `restart: unless-stopped`. Remaining: daily heartbeat (specced in `FUTURE_PLANS.md`) + an external uptime monitor |
+| B6 | Hosting hardening | **CI/CD already exists** (`deploy.yml` auto-deploys to one droplet on push to `main`, Tailscale-served). Remaining: generalise from the single hardcoded path (`/root/cay-cay-ai-client1`) to repeatable **multi-client provisioning**; document the per-client runbook |
+| B7 | Onboarding template | Annotated tourism `settings.csv` + step list so a new tourism client is configured in under an hour. **Builds on the existing `defaults/settings.csv`, `!setup` wizard, and `!addcontact`** |
+| B8 | Pre-flight test pass | Extend the **existing `tests/index.test.js` / `npm test` harness**: all KB entries auto-answer ≥75% confidence; setup wizard preserves locked fields; opt-out fast-path verified |
 
 **Build constraints (inherited, non-negotiable):** single `index.js` — do not split into
-modules; no database; no web server/dashboard; no message to a customer that bypasses the
-autonomy/escalation rules; complaints always route to a human; bare "stop" never triggers opt-out.
+modules; no database; no message to a customer that bypasses the autonomy/escalation rules;
+complaints always route to a human; bare "stop" never triggers opt-out. *(Note: a
+password-gated analytics dashboard already ships in `index.js` and is in scope — see the §0
+governance conflict against `CLAUDE.md`. The "no dashboard" line from v1.0 is retired.)*
 
 ### Workstream C — Go-to-Market & Close (founder-led, Claude-supported)
 
@@ -112,7 +135,7 @@ autonomy/escalation rules; complaints always route to a human; bare "stop" never
 |---|---|---|
 | C1 | Target list | 10–15 Nassau boat-tour / fishing-charter / excursion / water-sports operators |
 | C2 | Outreach motion | Short DM/email sequence + call script anchored on the cost-of-problem story |
-| C3 | Live demo instance | A "Cay Receptionist Demo" number prospects can message in the meeting |
+| C3 | Live demo instance | **Demo verticals already built** (`TOUR`/`FOOD`/`REALTY`/`DRIVE`/`BEAUTY` in `demo/`). Remaining: stand up a dedicated always-on "Cay Receptionist Demo" number prospects can message live in a meeting |
 | C4 | Proposal + close | Proposal template populated per prospect; $2,500 + $499/mo, no discount |
 | C5 | Onboarding + go-live | KB build from operator's real FAQs, QR link to their number, staff training, go-live |
 | C6 | Success readout | After 2 weeks live: inquiries answered, leads captured, bookings influenced, hours saved → first case study |
@@ -155,9 +178,11 @@ run in parallel — that's what makes 30 days viable.
 ## 7. Dependencies & inputs needed from founder
 
 - Domain registrar access / payment for A1
-- OpenRouter API key + DigitalOcean account for hosting
+- OpenRouter API key + DigitalOcean account for hosting *(droplet + GitHub Actions deploy secrets `DROPLET_HOST`/`DROPLET_USER`/`DROPLET_SSH_KEY` + Tailscale are already configured for client #1)*
+- A strong `DASHBOARD_PASSWORD` set per client `.env` (the agent refuses to start the dashboard without one)
 - For client #1: operator's real FAQs, pricing, schedule, meeting point, booking link, and a second/personal number for the Cay Control channel
 - Final logo selection and brand-asset sign-off
+- Decision on the `CLAUDE.md` ↔ dashboard governance conflict (§0)
 
 ## 8. Risks & mitigations
 
@@ -176,7 +201,7 @@ run in parallel — that's what makes 30 days viable.
 - Live calendar/availability or payment processing
 - Multi-number / multi-role per instance, web & voice channels
 - Any non-tourism vertical
-- Database, web dashboard, or splitting `index.js` (architecturally prohibited)
+- Database, or splitting `index.js` (architecturally prohibited). *Note: the analytics dashboard already exists and is NOT out of scope — expanding it into a full management UI is, for now*
 - Discounting for early clients (locked)
 
 ## 10. Commercials (inherited, for reference)
@@ -188,5 +213,6 @@ run in parallel — that's what makes 30 days viable.
 
 ---
 
-*Founder-confirmed and locked. Workstream B build is underway, starting with B3
-(shared-number operator control).*
+*Founder-confirmed and locked; v1.1 reconciled against the live repo. Workstream B build is
+underway: B3 increment 1 (control-channel routing) is shipped. Next: B2 (tourism KB,
+seeded from `demo/settings_tour.csv`).*
