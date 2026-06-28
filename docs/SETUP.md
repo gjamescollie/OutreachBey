@@ -192,6 +192,8 @@ Edit `data/settings.csv` — changes take effect immediately, no restart needed.
 | Key | Options / Notes |
 |---|---|
 | `business_name` | Appears in messages and notifications |
+| `owner_number` | The operator's number (international, no `+`). Used as the fallback notification target |
+| `control_channel` | **Where escalations & AI activity are sent.** A "Cay Control" group JID (`…@g.us`) or the operator's personal number. Leave blank to fall back to `owner_number`. **Set this on every shared-number client deployment** so escalations stay off the customer-facing line |
 | `tone` | `friendly-pro` \| `formal` \| `casual` \| `sales` |
 | `signature` | Sign-off appended to every AI message |
 | `business_context` | Describes your business for the AI |
@@ -206,6 +208,31 @@ Edit `data/settings.csv` — changes take effect immediately, no restart needed.
 | `token_limit_send` | Default 300 |
 | `token_limit_checkin` | Default 150 |
 | `token_limit_broadcast` | Default 250 |
+
+---
+
+## Cay Control Channel (shared-number deployments)
+
+When Cay Receptionist runs on a client's **own** customer-facing WhatsApp number, the agent
+must not post escalations into that line's "Message Yourself" chat — staff (and the customer
+thread) would see them. Route them to a private **Cay Control** channel instead.
+
+**Recommended: a dedicated WhatsApp group**
+1. From the client's business WhatsApp, create a group named `Cay Control`.
+2. Add the operator's **personal** number (and anyone else who should receive escalations).
+3. Find the group JID and put it in `control_channel`. The simplest way: have someone send
+   a message in the group, and read the group ID the agent logs for that chat (`…@g.us`),
+   or use `client.getChats()` in a one-off script. Set `control_channel,<id>@g.us`.
+
+**Simpler alternative:** set `control_channel` to the operator's personal number
+(`control_channel,12425559999`). Escalations DM that phone directly.
+
+If `control_channel` is left blank, notifications fall back to `owner_number` — correct for
+the legacy single-owner Mac setup, but **not** for a shared-number client.
+
+> Increment 2 (planned): accept `!commands` sent *into* the Cay Control group from the
+> operator's personal number, so the operator can drive the agent from there too. Today,
+> operator commands still work when typed from the business WhatsApp account itself.
 
 ---
 

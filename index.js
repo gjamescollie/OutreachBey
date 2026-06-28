@@ -816,6 +816,7 @@ function saveSettings(data) {
     const lines = ['key,value',
       `business_name,${data.business_name || existing.business_name || ''}`,
       `owner_number,${data.owner_number || existing.owner_number || ''}`,
+      `control_channel,${keep('control_channel', '')}`,
       `tone,${data.tone || 'friendly-pro'}`,
       `signature,${data.signature || `- ${data.business_name || 'us'}`}`,
       '',
@@ -979,9 +980,9 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
     await client.sendMessage(chatId, revealMsg, { linkPreview: false })
       .catch(e => console.error('[DEMO] reveal send failed:', e.message));
     appendToLog(from, from, '[DEMO] Reveal sent', 'demo:revealed', '', '', 'out', 'demo');
-    const ownerNumber = formatNumber(mainSettings.owner_number || '');
-    if (ownerNumber) {
-      await client.sendMessage(ownerNumber,
+    const controlChannel = getControlChannel(mainSettings);
+    if (controlChannel) {
+      await client.sendMessage(controlChannel,
         `🎯 *[DEMO REVEAL]* ${from} completed the *${session.keyword}* demo path (${session.messageCount} messages). Reveal sent.`,
         { linkPreview: false }
       ).catch(() => {});
@@ -1288,9 +1289,9 @@ client.on('disconnected', (reason) => {
     fs.writeFileSync(script, 'display notification "Cay AI disconnected. Restart required." with title "Cay AI Agent" sound name "Basso"');
     execFile('osascript', [script], (err) => { if (err) console.error('Notification failed:', err.message); });
     const settings = getSettings();
-    const ownerNumber = (settings.owner_number || '').replace(/\D/g, '');
-    if (ownerNumber) {
-      client.sendMessage(formatNumber(ownerNumber), `⚠️ *Agent Disconnected*\n\nReason: ${reason}\n\nPlease restart the agent.`, { linkPreview: false }).catch(() => {});
+    const controlChannel = getControlChannel(settings);
+    if (controlChannel) {
+      client.sendMessage(controlChannel, `⚠️ *Agent Disconnected*\n\nReason: ${reason}\n\nPlease restart the agent.`, { linkPreview: false }).catch(() => {});
     }
   }
 });
@@ -1762,7 +1763,7 @@ function startFollowUpChecker() {
     if (due.length === 0) return;
 
     const settings = getSettings();
-    const ownerNumber = formatNumber(settings.owner_number || '');
+    const controlChannel = getControlChannel(settings);
 
     for (const f of due) {
       try {
@@ -1770,15 +1771,15 @@ function startFollowUpChecker() {
         updateLastContacted(f.rawNumber);
         appendToLog(f.rawNumber, f.contactName || '', f.message, 'outbound:sent', 0, '', 'out', '!schedule');
         console.log(`✅ Scheduled message sent to ${f.number}`);
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber, `📤 Scheduled message sent to ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}`, { linkPreview: false });
+        if (controlChannel) {
+          await client.sendMessage(controlChannel, `📤 Scheduled message sent to ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}`, { linkPreview: false });
         }
       } catch (e) {
         console.error(`❌ Scheduled message failed for ${f.number}:`, e.message);
         appendToLog(f.rawNumber, f.contactName || '', f.message, 'outbound:failed', 0, '', 'out', '!schedule');
-        if (ownerNumber) {
+        if (controlChannel) {
           console.error(`[ERROR] Scheduled message failed for ${f.rawNumber}:`, e);
-          await client.sendMessage(ownerNumber, `❌ Scheduled message FAILED for ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}. Check the terminal for details.`, { linkPreview: false }).catch(() => {});
+          await client.sendMessage(controlChannel, `❌ Scheduled message FAILED for ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}. Check the terminal for details.`, { linkPreview: false }).catch(() => {});
         }
       }
     }
@@ -1799,9 +1800,9 @@ function startFollowUpChecker() {
       const rate = stats.optOuts / stats.rangeInbound;
       if (rate >= 0.1) { // 10% opt-out rate threshold
         const settings = getSettings();
-        const ownerNumber = formatNumber(settings.owner_number || '');
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber,
+        const controlChannel = getControlChannel(settings);
+        if (controlChannel) {
+          await client.sendMessage(controlChannel,
             `⚠️ *Opt-Out Alert*\n\n${stats.optOuts} opt-outs in the last 7 days (${(rate * 100).toFixed(1)}% of inbound messages).\n\nConsider reviewing your message frequency or content.`,
             { linkPreview: false }).catch(() => {});
         }
@@ -1942,9 +1943,9 @@ function startReviewAgent() {
     lastFiredDay = bahamasDay;
 
     try {
-      const settings    = getSettings();
-      const ownerNumber = formatNumber(settings.owner_number || '');
-      if (!ownerNumber) return;
+      const settings        = getSettings();
+      const controlChannel  = getControlChannel(settings);
+      if (!controlChannel) return;
 
       // ── Read last 24h of log entries ──
       const raw = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
@@ -1957,7 +1958,7 @@ function startReviewAgent() {
       if (recent.length === 0) {
         if (isSunday) {
           const staleSection = buildStaleLeadSection();
-          if (staleSection) await client.sendMessage(ownerNumber, staleSection, { linkPreview: false });
+          if (staleSection) await client.sendMessage(controlChannel, staleSection, { linkPreview: false });
         }
         return;
       }
@@ -2043,7 +2044,7 @@ Unfollowed lead numbers: ${unfollowedLeads.join(', ') || 'None'}`;
       if (isSunday) {
         const staleSection = buildStaleLeadSection();
         const combined = ai.text + (staleSection ? '\n\n' + staleSection : '');
-        await client.sendMessage(ownerNumber, combined, { linkPreview: false });
+        await client.sendMessage(controlChannel, combined, { linkPreview: false });
         console.log('📊 Sunday report sent');
       } else {
         console.log('📄 Daily review HTML updated (no WhatsApp on weekdays)');
@@ -2146,6 +2147,22 @@ const HARD_OPT_OUT = ['stop messages', 'stop messaging', 'stop texting', 'stop c
 
 function getCalendarLink(settings) {
   return settings.calendar_link || 'https://calendly.com/gjamescollie';
+}
+
+// Where the operator receives escalations and AI activity notifications.
+// On a shared-number deployment the agent runs on the client's own customer-facing
+// WhatsApp, so escalations must NOT land in that line's "Message Yourself" chat where
+// staff or the customer thread can see them. Set `control_channel` in settings.csv to a
+// dedicated "Cay Control" group JID (…@g.us) or the operator's personal number to route
+// all notifications there instead. Falls back to the owner's own number, preserving the
+// legacy single-owner Mac behaviour when `control_channel` is unset.
+function getControlChannel(settings) {
+  const raw = (settings.control_channel || '').trim();
+  if (raw) {
+    if (raw.endsWith('@g.us') || raw.endsWith('@c.us')) return raw;
+    return formatNumber(raw); // bare number → @c.us
+  }
+  return formatNumber(settings.owner_number || '');
 }
 
 // Hard opt-out check — requires a clear multi-word phrase to avoid accidental funnel drop-off
@@ -2424,8 +2441,11 @@ function isSpam(message) {
 
 async function handleInbound(msg) {
   const settings = getSettings();
-  const ownerNumber = formatNumber(settings.owner_number || '');
-  if (!ownerNumber) return;
+  // All operator-facing notifications go to the control channel (a dedicated Cay Control
+  // group or the operator's personal number) so escalations stay off the shared customer
+  // line. Defaults to the owner's number when control_channel is unset.
+  const controlChannel = getControlChannel(settings);
+  if (!controlChannel) return;
 
   const phoneNumber = await resolveRealNumber(msg.from);
   const from = phoneNumber;
@@ -2446,7 +2466,7 @@ async function handleInbound(msg) {
   appendToLog(from, contactName, `[INBOUND${spamFlag}] ${body}`, 'inbound:received', '', '', 'in', 'auto');
   if (spamFlag) {
     console.warn(`⚠️ Possible spam from ${contactName} (${from}): ${body.slice(0, 80)}`);
-    await client.sendMessage(ownerNumber, `⚠️ *Possible Spam* flagged\n\n*From:* ${contactName} (${from})\n*Message:* _"${body.slice(0, 200)}"_\n\nAgent will continue to classify normally.`, { linkPreview: false }).catch(() => {});
+    await client.sendMessage(controlChannel, `⚠️ *Possible Spam* flagged\n\n*From:* ${contactName} (${from})\n*Message:* _"${body.slice(0, 200)}"_\n\nAgent will continue to classify normally.`, { linkPreview: false }).catch(() => {});
   }
 
   // ── FAST PATH: hard opt-out (no AI needed) ──
@@ -2457,7 +2477,7 @@ async function handleInbound(msg) {
       `Hi${firstName ? ` ${firstName}` : ''}! We have removed you from our outreach list and will not contact you again.\n\nIf you ever change your mind we are always here to help.\n\n${signature}`,
       null, { linkPreview: false }
     );
-    await client.sendMessage(ownerNumber,
+    await client.sendMessage(controlChannel,
       `🚫 *Opt-Out*\n\n${contactName} (${from}) has opted out and been tagged inactive.\n\n_"${body}"_`,
       { linkPreview: false }
     );
@@ -2492,8 +2512,8 @@ async function handleInbound(msg) {
         followUpSent: false,
         chatId: msg.from, // original WhatsApp JID — required for sending replies
       };
-      if (ownerNumber) {
-        await client.sendMessage(ownerNumber,
+      if (controlChannel) {
+        await client.sendMessage(controlChannel,
           `🎯 *[DEMO STARTED]* ${from} entered the *${keyword}* demo path (${vertical.persona})`,
           { linkPreview: false }
         ).catch(() => {});
@@ -2559,9 +2579,9 @@ async function handleInbound(msg) {
     await humanDelay();
     await msg.reply(CANNED.outsideHours(firstName, settings.response_window, signature), null, { linkPreview: false });
     appendToLog(from, contactName, `[OUTSIDE HOURS] ${body}`, 'inbound:outside-hours', '', '', 'in', 'auto');
-    if (ownerNumber) {
+    if (controlChannel) {
       const displayName = contact ? contactName : '(unknown)';
-      await client.sendMessage(ownerNumber,
+      await client.sendMessage(controlChannel,
         `🌙 *[OUTSIDE HOURS]* Inbound from ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\nHolding reply sent — review when you're back.`,
         { linkPreview: false }
       ).catch(() => {});
@@ -2577,7 +2597,7 @@ async function handleInbound(msg) {
     await humanDelay(true);
     await msg.reply(CANNED.bufferReply(firstName, signature), null, { linkPreview: false });
     const displayName = contact ? contactName : '(unknown)';
-    await client.sendMessage(ownerNumber,
+    await client.sendMessage(controlChannel,
       `🔴 ESCALATE — 📨 *Inbound Message* _(could not classify)_ — ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\n!send ${phoneNumber}`,
       { linkPreview: false }
     );
@@ -2603,7 +2623,7 @@ async function handleInbound(msg) {
     const parts = [line1, line2];
     if (extra) parts.push('', extra.trim());
     if (actionType === 'human') parts.push('', `!send ${phoneNumber}`);
-    await client.sendMessage(ownerNumber, parts.join('\n'), { linkPreview: false });
+    await client.sendMessage(controlChannel, parts.join('\n'), { linkPreview: false });
   };
 
   // ── LOW CONFIDENCE: always escalate to human regardless of intent ──

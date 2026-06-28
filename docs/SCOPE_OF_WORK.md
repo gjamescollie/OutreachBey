@@ -15,9 +15,8 @@ positioning, and voice decision is inherited and locked from the Brand Architect
 document and is **not re-opened here**. What this document does is convert that brand
 into a buildable, time-boxed plan to land and serve the **first paying tourism client**.
 
-Decisions captured in the scoping interview are recorded in Section 2. Four of them were
-set to recommended defaults because the interview tool failed mid-round — they are marked
-**[DEFAULT — confirm]** and are the only open items before sign-off.
+Decisions captured in the scoping interview are recorded in Section 2. All twelve are now
+founder-confirmed; the SOW is locked for build.
 
 ---
 
@@ -43,10 +42,10 @@ operator to "live and paying" is explicitly deferred (Section 9).
 | 6 | WhatsApp number | Client's **existing** number; AI works alongside the human team | Confirmed |
 | 7 | Inbound autonomy | Full 24/7 auto-answer + lead capture; escalate on doubt | Confirmed |
 | 8 | Brand production | Claude produces sites, copy, deck, one-pager, **and logo** | Confirmed |
-| 9 | Booking boundary | Qualify + capture + hand to owner to close; share operator booking link when available | **[DEFAULT — confirm]** |
-| 10 | Client #1 status | Short close motion (pitch → demo → proposal); covers "no warm lead yet" | **[DEFAULT — confirm]** |
-| 11 | Operator control | Dedicated "Cay Control" WhatsApp group for escalations + `!commands`; real-time pings for bookings/complaints | **[DEFAULT — confirm]** |
-| 12 | Success metric | Lead with bookings recovered + leads captured; support with response speed + owner time saved | **[DEFAULT — confirm]** |
+| 9 | Booking boundary | Qualify + capture + hand to owner to close; share operator booking link when available | Confirmed |
+| 10 | Client #1 status | Short close motion (pitch → demo → proposal); covers "no warm lead yet" | Confirmed |
+| 11 | Operator control | Dedicated "Cay Control" WhatsApp group for escalations + `!commands`; real-time pings for bookings/complaints | Confirmed |
+| 12 | Success metric | Lead with bookings recovered, leads captured, **and owner time saved**; support with response speed | Confirmed |
 
 ---
 
@@ -96,7 +95,7 @@ of the problem, never with price. (Brand Voice §9, Locked Decisions §12.)
 |---|---|---|
 | B1 | Tourism intent tuning | Re-tune `classifyIntent()` prompt for boat-tour/charter inquiry phrasing; verify confidence gates (0.45 / 0.75) hold |
 | B2 | Tourism KB template | A reusable `settings.csv` KB pre-filled with the tourism question set, in natural customer language (fixes the known low-confidence KB issue) |
-| B3 | Shared-number control model | Route escalations + `!commands` to a dedicated **Cay Control** channel instead of the customer inbox. Define how the agent distinguishes operator messages from customer messages on one number |
+| B3 | Shared-number control model | Route escalations + `!commands` to a dedicated **Cay Control** channel instead of the customer inbox. Define how the agent distinguishes operator messages from customer messages on one number. **Increment 1 (notification routing) — DONE:** `control_channel` setting + `getControlChannel()` route all operator notifications off the shared line. **Increment 2 (planned):** accept `!commands` from the Cay Control group |
 | B4 | Qualify + capture + handoff flow | On a real inquiry: answer, qualify (date, party size, trip type), capture contact to `contacts.csv`/log, hand warm lead to operator. Share operator booking link when configured. **No availability logic** (stays in Receptionist scope) |
 | B5 | Reliability layer | Daily heartbeat (already specced in `FUTURE_PLANS.md`), auto-restart on crash (pm2/Docker), uptime monitor |
 | B6 | Hosting hardening | Take the existing `deploy.sh` DigitalOcean Docker path to a clean one-command client deploy; document the per-client provisioning runbook |
@@ -149,7 +148,7 @@ run in parallel — that's what makes 30 days viable.
 
 **Business**
 - One Nassau tourism operator signed at full price and live
-- 2-week success readout produced with at least one ROI data point (booking recovered or leads captured)
+- 2-week success readout produced with at least one ROI data point across bookings recovered, leads captured, or owner hours saved
 
 ---
 
@@ -190,5 +189,5 @@ run in parallel — that's what makes 30 days viable.
 
 ---
 
-*Sign-off required from Granville Collie before Workstream B build begins. The only open
-items are the four **[DEFAULT — confirm]** decisions in Section 2.*
+*Founder-confirmed and locked. Workstream B build is underway, starting with B3
+(shared-number operator control).*
