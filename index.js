@@ -809,9 +809,15 @@ async function handleAddContact(msg, body) {
 
 function saveSettings(data) {
   try {
-    // Preserve existing values for anything the setup wizard doesn't ask about
+    // Preserve existing values for anything the setup wizard doesn't ask about.
+    // If `data` explicitly carries the key (the settings editor sends every field it
+    // owns), prefer that — even when empty, so the editor can clear a field. The
+    // !setup wizard never passes these keys, so its behaviour is unchanged.
     const existing = getSettings();
-    const keep = (key, fallback) => (existing[key] !== undefined && existing[key] !== '' ? existing[key] : fallback);
+    const keep = (key, fallback) => {
+      if (Object.prototype.hasOwnProperty.call(data, key)) return data[key];
+      return (existing[key] !== undefined && existing[key] !== '' ? existing[key] : fallback);
+    };
 
     const lines = ['key,value',
       `business_name,${data.business_name || existing.business_name || ''}`,
@@ -838,13 +844,25 @@ function saveSettings(data) {
       `token_limit_checkin,${keep('token_limit_checkin', '150')}`,
       `token_limit_broadcast,${keep('token_limit_broadcast', '250')}`,
       '',
+      '# ── MODEL ─────────────────────────────────────────────────────────────────────',
+      // Runtime model override (set from the dashboard model selector). Empty = use
+      // the AI_MODEL from .env. Preserved here so /api/model actually persists.
+      `ai_model,${keep('ai_model', '')}`,
+      '',
       '# ── KNOWLEDGE BASE ───────────────────────────────────────────────────────────',
     ];
 
     for (let i = 1; i <= 40; i++) {
-      // Use new answer if provided in setup, otherwise keep existing
-      const q = data[`kb_${i}_q`] || existing[`faq_${i}_q`];
-      const a = data[`kb_${i}_a`] || existing[`faq_${i}_a`];
+      let q, a;
+      if (data.kbReplace) {
+        // Settings editor sends the full KB authoritatively — no fallback, so an
+        // emptied slot is genuinely deleted rather than resurrected from disk.
+        q = data[`kb_${i}_q`]; a = data[`kb_${i}_a`];
+      } else {
+        // Wizard merge — keep existing entries that weren't re-asked.
+        q = data[`kb_${i}_q`] || existing[`faq_${i}_q`];
+        a = data[`kb_${i}_a`] || existing[`faq_${i}_a`];
+      }
       if (q && a) {
         lines.push(`faq_${i}_q,${q}`);
         lines.push(`faq_${i}_a,${a}`);
@@ -3087,6 +3105,7 @@ a{text-decoration:none}
   <a href="/" class="active">📊 Logs</a>
   <a href="/analytics">📈 Analytics</a>
   <a href="/contacts">👥 Contacts</a>
+  <a href="/settings">⚙️ Settings</a>
 </nav>
 
 <div class="grid">
@@ -3348,6 +3367,92 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       return;
     }
 
+    // Settings editor page
+    if (pathname === '/settings') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'settings.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('settings.html not found'); }
+      return;
+    }
+
+    // Settings API — GET returns current settings + KB; POST saves operator edits.
+    if (pathname === '/api/settings') {
+      if (req.method === 'GET') {
+        const s = getSettings();
+        const kb = [];
+        for (let i = 1; i <= 40; i++) {
+          const q = s[`faq_${i}_q`], a = s[`faq_${i}_a`];
+          if ((q && q.length) || (a && a.length)) kb.push({ q: q || '', a: a || '' });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ settings: s, kb }));
+        return;
+      }
+      if (req.method === 'POST') {
+        let body = ''; let tooLarge = false;
+        req.on('data', d => {
+          if (body.length < 512 * 1024) { body += d; }
+          else { tooLarge = true; req.destroy(); }
+        });
+        req.on('end', () => {
+          if (tooLarge) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'Request too large' }));
+            return;
+          }
+          try {
+            const payload = JSON.parse(body);
+            // settings.csv is key,value — values must hold no commas/newlines and must
+            // not start with a spreadsheet formula char. Same neutralization as contacts.
+            const cell = (v) => String(v == null ? '' : v)
+              .replace(/,/g, ';').replace(/[\r\n]+/g, ' ').replace(/^[=+\-@]/, "'$&").trim();
+            // Allowlist of editable scalar keys — anything else is ignored so a crafted
+            // payload can't inject arbitrary settings.csv keys. owner_number is set at
+            // deployment and intentionally NOT web-editable.
+            const EDITABLE = ['business_name','tone','signature','business_context',
+              'custom_instructions','message_length','language_style','avoid_words',
+              'response_window','calendar_link','control_channel',
+              'token_limit_send','token_limit_checkin','token_limit_broadcast'];
+            const ENUMS = {
+              tone: ['friendly-pro','formal','casual','sales'],
+              message_length: ['short','medium','long'],
+              language_style: ['standard','bahamian','formal-english'],
+            };
+            const src = (payload && payload.settings) || {};
+            const data = { kbReplace: true };
+            for (const k of EDITABLE) {
+              if (!(k in src)) continue;
+              let v = cell(src[k]);
+              if (ENUMS[k] && v && !ENUMS[k].includes(v)) continue; // ignore invalid enum
+              if (k === 'custom_instructions') v = v.slice(0, 200);
+              if (k.startsWith('token_limit_')) {
+                const n = parseInt(v, 10);
+                if (!Number.isFinite(n) || n < 1) continue;
+                v = String(Math.min(n, 2000));
+              }
+              data[k] = v;
+            }
+            // Knowledge base — authoritative full replacement, capped at 40 slots.
+            const kb = Array.isArray(payload && payload.kb) ? payload.kb.slice(0, 40) : [];
+            for (let i = 1; i <= 40; i++) {
+              const e = kb[i - 1] || {};
+              data[`kb_${i}_q`] = cell(e.q);
+              data[`kb_${i}_a`] = cell(e.a);
+            }
+            const ok = saveSettings(data);
+            res.writeHead(ok ? 200 : 500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok }));
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: e.message }));
+          }
+        });
+        return;
+      }
+    }
+
     res.writeHead(404);
     res.end();
   }).listen(3000);
@@ -3355,7 +3460,11 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
-if (process.env.NODE_ENV !== 'test') {
+// DASHBOARD_ONLY=true runs the web UI (analytics, settings, contacts) without the
+// WhatsApp client — useful for onboarding/UI work or inspecting a client's data
+// without a live phone session. Normal runs still initialize WhatsApp (and rely on
+// the process crashing → Docker restart as the reconnect path).
+if (process.env.NODE_ENV !== 'test' && process.env.DASHBOARD_ONLY !== 'true') {
   client.initialize();
 }
 
@@ -3371,7 +3480,7 @@ if (process.env.NODE_ENV === 'test') {
     // state machines
     handleSetup, handleInbound, handleIndustryDemo,
     // data helpers
-    getSettings, findContact, resolveRecipient, classifyIntent,
+    getSettings, saveSettings, findContact, resolveRecipient, classifyIntent,
     // log path (so tests can inspect the file)
     LOG_FILE,
   };
