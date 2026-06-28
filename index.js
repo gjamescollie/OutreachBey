@@ -938,13 +938,32 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
 
   session.lastActivity = Date.now();
 
-  // Already revealed — send CTA reminder
+  // Respect disengagement at any point — don't keep pushing the booking link
+  // at someone who is trying to leave. Hard opt-out words end silently; softer
+  // "not interested / exit" gets one polite acknowledgement.
+  const hardStop = /\b(stop|unsubscribe|remove me|opt[\s-]?out)\b/i.test(body);
+  const softExit = /\b(not interested|no thanks?|no thank you|exit|quit|cancel|leave me|go away|enough)\b/i.test(body);
+  if (hardStop || softExit) {
+    delete demoSessions[from];
+    if (softExit && !hardStop) {
+      await client.sendMessage(chatId, `No problem — thanks for checking it out! 👍`, { linkPreview: false })
+        .catch(e => console.error('[DEMO] exit ack send failed:', e.message));
+    }
+    appendToLog(from, from, `[DEMO] Ended — prospect disengaged ("${body.slice(0, 40)}")`, 'demo:ended', '', '', 'in', 'demo');
+    return true;
+  }
+
+  // Already revealed — send the booking reminder ONCE, then go quiet so we
+  // don't spam the CTA on every subsequent message.
   if (session.state === 'revealed' || session.state === 'done') {
-    const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
-    await client.sendMessage(chatId,
-      `Still interested? Book your free 20-minute call here:\n${calendarLink}\n\n— Granville, Lucayan Labs 🇧🇸`,
-      { linkPreview: false }
-    ).catch(e => console.error('[DEMO] CTA send failed:', e.message));
+    if (!session.ctaSent) {
+      session.ctaSent = true;
+      const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
+      await client.sendMessage(chatId,
+        `Still interested? Book your free 20-minute call here:\n${calendarLink}\n\n— Granville, Lucayan Labs 🇧🇸`,
+        { linkPreview: false }
+      ).catch(e => console.error('[DEMO] CTA send failed:', e.message));
+    }
     return true;
   }
 
