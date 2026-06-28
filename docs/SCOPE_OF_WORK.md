@@ -3,7 +3,7 @@
 **Prepared for:** Granville Collie, Founder & CEO, Lucayan Labs
 **Prepared by:** Product (Claude Code), acting as senior PM
 **Date:** June 2026
-**Version:** 1.0 — Draft for founder sign-off
+**Version:** 1.0 — Founder-confirmed, locked for build
 **Governing document:** *Lucayan Labs Brand Architecture v1.0* (all locked decisions inherited)
 
 ---
@@ -156,7 +156,6 @@ run in parallel — that's what makes 30 days viable.
 
 - Domain registrar access / payment for A1
 - OpenRouter API key + DigitalOcean account for hosting
-- Confirmation of the four **[DEFAULT — confirm]** items in Section 2
 - For client #1: operator's real FAQs, pricing, schedule, meeting point, booking link, and a second/personal number for the Cay Control channel
 - Final logo selection and brand-asset sign-off
 
