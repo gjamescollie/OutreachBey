@@ -114,8 +114,8 @@ of the problem, never with price. (Brand Voice §9, Locked Decisions §12.)
 
 | ID | Deliverable | Detail |
 |---|---|---|
-| B1 | Tourism intent tuning | Re-tune `classifyIntent()` prompt for boat-tour/charter inquiry phrasing; verify confidence gates (0.45 / 0.75) hold. **Seed from the existing `demo/settings_tour.csv` tour vertical** rather than starting cold |
-| B2 | Tourism KB template | A reusable `settings.csv` KB pre-filled with the tourism question set, in natural customer language (fixes the known low-confidence KB issue). **Start from `demo/settings_tour.csv`; the current `defaults/settings.csv` is generic/self-referential and not reusable as-is** |
+| B1 | Tourism intent tuning | **DONE.** `classifyIntent()` now uses `business_context` dynamically (was hardcoded to Cay AI's product). `ON_THE_FENCE_BUYER` description genericised. Tourism examples added to `QUESTION`, `HOT_LEAD`, `BOOKING_CONFIRMATION`, and `ON_THE_FENCE_BUYER` key-phrase blocks |
+| B2 | Tourism KB template | **DONE.** `demo/settings_tour.csv` — 20 natural-language KB Q&A entries (Blue Cay Charters specifics). `defaults/settings_tour.csv` — reusable onboarding template with same 20 questions + fill-in answers for any Nassau boat-tour/charter operator |
 | B3 | Shared-number control model | Route escalations + `!commands` to a dedicated **Cay Control** channel instead of the customer inbox. Define how the agent distinguishes operator messages from customer messages on one number. **Increment 1 (notification routing) — DONE:** `control_channel` setting + `getControlChannel()` route all operator notifications off the shared line. **Increment 2 (planned):** accept `!commands` from the Cay Control group |
 | B4 | Qualify + capture + handoff flow | On a real inquiry: answer, qualify (date, party size, trip type), capture contact to `contacts.csv`/log, hand warm lead to operator. Share operator booking link when configured. **No availability logic** (stays in Receptionist scope) |
 | B5 | Reliability layer | **Auto-restart already done** via `docker-compose` `restart: unless-stopped`. Remaining: daily heartbeat (specced in `FUTURE_PLANS.md`) + an external uptime monitor |
@@ -214,6 +214,7 @@ run in parallel — that's what makes 30 days viable.
 
 ---
 
-*Founder-confirmed and locked; v1.1 reconciled against the live repo. Workstream B build is
-underway: B3 increment 1 (control-channel routing) is shipped. Next: B2 (tourism KB,
-seeded from `demo/settings_tour.csv`).*
+*Founder-confirmed and locked; v1.1 reconciled against the live repo. Shipped: B3 increment 1,
+B9 (full operator web console), B1 (intent tuning), B2 (tourism KB template). Critical-path
+remaining: B4 (qualify + handoff), B3 increment 2, B5 (reliability), B6 (multi-client), B7, B8.
+For live build status see `docs/TODO.md`.*
