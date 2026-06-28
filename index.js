@@ -474,7 +474,7 @@ function getStats(dayRange = 7) {
     const rangeAgo = new Date(now - dayRange * 24 * 60 * 60 * 1000);
 
     let total = 0, today = 0, rangeSent = 0, rangeInbound = 0;
-    let hotLeads = 0, optOuts = 0, autoReplied = 0, failed = 0, complaints = 0;
+    let hotLeads = 0, optOuts = 0, autoReplied = 0, failed = 0, complaints = 0, bookings = 0;
     let totalTokens = 0;
     const allNumbers = new Set();
     const topContact = {};
@@ -511,6 +511,7 @@ function getStats(dayRange = 7) {
         if (status.includes('auto')) autoReplied++;
         if (status === 'failed' || status === 'outbound:failed') failed++;
         if (status.includes('complaint')) complaints++;
+        if (status.includes('booking')) bookings++;
       }
     });
 
@@ -535,7 +536,7 @@ function getStats(dayRange = 7) {
 
     return {
       total, today, rangeSent, rangeInbound, hotLeads, optOuts, autoReplied,
-      failed, complaints, totalTokens, costEst, uniqueContacts: allNumbers.size,
+      failed, complaints, bookings, totalTokens, costEst, uniqueContacts: allNumbers.size,
       avgVelocityMin, topContactName, velocityCount: velocities.length,
       // legacy
       week: rangeSent + rangeInbound
@@ -3104,6 +3105,7 @@ a{text-decoration:none}
 <nav class="nav">
   <a href="/" class="active">📊 Logs</a>
   <a href="/analytics">📈 Analytics</a>
+  <a href="/roi">💰 ROI</a>
   <a href="/contacts">👥 Contacts</a>
   <a href="/settings">⚙️ Settings</a>
 </nav>
@@ -3451,6 +3453,48 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
         });
         return;
       }
+    }
+
+    // ROI summary page
+    if (pathname === '/roi') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'roi.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('roi.html not found'); }
+      return;
+    }
+
+    // Analytics / ROI API — server-computed metrics for a day range.
+    if (pathname === '/api/analytics') {
+      const days = Math.min(Math.max(parseInt(query.get('days') || '30', 10) || 30, 1), 365);
+      const s = getStats(days) || {};
+      // Owner time saved: each message the AI handled without a human is time the
+      // operator didn't spend. minutes_saved_per_msg is a tunable assumption.
+      const minsPer = Math.min(Math.max(parseFloat(getSettings().minutes_saved_per_msg) || 2, 0), 30);
+      const autoAnswered = s.autoReplied || 0;
+      const inbound = s.rangeInbound || 0;
+      const payload = {
+        days,
+        messagesHandled: inbound,
+        autoAnswered,
+        autoAnsweredPct: inbound ? Math.round((autoAnswered / inbound) * 100) : 0,
+        leadsCaptured: s.hotLeads || 0,
+        bookings: s.bookings || 0,
+        sent: s.rangeSent || 0,
+        optOuts: s.optOuts || 0,
+        complaints: s.complaints || 0,
+        failed: s.failed || 0,
+        responseSpeedMin: s.avgVelocityMin,
+        ownerHoursSaved: Math.round((autoAnswered * minsPer / 60) * 10) / 10,
+        minutesSavedPerMsg: minsPer,
+        uniqueContacts: s.uniqueContacts || 0,
+        costEst: s.costEst || '0',
+        topContact: s.topContactName || '—',
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(payload));
+      return;
     }
 
     res.writeHead(404);
