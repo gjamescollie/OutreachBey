@@ -59,9 +59,25 @@ fi
 cd "$DEPLOY_DIR"
 
 # ─── Write .env ───────────────────────────────────────────────────────────────
+# Preserve an existing dashboard password across re-deploys; otherwise use
+# $DASHBOARD_PASSWORD from the environment, or generate a strong random one.
+EXISTING_PASS=""
+[ -f .env ] && EXISTING_PASS=$(grep -E '^DASHBOARD_PASSWORD=' .env | cut -d= -f2- || true)
+DASH_PASS="${EXISTING_PASS:-${DASHBOARD_PASSWORD:-}}"
+GENERATED=0
+if [ -z "$DASH_PASS" ]; then
+  DASH_PASS=$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | cut -c1-24)
+  GENERATED=1
+fi
+
 cp .env.template .env
 sed -i "s/^CLIENT_ID=.*/CLIENT_ID=$CLIENT_NAME/" .env
 sed -i "s/^OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=$API_KEY/" .env
+sed -i "s|^DASHBOARD_PASSWORD=.*|DASHBOARD_PASSWORD=$DASH_PASS|" .env
+if [ "$GENERATED" = "1" ]; then
+  echo "==> Generated dashboard password: $DASH_PASS"
+  echo "    (saved to .env — store it in your password manager now)"
+fi
 if [ -n "$PROXY_URL" ]; then
   sed -i "s|# PROXY_URL=.*|PROXY_URL=$PROXY_URL|" .env
   echo "==> Proxy configured: $PROXY_URL"

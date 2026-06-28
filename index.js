@@ -2823,7 +2823,18 @@ async function handleInbound(msg) {
 if (process.env.NODE_ENV !== 'test') {
   const http = require('http');
   const START_TIME = Date.now();
-  const DASH_PASS = process.env.DASHBOARD_PASSWORD || 'cayai2024';
+  const DASH_PASS = process.env.DASHBOARD_PASSWORD || '';
+  // Refuse to start with no password rather than falling back to a public
+  // default — an unauthenticated dashboard would expose all customer data.
+  if (!DASH_PASS) {
+    console.error('❌ DASHBOARD_PASSWORD is not set. Refusing to start the dashboard.');
+    console.error('   Set a strong DASHBOARD_PASSWORD in your .env file and restart.');
+    process.exit(1);
+  }
+  if (DASH_PASS === 'cayai2024') {
+    console.warn('⚠️  DASHBOARD_PASSWORD is set to the well-known default "cayai2024".');
+    console.warn('   Change it to a strong, unique value in your .env file.');
+  }
 
   // Random per-process session token — never equals the password
   const SESSION_TOKEN = require('crypto').randomBytes(32).toString('hex');
