@@ -1215,6 +1215,24 @@ const client = new Client({
   },
 });
 
+// ─── BOT-SENT MESSAGE TRACKING ───────────────────────────────────────────────
+// message_create fires with fromMe=true for BOTH owner-typed messages and the
+// bot's own programmatic sends (the bot is the linked device). We wrap
+// client.sendMessage to record the ids of messages WE send, so the
+// message_create listener can skip them and not treat them as owner input.
+const botSentMsgIds = new Set();
+const _origSendMessage = client.sendMessage.bind(client);
+client.sendMessage = async (...args) => {
+  const sent = await _origSendMessage(...args);
+  const sid = sent?.id?._serialized;
+  if (sid) {
+    botSentMsgIds.add(sid);
+    // Bound memory — keep only the most recent ids.
+    if (botSentMsgIds.size > 500) botSentMsgIds.delete(botSentMsgIds.values().next().value);
+  }
+  return sent;
+};
+
 client.on('qr', (qr) => {
   console.log('\n📱 Scan this QR code with your WhatsApp:\n');
   qrcode.generate(qr, { small: true });
@@ -1280,6 +1298,15 @@ client.on('disconnected', (reason) => {
 // ─── MESSAGE HANDLER ──────────────────────────────────────────────────────────
 client.on('message_create', async (msg) => {
   if (!msg.fromMe) return;
+
+  // Skip the bot's own programmatic sends — only react to messages the OWNER
+  // actually typed. The id may not be registered yet if this event fires before
+  // client.sendMessage resolves, so wait briefly and re-check to avoid a race.
+  const sid = msg.id?._serialized;
+  if (sid) {
+    if (!botSentMsgIds.has(sid)) await new Promise(r => setTimeout(r, 250));
+    if (botSentMsgIds.has(sid)) { botSentMsgIds.delete(sid); return; }
+  }
 
   const body = msg.body.trim();
   const lower = body.toLowerCase();
