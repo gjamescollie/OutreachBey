@@ -925,6 +925,9 @@ function buildDemoFollowUp(industry, calendarLink) {
 
 async function handleIndustryDemo(msg, from, body, mainSettings) {
   const session = demoSessions[from];
+  // Original WhatsApp JID for sending — `from` is bare digits, which
+  // client.sendMessage cannot route to. Prefer the stored/live chat id.
+  const chatId = session.chatId || msg.from || `${from}@c.us`;
   const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
   // Timeout check
@@ -938,10 +941,10 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
   // Already revealed — send CTA reminder
   if (session.state === 'revealed' || session.state === 'done') {
     const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
-    await client.sendMessage(from,
+    await client.sendMessage(chatId,
       `Still interested? Book your free 20-minute call here:\n${calendarLink}\n\n— Granville, Lucayan Labs 🇧🇸`,
       { linkPreview: false }
-    ).catch(() => {});
+    ).catch(e => console.error('[DEMO] CTA send failed:', e.message));
     return true;
   }
 
@@ -954,7 +957,8 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
     session.state = 'revealed';
     const revealMsg = buildDemoReveal(session.persona, session.industry, calendarLink);
     await humanDelay();
-    await client.sendMessage(from, revealMsg, { linkPreview: false }).catch(() => {});
+    await client.sendMessage(chatId, revealMsg, { linkPreview: false })
+      .catch(e => console.error('[DEMO] reveal send failed:', e.message));
     appendToLog(from, from, '[DEMO] Reveal sent', 'demo:revealed', '', '', 'out', 'demo');
     const ownerNumber = formatNumber(mainSettings.owner_number || '');
     if (ownerNumber) {
@@ -987,7 +991,8 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
   const reply = result.text || `Thanks for reaching out! We'll get back to you shortly.\n\n${session.settings.signature}`;
 
   await humanDelay();
-  await client.sendMessage(from, reply, { linkPreview: false }).catch(() => {});
+  await client.sendMessage(chatId, reply, { linkPreview: false })
+    .catch(e => console.error('[DEMO] reply send failed:', e.message));
   appendToLog(from, from, reply, 'demo:active', result.tokens || '', '', 'out', 'demo');
   return true;
 }
@@ -2030,7 +2035,8 @@ function startInactivityChecker() {
       ) {
         const calendarLink = (session.settings && session.settings.calendar_link) || 'https://calendly.com/gjamescollie/30min';
         const followUpMsg = buildDemoFollowUp(session.industry || 'Nassau business', calendarLink);
-        await client.sendMessage(from, followUpMsg, { linkPreview: false }).catch(() => {});
+        await client.sendMessage(session.chatId || `${from}@c.us`, followUpMsg, { linkPreview: false })
+          .catch(e => console.error('[DEMO] follow-up send failed:', e.message));
         session.followUpSent = true;
         appendToLog(from, from, '[DEMO] Follow-up sent', 'demo:followup', '', '', 'out', 'demo');
       }
@@ -2438,6 +2444,7 @@ async function handleInbound(msg) {
         messageCount: 0,
         lastActivity: Date.now(),
         followUpSent: false,
+        chatId: msg.from, // original WhatsApp JID — required for sending replies
       };
       if (ownerNumber) {
         await client.sendMessage(ownerNumber,
@@ -2459,7 +2466,8 @@ async function handleInbound(msg) {
       const openingMsg = openingResult.text || `Hi there! Thanks for reaching out. How can we help you today?\n\n${vertical.settings.signature}`;
 
       await humanDelay();
-      await client.sendMessage(from, openingMsg, { linkPreview: false }).catch(() => {});
+      await client.sendMessage(msg.from, openingMsg, { linkPreview: false })
+        .catch(e => console.error('[DEMO] opening send failed:', e.message));
       appendToLog(from, from, openingMsg, 'demo:active', openingResult.tokens || '', '', 'out', 'demo');
       return;
     }
