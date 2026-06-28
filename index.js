@@ -564,7 +564,7 @@ let followUps = loadFollowUps();
 const pendingPreviews = {};
 const demoSessions = {};   // tracks contacts inside the interactive demo flow
 const pendingDisambiguation = {}; // { [from]: { options: [{index, question}], expires: timestamp } }
-
+const pendingQualifications = {}; // { [from]: { originalMessage, timestamp } } — awaiting B4 booking details
 
 // ─── PURPOSE SELECTION ────────────────────────────────────────────────────────
 const pendingPurpose = {}; // stores intent/contact/type while awaiting purpose selection
@@ -2341,6 +2341,27 @@ function setContactStage(number, stage) {
   }
 }
 
+function updateContactNotes(number, additionalNotes) {
+  try {
+    const raw = fs.readFileSync(CONTACTS_FILE, 'utf8').trim();
+    const lines = raw.split('\n');
+    const updated = lines.map((line, i) => {
+      if (i === 0) return line;
+      const cols = line.split(',');
+      if (cols[0].trim().replace(/\D/g, '') === number.replace(/\D/g, '')) {
+        const existing = (cols[4] || '').trim();
+        cols[4] = (existing ? existing + ' | ' : '') + additionalNotes.replace(/,/g, ';');
+        return cols.join(',');
+      }
+      return line;
+    });
+    fs.writeFileSync(CONTACTS_FILE, updated.join('\n'));
+    refreshContactCache();
+  } catch (e) {
+    console.error('Error updating contact notes:', e.message);
+  }
+}
+
 function getKBAnswer(index, settings) {
   if (!index) return null;
   const q = settings[`faq_${index}_q`];
@@ -2460,6 +2481,66 @@ function isSpam(message) {
   return SPAM_PATTERNS.some(p => p.test(message));
 }
 
+// ─── B4: QUALIFY + CAPTURE + HANDOFF ─────────────────────────────────────────
+async function handleQualification(from, body, pq, msg, settings, contact, contactName, firstName, controlChannel, signature, calendarLink) {
+  delete pendingQualifications[from];
+
+  const bizName = settings.business_name || 'Cay AI';
+
+  // AI: extract date, party size, and notes from their reply
+  const extractResult = await callAI(
+    'You extract booking qualification data from a customer WhatsApp reply. Return ONLY valid JSON, no other text.',
+    `Original inquiry: "${pq.originalMessage.slice(0, 200)}"\nWe asked for date, group size, and any special requests.\nCustomer replied: "${body.slice(0, 300)}"\n\nExtract: {"date": string or null, "party_size": string or null, "notes": string or null}\nUse null for anything not mentioned.`,
+    150
+  );
+
+  let date = null, partySize = null, notes = null;
+  if (extractResult.text) {
+    try {
+      const m = extractResult.text.replace(/```json/gi, '').replace(/```/g, '').trim().match(/\{[\s\S]*\}/);
+      if (m) {
+        const parsed = JSON.parse(m[0]);
+        date = parsed.date || null;
+        partySize = parsed.party_size || null;
+        notes = parsed.notes || null;
+      }
+    } catch (_) {}
+  }
+
+  const qualParts = [date && `Date: ${date}`, partySize && `Party: ${partySize}`, notes && `Notes: ${notes}`].filter(Boolean);
+  const qualNotes = qualParts.join(' | ');
+
+  if (qualNotes) updateContactNotes(from, qualNotes);
+  setContactStage(from, 'exploring');
+
+  // Cay Control warm lead summary
+  const summaryLines = [
+    `🔥 *WARM LEAD — ${bizName}*`,
+    ``,
+    `*Name:* ${contactName}`,
+    `*Number:* ${from}`,
+    date       ? `*Date:* ${date}` : null,
+    partySize  ? `*Group:* ${partySize}` : null,
+    notes      ? `*Notes:* ${notes}` : null,
+    ``,
+    `*Inquiry:* "${pq.originalMessage.slice(0, 120)}"`,
+    calendarLink ? `*Booking link:* ${calendarLink}` : null,
+    ``,
+    `⚡ Follow up to close — they're ready.`,
+  ].filter(l => l !== null).join('\n');
+
+  await client.sendMessage(controlChannel, summaryLines, { linkPreview: false }).catch(() => {});
+
+  // Customer confirmation + booking link
+  const confirmMsg = calendarLink
+    ? `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along and someone will be in touch shortly to confirm everything.\n\nYou can also secure your spot directly here: ${calendarLink}\n\n${signature}`
+    : `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along and someone will be in touch shortly to confirm everything.\n\n${signature}`;
+
+  await humanDelay(true);
+  await msg.reply(confirmMsg, null, { linkPreview: false });
+  appendToLog(from, contactName, `[QUALIFIED] ${qualNotes || 'details captured'}`, 'inbound:qualified', extractResult.tokens || '', '', 'in', 'auto');
+}
+
 async function handleInbound(msg) {
   const settings = getSettings();
   // All operator-facing notifications go to the control channel (a dedicated Cay Control
@@ -2470,7 +2551,16 @@ async function handleInbound(msg) {
 
   const phoneNumber = await resolveRealNumber(msg.from);
   const from = phoneNumber;
-  const contact = findContact(phoneNumber);
+  let contact = findContact(phoneNumber);
+  if (!contact) {
+    let pushName = '';
+    try {
+      const waContact = await msg.getContact();
+      pushName = (waContact.pushname || waContact.name || '').slice(0, 60).replace(/,/g, ' ').trim();
+    } catch (_) {}
+    appendContact({ number: from, name: pushName || from, tags: 'inbound', notes: '', business: '' });
+    contact = findContact(from);
+  }
   const contactName = contact ? contact.name : '(unknown)';
   const firstName = contact ? contact.name.split(' ')[0] : '';
   // Neutralize any formula injection from inbound body before any further use
@@ -2559,6 +2649,17 @@ async function handleInbound(msg) {
       return;
     }
     // If vertical load failed, fall through to normal handling
+  }
+
+  // ── QUALIFICATION RESOLUTION (B4) ──
+  const pq = pendingQualifications[from];
+  if (pq) {
+    if (Date.now() - pq.timestamp > 30 * 60 * 1000) {
+      delete pendingQualifications[from];
+    } else {
+      await handleQualification(from, body, pq, msg, settings, contact, contactName, firstName, controlChannel, signature, calendarLink);
+      return;
+    }
   }
 
   // ── DISAMBIGUATION RESOLUTION ──
@@ -2721,16 +2822,27 @@ async function handleInbound(msg) {
       if (stageOrder.indexOf(stage) < stageOrder.indexOf('exploring')) setContactStage(from, 'exploring');
       await humanDelay(true);
       if (conf >= AUTO_ACT_THRESHOLD) {
-        const hotDemoNudge = ['new','exploring'].includes(stage) ? `\n\nWant to see it live in this chat first? Reply *demo* to try it — no commitment. 🚀` : '';
-        await msg.reply(CANNED.hotLead(firstName, calendarLink, signature) + hotDemoNudge, null, { linkPreview: false });
+        // B4: qualify before handing off the booking link
+        const qualifyMsg =
+          `${firstName ? `Hey ${firstName}! ` : `Hey! `}We'd love to get you sorted 😊 Just a couple quick things:\n\n` +
+          `📅 *What date* are you thinking?\n` +
+          `👥 *How many people* in your group?\n` +
+          `💬 *Any special requests* or questions?\n\n` +
+          `Once I have those I'll get everything confirmed for you!\n\n${signature}`;
+        await msg.reply(qualifyMsg, null, { linkPreview: false });
+        pendingQualifications[from] = { originalMessage: body, timestamp: Date.now() };
+        await client.sendMessage(controlChannel,
+          `🔥 *HOT LEAD — ${bizName}*\n\n*Name:* ${contactName}\n*Number:* ${from}\n*Inquiry:* "${body.slice(0, 160)}"\n\n_Qualifying questions sent — warm lead summary incoming once they reply._`,
+          { linkPreview: false }
+        ).catch(() => {});
       } else {
         await msg.reply(CANNED.bufferReply(firstName, signature), null, { linkPreview: false });
+        const aiHot = await generateAssessment(contact, stage, body, intent, settings);
+        await notifyOwner('human', 'HOT LEAD 🔥 — Low Confidence',
+          `\n⚡ Possible hot lead but low confidence — holding reply sent. Follow up manually!` +
+          (aiHot ? `\n\n💡 _${aiHot.assessment}_\n✏️ _"${aiHot.suggested_reply}"_` : '')
+        );
       }
-      const aiHot = await generateAssessment(contact, stage, body, intent, settings);
-      await notifyOwner(conf >= AUTO_ACT_THRESHOLD ? 'review' : 'human', 'HOT LEAD 🔥',
-        (conf >= AUTO_ACT_THRESHOLD ? `\n⚡ They showed buying interest — follow up fast! Calendar link was sent.` : `\n⚡ Possible hot lead but low confidence — holding reply sent. Follow up manually!`) +
-        (aiHot ? `💡 _${aiHot.assessment}_\n✏️ _"${aiHot.suggested_reply}"_` : '')
-      );
       appendToLog(from, contactName, 'Hot lead', 'inbound:hot-lead', '', confStr, 'in', 'auto');
       return;
     }
@@ -3551,11 +3663,12 @@ if (process.env.NODE_ENV === 'test') {
     // constants
     SETUP_STEPS, KB_INTRO_INDEX, LOGICAL_TOTAL, AUTO_ACT_THRESHOLD, SUGGEST_THRESHOLD,
     // state
-    setupSessions, pendingPreviews, demoSessions,
+    setupSessions, pendingPreviews, demoSessions, pendingQualifications,
     // state machines
-    handleSetup, handleInbound, handleIndustryDemo,
+    handleSetup, handleInbound, handleIndustryDemo, handleQualification,
     // data helpers
     getSettings, saveSettings, findContact, resolveRecipient, classifyIntent,
+    appendContact, updateContactNotes,
     // log path (so tests can inspect the file)
     LOG_FILE,
   };
