@@ -2498,11 +2498,22 @@ async function handleInbound(msg) {
   }
 
   // ── OUTSIDE RESPONSE WINDOW ──
-  // Send a warm holding reply but still classify and log normally
+  // Outside hours: send ONE warm holding reply, log it, and notify the owner.
+  // Do NOT fall through to AI classification — that sends a second auto-reply
+  // and double-texts the customer. (Hard opt-out keywords are already handled
+  // above this point, so explicit opt-outs are still caught outside hours.)
   if (settings.response_window && isOutsideResponseWindow(settings.response_window)) {
     await humanDelay();
     await msg.reply(CANNED.outsideHours(firstName, settings.response_window, signature), null, { linkPreview: false });
     appendToLog(from, contactName, `[OUTSIDE HOURS] ${body}`, 'inbound:outside-hours', '', '', 'in', 'auto');
+    if (ownerNumber) {
+      const displayName = contact ? contactName : '(unknown)';
+      await client.sendMessage(ownerNumber,
+        `🌙 *[OUTSIDE HOURS]* Inbound from ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\nHolding reply sent — review when you're back.`,
+        { linkPreview: false }
+      ).catch(() => {});
+    }
+    return;
   }
 
   // ── AI CLASSIFICATION ──
