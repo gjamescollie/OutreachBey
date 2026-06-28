@@ -192,6 +192,8 @@ Edit `data/settings.csv` — changes take effect immediately, no restart needed.
 | Key | Options / Notes |
 |---|---|
 | `business_name` | Appears in messages and notifications |
+| `owner_number` | The operator's number (international, no `+`). Used as the fallback notification target |
+| `control_channel` | **Where escalations & AI activity are sent.** A "Cay Control" group JID (`…@g.us`) or the operator's personal number. Leave blank to fall back to `owner_number`. **Set this on every shared-number client deployment** so escalations stay off the customer-facing line |
 | `tone` | `friendly-pro` \| `formal` \| `casual` \| `sales` |
 | `signature` | Sign-off appended to every AI message |
 | `business_context` | Describes your business for the AI |
@@ -206,6 +208,58 @@ Edit `data/settings.csv` — changes take effect immediately, no restart needed.
 | `token_limit_send` | Default 300 |
 | `token_limit_checkin` | Default 150 |
 | `token_limit_broadcast` | Default 250 |
+
+---
+
+## Cay Control Channel (shared-number deployments)
+
+When Cay Receptionist runs on a client's **own** customer-facing WhatsApp number, the agent
+must not post escalations into that line's "Message Yourself" chat — staff (and the customer
+thread) would see them. Route them to a private **Cay Control** channel instead.
+
+**Recommended: a dedicated WhatsApp group**
+1. From the client's business WhatsApp, create a group named `Cay Control`.
+2. Add the operator's **personal** number (and anyone else who should receive escalations).
+3. Find the group JID and put it in `control_channel`. The simplest way: have someone send
+   a message in the group, and read the group ID the agent logs for that chat (`…@g.us`),
+   or use `client.getChats()` in a one-off script. Set `control_channel,<id>@g.us`.
+
+**Simpler alternative:** set `control_channel` to the operator's personal number
+(`control_channel,12425559999`). Escalations DM that phone directly.
+
+If `control_channel` is left blank, notifications fall back to `owner_number` — correct for
+the legacy single-owner Mac setup, but **not** for a shared-number client.
+
+> Increment 2 (planned): accept `!commands` sent *into* the Cay Control group from the
+> operator's personal number, so the operator can drive the agent from there too. Today,
+> operator commands still work when typed from the business WhatsApp account itself.
+
+---
+
+## Operator Console (browser)
+
+The agent serves a password-gated console on `:3000` (localhost + Tailscale). Set a strong
+`DASHBOARD_PASSWORD` in `.env` — the agent refuses to start the console without one. Tabs:
+
+| Tab | Path | What it does |
+|---|---|---|
+| 📊 Logs | `/` | Live message log with filters |
+| 📈 Analytics | `/analytics` | Detailed log-based charts |
+| 💰 ROI | `/roi` | Bookings confirmed, hot leads captured, owner hours saved, response speed (7/30/90-day) |
+| 👥 Contacts | `/contacts` | Add/edit/delete/import/export contacts |
+| ⚙️ Settings | `/settings` | Edit all settings + the 40-slot knowledge base in a form |
+
+**Web onboarding:** the Settings tab is the fast way to configure a new client — fill in the
+business basics, operations, and knowledge base, and Save. It writes `settings.csv` atomically
+and takes effect immediately (no restart). The WhatsApp `!setup` wizard still works as a
+fallback. Operator notifications/replies and message approval stay in WhatsApp — the console is
+configuration + visibility only.
+
+**ROI tuning:** owner-hours-saved is an estimate = auto-answered messages × `minutes_saved_per_msg`
+(a settings key, default 2). Adjust that key to match the client's real handling time.
+
+**Run the console without WhatsApp:** `DASHBOARD_ONLY=true node index.js` starts the console
+alone (no QR / linked device) — handy for onboarding prep or reviewing a client's data.
 
 ---
 

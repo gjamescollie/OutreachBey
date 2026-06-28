@@ -474,7 +474,7 @@ function getStats(dayRange = 7) {
     const rangeAgo = new Date(now - dayRange * 24 * 60 * 60 * 1000);
 
     let total = 0, today = 0, rangeSent = 0, rangeInbound = 0;
-    let hotLeads = 0, optOuts = 0, autoReplied = 0, failed = 0, complaints = 0;
+    let hotLeads = 0, optOuts = 0, autoReplied = 0, failed = 0, complaints = 0, bookings = 0;
     let totalTokens = 0;
     const allNumbers = new Set();
     const topContact = {};
@@ -511,6 +511,7 @@ function getStats(dayRange = 7) {
         if (status.includes('auto')) autoReplied++;
         if (status === 'failed' || status === 'outbound:failed') failed++;
         if (status.includes('complaint')) complaints++;
+        if (status.includes('booking')) bookings++;
       }
     });
 
@@ -535,7 +536,7 @@ function getStats(dayRange = 7) {
 
     return {
       total, today, rangeSent, rangeInbound, hotLeads, optOuts, autoReplied,
-      failed, complaints, totalTokens, costEst, uniqueContacts: allNumbers.size,
+      failed, complaints, bookings, totalTokens, costEst, uniqueContacts: allNumbers.size,
       avgVelocityMin, topContactName, velocityCount: velocities.length,
       // legacy
       week: rangeSent + rangeInbound
@@ -809,13 +810,20 @@ async function handleAddContact(msg, body) {
 
 function saveSettings(data) {
   try {
-    // Preserve existing values for anything the setup wizard doesn't ask about
+    // Preserve existing values for anything the setup wizard doesn't ask about.
+    // If `data` explicitly carries the key (the settings editor sends every field it
+    // owns), prefer that — even when empty, so the editor can clear a field. The
+    // !setup wizard never passes these keys, so its behaviour is unchanged.
     const existing = getSettings();
-    const keep = (key, fallback) => (existing[key] !== undefined && existing[key] !== '' ? existing[key] : fallback);
+    const keep = (key, fallback) => {
+      if (Object.prototype.hasOwnProperty.call(data, key)) return data[key];
+      return (existing[key] !== undefined && existing[key] !== '' ? existing[key] : fallback);
+    };
 
     const lines = ['key,value',
       `business_name,${data.business_name || existing.business_name || ''}`,
       `owner_number,${data.owner_number || existing.owner_number || ''}`,
+      `control_channel,${keep('control_channel', '')}`,
       `tone,${data.tone || 'friendly-pro'}`,
       `signature,${data.signature || `- ${data.business_name || 'us'}`}`,
       '',
@@ -837,13 +845,25 @@ function saveSettings(data) {
       `token_limit_checkin,${keep('token_limit_checkin', '150')}`,
       `token_limit_broadcast,${keep('token_limit_broadcast', '250')}`,
       '',
+      '# ── MODEL ─────────────────────────────────────────────────────────────────────',
+      // Runtime model override (set from the dashboard model selector). Empty = use
+      // the AI_MODEL from .env. Preserved here so /api/model actually persists.
+      `ai_model,${keep('ai_model', '')}`,
+      '',
       '# ── KNOWLEDGE BASE ───────────────────────────────────────────────────────────',
     ];
 
     for (let i = 1; i <= 40; i++) {
-      // Use new answer if provided in setup, otherwise keep existing
-      const q = data[`kb_${i}_q`] || existing[`faq_${i}_q`];
-      const a = data[`kb_${i}_a`] || existing[`faq_${i}_a`];
+      let q, a;
+      if (data.kbReplace) {
+        // Settings editor sends the full KB authoritatively — no fallback, so an
+        // emptied slot is genuinely deleted rather than resurrected from disk.
+        q = data[`kb_${i}_q`]; a = data[`kb_${i}_a`];
+      } else {
+        // Wizard merge — keep existing entries that weren't re-asked.
+        q = data[`kb_${i}_q`] || existing[`faq_${i}_q`];
+        a = data[`kb_${i}_a`] || existing[`faq_${i}_a`];
+      }
       if (q && a) {
         lines.push(`faq_${i}_q,${q}`);
         lines.push(`faq_${i}_a,${a}`);
@@ -979,9 +999,9 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
     await client.sendMessage(chatId, revealMsg, { linkPreview: false })
       .catch(e => console.error('[DEMO] reveal send failed:', e.message));
     appendToLog(from, from, '[DEMO] Reveal sent', 'demo:revealed', '', '', 'out', 'demo');
-    const ownerNumber = formatNumber(mainSettings.owner_number || '');
-    if (ownerNumber) {
-      await client.sendMessage(ownerNumber,
+    const controlChannel = getControlChannel(mainSettings);
+    if (controlChannel) {
+      await client.sendMessage(controlChannel,
         `🎯 *[DEMO REVEAL]* ${from} completed the *${session.keyword}* demo path (${session.messageCount} messages). Reveal sent.`,
         { linkPreview: false }
       ).catch(() => {});
@@ -1288,9 +1308,9 @@ client.on('disconnected', (reason) => {
     fs.writeFileSync(script, 'display notification "Cay AI disconnected. Restart required." with title "Cay AI Agent" sound name "Basso"');
     execFile('osascript', [script], (err) => { if (err) console.error('Notification failed:', err.message); });
     const settings = getSettings();
-    const ownerNumber = (settings.owner_number || '').replace(/\D/g, '');
-    if (ownerNumber) {
-      client.sendMessage(formatNumber(ownerNumber), `⚠️ *Agent Disconnected*\n\nReason: ${reason}\n\nPlease restart the agent.`, { linkPreview: false }).catch(() => {});
+    const controlChannel = getControlChannel(settings);
+    if (controlChannel) {
+      client.sendMessage(controlChannel, `⚠️ *Agent Disconnected*\n\nReason: ${reason}\n\nPlease restart the agent.`, { linkPreview: false }).catch(() => {});
     }
   }
 });
@@ -1762,7 +1782,7 @@ function startFollowUpChecker() {
     if (due.length === 0) return;
 
     const settings = getSettings();
-    const ownerNumber = formatNumber(settings.owner_number || '');
+    const controlChannel = getControlChannel(settings);
 
     for (const f of due) {
       try {
@@ -1770,15 +1790,15 @@ function startFollowUpChecker() {
         updateLastContacted(f.rawNumber);
         appendToLog(f.rawNumber, f.contactName || '', f.message, 'outbound:sent', 0, '', 'out', '!schedule');
         console.log(`✅ Scheduled message sent to ${f.number}`);
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber, `📤 Scheduled message sent to ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}`, { linkPreview: false });
+        if (controlChannel) {
+          await client.sendMessage(controlChannel, `📤 Scheduled message sent to ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}`, { linkPreview: false });
         }
       } catch (e) {
         console.error(`❌ Scheduled message failed for ${f.number}:`, e.message);
         appendToLog(f.rawNumber, f.contactName || '', f.message, 'outbound:failed', 0, '', 'out', '!schedule');
-        if (ownerNumber) {
+        if (controlChannel) {
           console.error(`[ERROR] Scheduled message failed for ${f.rawNumber}:`, e);
-          await client.sendMessage(ownerNumber, `❌ Scheduled message FAILED for ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}. Check the terminal for details.`, { linkPreview: false }).catch(() => {});
+          await client.sendMessage(controlChannel, `❌ Scheduled message FAILED for ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}. Check the terminal for details.`, { linkPreview: false }).catch(() => {});
         }
       }
     }
@@ -1799,9 +1819,9 @@ function startFollowUpChecker() {
       const rate = stats.optOuts / stats.rangeInbound;
       if (rate >= 0.1) { // 10% opt-out rate threshold
         const settings = getSettings();
-        const ownerNumber = formatNumber(settings.owner_number || '');
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber,
+        const controlChannel = getControlChannel(settings);
+        if (controlChannel) {
+          await client.sendMessage(controlChannel,
             `⚠️ *Opt-Out Alert*\n\n${stats.optOuts} opt-outs in the last 7 days (${(rate * 100).toFixed(1)}% of inbound messages).\n\nConsider reviewing your message frequency or content.`,
             { linkPreview: false }).catch(() => {});
         }
@@ -1942,9 +1962,9 @@ function startReviewAgent() {
     lastFiredDay = bahamasDay;
 
     try {
-      const settings    = getSettings();
-      const ownerNumber = formatNumber(settings.owner_number || '');
-      if (!ownerNumber) return;
+      const settings        = getSettings();
+      const controlChannel  = getControlChannel(settings);
+      if (!controlChannel) return;
 
       // ── Read last 24h of log entries ──
       const raw = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
@@ -1957,7 +1977,7 @@ function startReviewAgent() {
       if (recent.length === 0) {
         if (isSunday) {
           const staleSection = buildStaleLeadSection();
-          if (staleSection) await client.sendMessage(ownerNumber, staleSection, { linkPreview: false });
+          if (staleSection) await client.sendMessage(controlChannel, staleSection, { linkPreview: false });
         }
         return;
       }
@@ -2043,7 +2063,7 @@ Unfollowed lead numbers: ${unfollowedLeads.join(', ') || 'None'}`;
       if (isSunday) {
         const staleSection = buildStaleLeadSection();
         const combined = ai.text + (staleSection ? '\n\n' + staleSection : '');
-        await client.sendMessage(ownerNumber, combined, { linkPreview: false });
+        await client.sendMessage(controlChannel, combined, { linkPreview: false });
         console.log('📊 Sunday report sent');
       } else {
         console.log('📄 Daily review HTML updated (no WhatsApp on weekdays)');
@@ -2148,6 +2168,22 @@ function getCalendarLink(settings) {
   return settings.calendar_link || 'https://calendly.com/gjamescollie';
 }
 
+// Where the operator receives escalations and AI activity notifications.
+// On a shared-number deployment the agent runs on the client's own customer-facing
+// WhatsApp, so escalations must NOT land in that line's "Message Yourself" chat where
+// staff or the customer thread can see them. Set `control_channel` in settings.csv to a
+// dedicated "Cay Control" group JID (…@g.us) or the operator's personal number to route
+// all notifications there instead. Falls back to the owner's own number, preserving the
+// legacy single-owner Mac behaviour when `control_channel` is unset.
+function getControlChannel(settings) {
+  const raw = (settings.control_channel || '').trim();
+  if (raw) {
+    if (raw.endsWith('@g.us') || raw.endsWith('@c.us')) return raw;
+    return formatNumber(raw); // bare number → @c.us
+  }
+  return formatNumber(settings.owner_number || '');
+}
+
 // Hard opt-out check — requires a clear multi-word phrase to avoid accidental funnel drop-off
 function isHardOptOut(message) {
   const msg = message.toLowerCase().trim();
@@ -2176,8 +2212,9 @@ async function classifyIntent(message, contact, settings) {
     : 'This person is not yet in the contact list. Treat them as a new contact at stage: new.';
 
   const responseWindow = settings.response_window || '';
+  const bizContext = (settings.business_context || '').slice(0, 400);
 
-  const systemPrompt = `You are an intent classifier for ${bizName}, a business that sells a WhatsApp AI outreach tool to small businesses in the Bahamas.
+  const systemPrompt = `You are an intent classifier for ${bizName}.${bizContext ? `\nBusiness: ${bizContext}` : ''}
 ${responseWindow ? `Owner response window: ${responseWindow}. Factor this in when assessing urgency.` : ''}
 
 Your job: read an incoming WhatsApp message from a potential or existing customer and classify it into EXACTLY ONE intent category. Return ONLY valid JSON, no other text.
@@ -2192,7 +2229,7 @@ INTENT CATEGORIES:
 - "BOOKING_CONFIRMATION" — confirming or acknowledging an appointment, meeting time, or booking
 - "REFERRAL" — recommending or referring someone else, or asking about referring a friend/business
 - "GREETING" — opening message with no specific request: "hello", "hi", "hey", "good morning", "what's up", "how are you" — first contact or a bare greeting with no actionable ask
-- "ON_THE_FENCE_BUYER" — interested in WhatsApp automation, AI messaging, or business automation but still deciding; shows curiosity, hesitation, or business pain without a direct price or demo ask
+- "ON_THE_FENCE_BUYER" — interested in the business's product or service but still deciding; shows curiosity, hesitation, or relevant pain without a direct price or booking ask
 - "ACKNOWLEDGEMENT" — short non-question reply with no new request: "ok", "thanks", "got it", "sounds good", "cool", thumbs up emoji, etc.
 - "CONVERSATION_CONTINUATION" — continuing a prior thread; follow-up that implies history (e.g. "what about pricing?", "actually one more thing", "following up on that")
 - "PERSONAL_CONVERSATION" — the person is clearly talking personally (not about business): venting, chatting casually, sharing personal news, asking personal questions — they know who they're texting but it's not a business inquiry
@@ -2219,13 +2256,14 @@ Rules:
 - A message like "lol how was your weekend" from a known contact is PERSONAL_CONVERSATION. "Hey Sarah did you pick up the kids" is WRONG_NUMBER.
 
 KEY PHRASE EXAMPLES (use these to calibrate intent):
-- QUESTION → "What is [business name]?", "What exactly do you do?", "How does this work?", "What are your hours?", "Are you open on weekends?", "Where are you located?", "Do you service [island/area]?", "How long before I see results?", "When can this be delivered?", "What's the difference between your plans?", "Do you offer a guarantee?", "What happens if something goes wrong?", "Do you offer support?"
-- HOT_LEAD → "How much does this cost?", "What are your pricing plans?", "Are there any hidden fees?", "Is there a setup cost?", "How do I sign up?", "How do I get started?", "How much this costing?", "What y'all prices looking like?", "Any hidden fees or setup costs tacked onto this?", "Are there any discounts if I pay for the whole year upfront?", "Is there a free trial available before I have to pay?", "What happens if I need to cancel my subscription or plan?", "Do you offer custom pricing packages if my business needs more?", "Is the price per user, or is it a flat monthly rate?"
+- QUESTION → "What is [business name]?", "What exactly do you do?", "How does this work?", "What are your hours?", "Are you open on weekends?", "Where are you located?", "Do you service [island/area]?", "How long before I see results?", "When can this be delivered?", "What's the difference between your plans?", "Do you offer a guarantee?", "What happens if something goes wrong?", "Do you offer support?", "What's included in the tour?", "How long does it last?", "Where do we meet you?", "Do you pick up from the cruise ship?", "Can kids come?", "What do we need to bring?", "Is snorkel gear provided?", "What happens if it rains?", "How many people fit on the boat?", "Can someone who can't swim come?"
+- HOT_LEAD → "How much does this cost?", "What are your pricing plans?", "Are there any hidden fees?", "Is there a setup cost?", "How do I sign up?", "How do I get started?", "How much this costing?", "What y'all prices looking like?", "Any hidden fees or setup costs tacked onto this?", "Are there any discounts if I pay for the whole year upfront?", "Is there a free trial available before I have to pay?", "What happens if I need to cancel my subscription or plan?", "Do you offer custom pricing packages if my business needs more?", "Is the price per user, or is it a flat monthly rate?", "How much for 4 people?", "Do you have availability this weekend?", "I want to book for my family", "We'd like to come Saturday — is there space?", "Can I pay to reserve a spot now?", "I want to book a tour for my birthday group"
+- BOOKING_CONFIRMATION → "Confirmed for Saturday — party of 4", "See you at the pier tomorrow at 10!", "Just confirmed our tour booking", "We're booked and confirmed — see you then", "Confirmed for our appointment next Tuesday"
 - DEMO → "Can I see a demo?", "How can I try it?", "Can you show me how it works?", "I could see a demo?", "How I could try it out?"
 - CALL → "Can we book a call?", "Can I speak to someone?", "We could book a quick call?", "How I get started with this?"
 - QUESTION → also includes Bahamian dialect variants: "What is [business name] anyway?", "What y'all does do?", "How this does work?", "What y'all hours is?", "Y'all open over the weekend?", "Where y'all located?", "You does service other islands or just Nassau?", "How long before I see real results?", "When this could get delivered?", "What's the true-true difference between the plans?"
 - CONVERSATION_CONTINUATION → "Tell me more", "Fill me in.", "What's the deal with that?", "Keep going", "I'm listening.", "Give me the scoop.", "Can you expand on that a bit?", "Go on", "And then what?", "Keep it coming"
-- ON_THE_FENCE_BUYER → "I was thinking about automating my WhatsApp but still tryna decide.", "I run a small business in Nassau, looking into WhatsApp automation but not sure yet.", "Business gets busy on weekends and I sometimes miss messages. Looking at AI but still deciding.", "I'm curious how it works but I don't know if it's worth it.", "I get plenty inquiries every day, just exploring my options.", "I don't want to hire more staff but WhatsApp is getting hard to manage.", "I've been considering AI for customer replies but haven't pulled the trigger yet."
+- ON_THE_FENCE_BUYER → "I was thinking about automating my WhatsApp but still tryna decide.", "I run a small business in Nassau, looking into WhatsApp automation but not sure yet.", "Business gets busy on weekends and I sometimes miss messages. Looking at AI but still deciding.", "I'm curious how it works but I don't know if it's worth it.", "I get plenty inquiries every day, just exploring my options.", "I don't want to hire more staff but WhatsApp is getting hard to manage.", "I've been considering AI for customer replies but haven't pulled the trigger yet.", "Been thinking about doing a boat tour, still deciding between a few options.", "Looking at excursions for our Nassau trip next month, haven't booked yet.", "Saw your tours mentioned — still weighing up what to do while we're here."
 - Treat Bahamian dialect the same as standard English — do not lower confidence just because of dialect.
 - ON_THE_FENCE_BUYER vs HOT_LEAD: HOT_LEAD means they are ready to buy (asking price, how to sign up, ready to start). ON_THE_FENCE_BUYER means interested but undecided. HOT_LEAD always outranks ON_THE_FENCE_BUYER.
 - ON_THE_FENCE_BUYER vs DEMO: DEMO means they want to see the product right now. ON_THE_FENCE_BUYER means they're still in research/consideration mode.
@@ -2424,8 +2462,11 @@ function isSpam(message) {
 
 async function handleInbound(msg) {
   const settings = getSettings();
-  const ownerNumber = formatNumber(settings.owner_number || '');
-  if (!ownerNumber) return;
+  // All operator-facing notifications go to the control channel (a dedicated Cay Control
+  // group or the operator's personal number) so escalations stay off the shared customer
+  // line. Defaults to the owner's number when control_channel is unset.
+  const controlChannel = getControlChannel(settings);
+  if (!controlChannel) return;
 
   const phoneNumber = await resolveRealNumber(msg.from);
   const from = phoneNumber;
@@ -2446,7 +2487,7 @@ async function handleInbound(msg) {
   appendToLog(from, contactName, `[INBOUND${spamFlag}] ${body}`, 'inbound:received', '', '', 'in', 'auto');
   if (spamFlag) {
     console.warn(`⚠️ Possible spam from ${contactName} (${from}): ${body.slice(0, 80)}`);
-    await client.sendMessage(ownerNumber, `⚠️ *Possible Spam* flagged\n\n*From:* ${contactName} (${from})\n*Message:* _"${body.slice(0, 200)}"_\n\nAgent will continue to classify normally.`, { linkPreview: false }).catch(() => {});
+    await client.sendMessage(controlChannel, `⚠️ *Possible Spam* flagged\n\n*From:* ${contactName} (${from})\n*Message:* _"${body.slice(0, 200)}"_\n\nAgent will continue to classify normally.`, { linkPreview: false }).catch(() => {});
   }
 
   // ── FAST PATH: hard opt-out (no AI needed) ──
@@ -2457,7 +2498,7 @@ async function handleInbound(msg) {
       `Hi${firstName ? ` ${firstName}` : ''}! We have removed you from our outreach list and will not contact you again.\n\nIf you ever change your mind we are always here to help.\n\n${signature}`,
       null, { linkPreview: false }
     );
-    await client.sendMessage(ownerNumber,
+    await client.sendMessage(controlChannel,
       `🚫 *Opt-Out*\n\n${contactName} (${from}) has opted out and been tagged inactive.\n\n_"${body}"_`,
       { linkPreview: false }
     );
@@ -2492,8 +2533,8 @@ async function handleInbound(msg) {
         followUpSent: false,
         chatId: msg.from, // original WhatsApp JID — required for sending replies
       };
-      if (ownerNumber) {
-        await client.sendMessage(ownerNumber,
+      if (controlChannel) {
+        await client.sendMessage(controlChannel,
           `🎯 *[DEMO STARTED]* ${from} entered the *${keyword}* demo path (${vertical.persona})`,
           { linkPreview: false }
         ).catch(() => {});
@@ -2559,9 +2600,9 @@ async function handleInbound(msg) {
     await humanDelay();
     await msg.reply(CANNED.outsideHours(firstName, settings.response_window, signature), null, { linkPreview: false });
     appendToLog(from, contactName, `[OUTSIDE HOURS] ${body}`, 'inbound:outside-hours', '', '', 'in', 'auto');
-    if (ownerNumber) {
+    if (controlChannel) {
       const displayName = contact ? contactName : '(unknown)';
-      await client.sendMessage(ownerNumber,
+      await client.sendMessage(controlChannel,
         `🌙 *[OUTSIDE HOURS]* Inbound from ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\nHolding reply sent — review when you're back.`,
         { linkPreview: false }
       ).catch(() => {});
@@ -2577,7 +2618,7 @@ async function handleInbound(msg) {
     await humanDelay(true);
     await msg.reply(CANNED.bufferReply(firstName, signature), null, { linkPreview: false });
     const displayName = contact ? contactName : '(unknown)';
-    await client.sendMessage(ownerNumber,
+    await client.sendMessage(controlChannel,
       `🔴 ESCALATE — 📨 *Inbound Message* _(could not classify)_ — ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\n!send ${phoneNumber}`,
       { linkPreview: false }
     );
@@ -2603,7 +2644,7 @@ async function handleInbound(msg) {
     const parts = [line1, line2];
     if (extra) parts.push('', extra.trim());
     if (actionType === 'human') parts.push('', `!send ${phoneNumber}`);
-    await client.sendMessage(ownerNumber, parts.join('\n'), { linkPreview: false });
+    await client.sendMessage(controlChannel, parts.join('\n'), { linkPreview: false });
   };
 
   // ── LOW CONFIDENCE: always escalate to human regardless of intent ──
@@ -3066,7 +3107,9 @@ a{text-decoration:none}
 <nav class="nav">
   <a href="/" class="active">📊 Logs</a>
   <a href="/analytics">📈 Analytics</a>
+  <a href="/roi">💰 ROI</a>
   <a href="/contacts">👥 Contacts</a>
+  <a href="/settings">⚙️ Settings</a>
 </nav>
 
 <div class="grid">
@@ -3328,6 +3371,163 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       return;
     }
 
+    // Settings editor page
+    if (pathname === '/settings') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'settings.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('settings.html not found'); }
+      return;
+    }
+
+    // Settings API — GET returns current settings + KB; POST saves operator edits.
+    if (pathname === '/api/settings') {
+      if (req.method === 'GET') {
+        const s = getSettings();
+        const kb = [];
+        for (let i = 1; i <= 40; i++) {
+          const q = s[`faq_${i}_q`], a = s[`faq_${i}_a`];
+          if ((q && q.length) || (a && a.length)) kb.push({ q: q || '', a: a || '' });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ settings: s, kb }));
+        return;
+      }
+      if (req.method === 'POST') {
+        let body = ''; let tooLarge = false;
+        req.on('data', d => {
+          if (body.length < 512 * 1024) { body += d; }
+          else { tooLarge = true; req.destroy(); }
+        });
+        req.on('end', () => {
+          if (tooLarge) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'Request too large' }));
+            return;
+          }
+          try {
+            const payload = JSON.parse(body);
+            // settings.csv is key,value — values must hold no commas/newlines and must
+            // not start with a spreadsheet formula char. Same neutralization as contacts.
+            const cell = (v) => String(v == null ? '' : v)
+              .replace(/,/g, ';').replace(/[\r\n]+/g, ' ').replace(/^[=+\-@]/, "'$&").trim();
+            // Allowlist of editable scalar keys — anything else is ignored so a crafted
+            // payload can't inject arbitrary settings.csv keys. owner_number is set at
+            // deployment and intentionally NOT web-editable.
+            const EDITABLE = ['business_name','tone','signature','business_context',
+              'custom_instructions','message_length','language_style','avoid_words',
+              'response_window','calendar_link','control_channel',
+              'token_limit_send','token_limit_checkin','token_limit_broadcast'];
+            const ENUMS = {
+              tone: ['friendly-pro','formal','casual','sales'],
+              message_length: ['short','medium','long'],
+              language_style: ['standard','bahamian','formal-english'],
+            };
+            const src = (payload && payload.settings) || {};
+            const data = { kbReplace: true };
+            for (const k of EDITABLE) {
+              if (!(k in src)) continue;
+              let v = cell(src[k]);
+              if (ENUMS[k] && v && !ENUMS[k].includes(v)) continue; // ignore invalid enum
+              if (k === 'custom_instructions') v = v.slice(0, 200);
+              if (k.startsWith('token_limit_')) {
+                const n = parseInt(v, 10);
+                if (!Number.isFinite(n) || n < 1) continue;
+                v = String(Math.min(n, 2000));
+              }
+              data[k] = v;
+            }
+            // Knowledge base — authoritative full replacement, capped at 40 slots.
+            const kb = Array.isArray(payload && payload.kb) ? payload.kb.slice(0, 40) : [];
+            for (let i = 1; i <= 40; i++) {
+              const e = kb[i - 1] || {};
+              data[`kb_${i}_q`] = cell(e.q);
+              data[`kb_${i}_a`] = cell(e.a);
+            }
+            const ok = saveSettings(data);
+            res.writeHead(ok ? 200 : 500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok }));
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: e.message }));
+          }
+        });
+        return;
+      }
+    }
+
+    // ROI summary page
+    if (pathname === '/roi') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'roi.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('roi.html not found'); }
+      return;
+    }
+
+    // Analytics / ROI API — server-computed metrics for a day range.
+    if (pathname === '/api/analytics') {
+      const days = Math.min(Math.max(parseInt(query.get('days') || '30', 10) || 30, 1), 365);
+      const s = getStats(days) || {};
+      // Owner time saved: each message the AI handled without a human is time the
+      // operator didn't spend. minutes_saved_per_msg is a tunable assumption.
+      const minsPer = Math.min(Math.max(parseFloat(getSettings().minutes_saved_per_msg) || 2, 0), 30);
+      const autoAnswered = s.autoReplied || 0;
+      const inbound = s.rangeInbound || 0;
+      const payload = {
+        days,
+        messagesHandled: inbound,
+        autoAnswered,
+        autoAnsweredPct: inbound ? Math.round((autoAnswered / inbound) * 100) : 0,
+        leadsCaptured: s.hotLeads || 0,
+        bookings: s.bookings || 0,
+        sent: s.rangeSent || 0,
+        optOuts: s.optOuts || 0,
+        complaints: s.complaints || 0,
+        failed: s.failed || 0,
+        responseSpeedMin: s.avgVelocityMin,
+        ownerHoursSaved: Math.round((autoAnswered * minsPer / 60) * 10) / 10,
+        minutesSavedPerMsg: minsPer,
+        uniqueContacts: s.uniqueContacts || 0,
+        costEst: s.costEst || '0',
+        topContact: s.topContactName || '—',
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(payload));
+      return;
+    }
+
+    // Scheduled messages — GET lists pending, POST /cancel removes one by id.
+    if (pathname === '/api/followups' && req.method === 'GET') {
+      const list = [...followUps].sort((a, b) => a.sendAt - b.sendAt)
+        .map(f => ({ id: f.id, rawNumber: f.rawNumber, contactName: f.contactName || '',
+                     message: f.message, sendAt: f.sendAt }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(list));
+      return;
+    }
+    if (pathname === '/api/followups/cancel' && req.method === 'POST') {
+      let body = '';
+      req.on('data', d => { if (body.length < 4096) body += d; });
+      req.on('end', () => {
+        try {
+          const { id } = JSON.parse(body);
+          const before = followUps.length;
+          followUps = followUps.filter(f => String(f.id) !== String(id));
+          const removed = before - followUps.length;
+          if (removed) saveFollowUps();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, removed }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+      return;
+    }
+
     res.writeHead(404);
     res.end();
   }).listen(3000);
@@ -3335,7 +3535,11 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
-if (process.env.NODE_ENV !== 'test') {
+// DASHBOARD_ONLY=true runs the web UI (analytics, settings, contacts) without the
+// WhatsApp client — useful for onboarding/UI work or inspecting a client's data
+// without a live phone session. Normal runs still initialize WhatsApp (and rely on
+// the process crashing → Docker restart as the reconnect path).
+if (process.env.NODE_ENV !== 'test' && process.env.DASHBOARD_ONLY !== 'true') {
   client.initialize();
 }
 
@@ -3351,7 +3555,7 @@ if (process.env.NODE_ENV === 'test') {
     // state machines
     handleSetup, handleInbound, handleIndustryDemo,
     // data helpers
-    getSettings, findContact, resolveRecipient, classifyIntent,
+    getSettings, saveSettings, findContact, resolveRecipient, classifyIntent,
     // log path (so tests can inspect the file)
     LOG_FILE,
   };

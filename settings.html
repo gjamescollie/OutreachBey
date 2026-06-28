@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cay AI — Settings & Knowledge Base</title>
+  <meta name="description" content="Cay AI — configure your AI receptionist and knowledge base">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #111; }
+    header { background: #25D366; color: white; padding: 18px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+    header span.logo { font-size: 1.5rem; }
+    nav { margin-left: auto; display: flex; gap: 4px; }
+    nav a { color: rgba(255,255,255,0.7); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    nav a.active { background: rgba(0,0,0,0.2); color: #fff; }
+    .container { max-width: 980px; margin: 28px auto; padding: 0 16px; }
+    .notice { background: #e8f5e9; border: 1px solid #25D366; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px; font-size: 0.88rem; color: #1b5e20; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 22px; }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; color: #333; }
+    .card .sub { font-size: 0.8rem; color: #999; margin-bottom: 18px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.82rem; font-weight: 500; color: #555; }
+    input, select, textarea { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 0.9rem; font-family: inherit; transition: border 0.2s; width: 100%; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #25D366; }
+    textarea { resize: vertical; min-height: 64px; }
+    .hint { font-size: 0.76rem; color: #aaa; }
+    .btn { padding: 11px 22px; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #25D366; color: white; }
+    .btn-primary:hover { background: #1da851; }
+    .btn-secondary { background: #f0f2f5; color: #333; }
+    .btn-secondary:hover { background: #e0e2e5; }
+    .btn-danger { background: #ff4444; color: white; }
+    .btn-danger:hover { background: #cc0000; }
+    .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+    .kb-row { border: 1px solid #eee; border-radius: 10px; padding: 14px; margin-bottom: 12px; background: #fafafa; }
+    .kb-row .form-group { margin-bottom: 8px; }
+    .kb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .kb-head .n { font-size: 0.78rem; font-weight: 600; color: #888; }
+    .savebar { position: sticky; bottom: 0; background: white; border-top: 1px solid #eee; padding: 14px 24px; display: flex; gap: 12px; align-items: center; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); }
+    .savebar .spacer { flex: 1; }
+    .toast { position: fixed; bottom: 80px; right: 24px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+    .toast.show { opacity: 1; }
+    .toast.success { background: #25D366; }
+    .toast.error { background: #ff4444; }
+    .empty { text-align: center; color: #bbb; padding: 20px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚙️</span>
+  <h1>Cay AI — Settings &amp; Knowledge Base</h1>
+  <nav>
+    <a href="/">📊 Logs</a>
+    <a href="/analytics">📈 Analytics</a>
+    <a href="/roi">💰 ROI</a>
+    <a href="/contacts">👥 Contacts</a>
+    <a href="/settings" class="active">⚙️ Settings</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="notice">
+    These settings configure how your AI receptionist talks to customers and what it knows.
+    Changes save to <strong>settings.csv</strong> and take effect immediately — no restart needed.
+  </div>
+
+  <!-- BUSINESS BASICS -->
+  <div class="card">
+    <h2>Business basics</h2>
+    <div class="sub">Who you are and how the AI should sound.</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Business name *</label>
+        <input type="text" id="business_name" placeholder="Blue Water Boat Tours">
+      </div>
+      <div class="form-group">
+        <label>Sign-off / signature</label>
+        <input type="text" id="signature" placeholder="- The Blue Water Team">
+      </div>
+      <div class="form-group full">
+        <label>What your business does (the AI uses this for context)</label>
+        <textarea id="business_context" placeholder="We run daily boat tours and private charters out of Nassau — snorkeling, sandbar stops, and sunset cruises."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Tone</label>
+        <select id="tone">
+          <option value="friendly-pro">Friendly &amp; professional</option>
+          <option value="formal">Formal</option>
+          <option value="casual">Casual</option>
+          <option value="sales">Sales</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Message length</label>
+        <select id="message_length">
+          <option value="short">Short (&lt;50 words)</option>
+          <option value="medium">Medium (&lt;80 words)</option>
+          <option value="long">Long (&lt;120 words)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Language style</label>
+        <select id="language_style">
+          <option value="standard">Standard</option>
+          <option value="bahamian">Bahamian</option>
+          <option value="formal-english">Formal English</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Words the AI must never use</label>
+        <input type="text" id="avoid_words" placeholder="cheap, guarantee">
+        <span class="hint">Comma-separated</span>
+      </div>
+      <div class="form-group full">
+        <label>Extra instructions (max 200 chars)</label>
+        <textarea id="custom_instructions" maxlength="200" placeholder="Always mention we provide life jackets. Never quote prices for private charters — route those to me."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPERATIONS -->
+  <div class="card">
+    <h2>Operations</h2>
+    <div class="sub">Availability, booking link, and where escalations go.</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Response window</label>
+        <input type="text" id="response_window" placeholder="Every day 7am to 7pm">
+        <span class="hint">When a human is available — the AI sets expectations from this</span>
+      </div>
+      <div class="form-group">
+        <label>Booking / calendar link</label>
+        <input type="text" id="calendar_link" placeholder="https://...">
+      </div>
+      <div class="form-group full">
+        <label>Cay Control channel</label>
+        <input type="text" id="control_channel" placeholder="120363...@g.us  or  12425559999">
+        <span class="hint">Where escalations are sent — a Cay Control group JID or your personal number. Blank = your owner number.</span>
+      </div>
+      <div class="form-group">
+        <label>Token limit — send</label>
+        <input type="number" id="token_limit_send" min="1" max="2000">
+      </div>
+      <div class="form-group">
+        <label>Token limit — check-in</label>
+        <input type="number" id="token_limit_checkin" min="1" max="2000">
+      </div>
+      <div class="form-group">
+        <label>Token limit — broadcast</label>
+        <input type="number" id="token_limit_broadcast" min="1" max="2000">
+      </div>
+    </div>
+  </div>
+
+  <!-- KNOWLEDGE BASE -->
+  <div class="card">
+    <h2>Knowledge base</h2>
+    <div class="sub">The questions customers ask and the answers the AI gives. Write questions in your customers' own words. Up to 40.</div>
+    <div id="kb-list"></div>
+    <button class="btn btn-secondary btn-sm" id="add-kb">+ Add question</button>
+  </div>
+
+  <!-- SCHEDULED MESSAGES -->
+  <div class="card">
+    <h2>Scheduled messages</h2>
+    <div class="sub">Pending follow-ups queued via WhatsApp <code>!schedule</code>. Cancel any that are no longer needed.</div>
+    <div id="sched-list"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<div class="savebar">
+  <span class="hint" id="kb-count"></span>
+  <span class="spacer"></span>
+  <button class="btn btn-secondary" id="reload">Reload</button>
+  <button class="btn btn-primary" id="save">Save changes</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const SCALARS = ['business_name','signature','business_context','tone','message_length',
+  'language_style','avoid_words','custom_instructions','response_window','calendar_link',
+  'control_channel','token_limit_send','token_limit_checkin','token_limit_broadcast'];
+const TOUR_PLACEHOLDERS = [
+  { q: 'How much is a tour?', a: '' },
+  { q: 'What time do the tours leave?', a: '' },
+  { q: 'Where do we meet / where are you located?', a: '' },
+  { q: "What's included in the trip?", a: '' },
+  { q: 'What happens if the weather is bad?', a: '' },
+  { q: 'Can you do groups or private charters?', a: '' },
+];
+
+function toast(msg, kind) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (kind || '');
+  setTimeout(() => { t.className = 'toast'; }, 2600);
+}
+
+function kbRow(entry, i) {
+  const div = document.createElement('div');
+  div.className = 'kb-row';
+  div.innerHTML =
+    '<div class="kb-head"><span class="n">#' + (i + 1) + '</span>' +
+    '<button class="btn btn-danger btn-sm remove-kb" type="button">Remove</button></div>' +
+    '<div class="form-group"><label>Question</label>' +
+    '<input type="text" class="kb-q" placeholder="What customers type"></div>' +
+    '<div class="form-group"><label>Answer</label>' +
+    '<textarea class="kb-a" placeholder="How the AI should reply"></textarea></div>';
+  div.querySelector('.kb-q').value = entry.q || '';
+  div.querySelector('.kb-a').value = entry.a || '';
+  div.querySelector('.remove-kb').onclick = () => { div.remove(); renumber(); };
+  return div;
+}
+
+function renumber() {
+  const rows = document.querySelectorAll('#kb-list .kb-row');
+  rows.forEach((r, i) => { r.querySelector('.n').textContent = '#' + (i + 1); });
+  $('kb-count').textContent = rows.length + ' of 40 knowledge-base entries';
+  $('add-kb').style.display = rows.length >= 40 ? 'none' : '';
+}
+
+function addKb(entry) {
+  const list = $('kb-list');
+  const i = list.querySelectorAll('.kb-row').length;
+  if (i >= 40) return;
+  list.appendChild(kbRow(entry || { q: '', a: '' }, i));
+  renumber();
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/settings');
+    const data = await r.json();
+    const s = data.settings || {};
+    SCALARS.forEach((k) => { if ($(k) != null && s[k] != null) $(k).value = s[k]; });
+    const list = $('kb-list');
+    list.innerHTML = '';
+    let kb = (data.kb && data.kb.length) ? data.kb : TOUR_PLACEHOLDERS;
+    kb.forEach((e) => addKb(e));
+    if (!list.children.length) addKb();
+    renumber();
+  } catch (e) { toast('Failed to load settings', 'error'); }
+}
+
+async function save() {
+  if (!$('business_name').value.trim()) { toast('Business name is required', 'error'); return; }
+  const settings = {};
+  SCALARS.forEach((k) => { if ($(k) != null) settings[k] = $(k).value; });
+  const kb = [];
+  document.querySelectorAll('#kb-list .kb-row').forEach((r) => {
+    const q = r.querySelector('.kb-q').value.trim();
+    const a = r.querySelector('.kb-a').value.trim();
+    if (q && a) kb.push({ q, a });
+  });
+  $('save').disabled = true;
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings, kb }),
+    });
+    const out = await r.json();
+    if (r.ok && out.ok) toast('Saved ✓ — live now, no restart needed', 'success');
+    else toast('Save failed: ' + (out.error || r.status), 'error');
+  } catch (e) { toast('Save failed — network error', 'error'); }
+  $('save').disabled = false;
+}
+
+async function loadScheduled() {
+  const box = $('sched-list');
+  try {
+    const r = await fetch('/api/followups');
+    const list = await r.json();
+    if (!list.length) { box.innerHTML = '<div class="empty">No scheduled messages.</div>'; return; }
+    box.innerHTML = '';
+    list.forEach((f) => {
+      const when = new Date(f.sendAt).toLocaleString();
+      const row = document.createElement('div');
+      row.className = 'kb-row';
+      row.style.background = '#fff';
+      const who = (f.contactName || f.rawNumber || '').toString();
+      const msg = (f.message || '').toString();
+      row.innerHTML =
+        '<div class="kb-head"><span class="n">⏰ ' + when + ' → ' +
+        who.replace(/</g, '&lt;') + '</span>' +
+        '<button class="btn btn-danger btn-sm" type="button">Cancel</button></div>' +
+        '<div style="font-size:0.85rem;color:#444">' + msg.replace(/</g, '&lt;').slice(0, 240) + '</div>';
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Cancel this scheduled message?')) return;
+        try {
+          const rr = await fetch('/api/followups/cancel', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: f.id }),
+          });
+          const out = await rr.json();
+          if (out.ok && out.removed) { toast('Scheduled message cancelled', 'success'); loadScheduled(); }
+          else toast('Could not cancel', 'error');
+        } catch (e) { toast('Cancel failed', 'error'); }
+      };
+      box.appendChild(row);
+    });
+  } catch (e) { box.innerHTML = '<div class="empty">Could not load scheduled messages.</div>'; }
+}
+
+$('add-kb').onclick = () => addKb();
+$('save').onclick = save;
+$('reload').onclick = () => { load(); loadScheduled(); };
+load();
+loadScheduled();
+</script>
+</body>
+</html>

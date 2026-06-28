@@ -1,4 +1,8 @@
-# Cay AI — Future Plans
+# Cay AI — B5 Reliability Spec (Daily Heartbeat + pm2)
+
+> **Scope:** This is the implementation spec for SOW item **B5 — Reliability layer**.
+> For the full product plan and all workstreams, see `docs/SCOPE_OF_WORK.md`.
+> For build status, see `docs/TODO.md`.
 
 ## Overview
 Add two things to make Cay AI production-ready for uptime:
