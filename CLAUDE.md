@@ -7,7 +7,7 @@ The agent does two things:
 1. Lets the business owner send AI-written WhatsApp messages via `!commands` from their own phone
 2. Automatically classifies and responds to inbound customer messages using AI
 
-**This is not a web app and has no database.** Storage is CSV files only. It runs as a single Node.js process — locally on a Mac via linked device (QR scan), or in Docker on a cloud droplet for live clients. The process serves one **password-gated, read-only analytics dashboard** (`dashboard.html` on `:3000`, bound to localhost + Tailscale) — this is intentional and in scope. Do not grow it into a management UI or add any other server surface.
+**This is not a web app and has no database.** Storage is CSV files only. It runs as a single Node.js process — locally on a Mac via linked device (QR scan), or in Docker on a cloud droplet for live clients. The process serves one **password-gated operator console** on `:3000` (bound to localhost + Tailscale): Logs/analytics (`dashboard.html`), ROI (`roi.html`), Contacts (`contacts.html`), and Settings + Knowledge Base (`settings.html`). This per-instance console is intentional and in scope — the client operator uses it to configure their AI and see results. Hard boundaries: it never sends or approves customer messages (that stays in WhatsApp), it is not multi-tenant, it adds no new auth surface (one session/cookie/lockout model), and it is never exposed publicly. Set `DASHBOARD_ONLY=true` to run the console without the WhatsApp client.
 
 ---
 
@@ -27,8 +27,10 @@ cayai-agent/
 ├── index.js              ← ALL agent logic — one file by design (~3,350 lines)
 ├── package.json
 ├── start.command         ← Mac double-click launcher
-├── contacts.html         ← Local browser-based contact manager
-├── dashboard.html        ← Read-only analytics dashboard (served on :3000, password-gated)
+├── contacts.html         ← Operator console: contact manager (served on :3000)
+├── dashboard.html        ← Operator console: logs/analytics (served on :3000, password-gated)
+├── roi.html              ← Operator console: ROI summary (bookings, leads, hours saved)
+├── settings.html         ← Operator console: settings + knowledge-base editor
 ├── Dockerfile            ← Cloud/Docker deployment
 ├── docker-compose.yml    ← Container config (auto-restart: unless-stopped)
 ├── entrypoint.sh         ← Container startup
@@ -262,8 +264,9 @@ Owner sends !send John follow up on proposal
 ## What Never To Do
 - Do not split index.js into multiple files
 - Do not add a database dependency
-- Do not add any new server surface beyond the existing read-only analytics dashboard, and do not expand that dashboard into a management UI
-- Do not expose the dashboard without `DASHBOARD_PASSWORD` set (the agent refuses to start it otherwise)
+- Do not add a new server surface or a second port beyond the existing `:3000` operator console, and do not make it multi-tenant or add a second auth model
+- Do not add customer-message sending or approval to the console — message preview/approve/send stays in WhatsApp; the console is config + visibility only
+- Do not expose the console publicly or without `DASHBOARD_PASSWORD` set (the agent refuses to start it otherwise)
 - Do not auto-send any message without owner preview and approval (except auto-replies to inbound)
 - Do not resolve a complaint automatically — always route to human
 - Do not trigger opt-out on a bare "stop" — requires multi-word phrase

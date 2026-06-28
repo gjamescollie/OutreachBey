@@ -163,6 +163,13 @@
     <div id="kb-list"></div>
     <button class="btn btn-secondary btn-sm" id="add-kb">+ Add question</button>
   </div>
+
+  <!-- SCHEDULED MESSAGES -->
+  <div class="card">
+    <h2>Scheduled messages</h2>
+    <div class="sub">Pending follow-ups queued via WhatsApp <code>!schedule</code>. Cancel any that are no longer needed.</div>
+    <div id="sched-list"><div class="empty">Loading…</div></div>
+  </div>
 </div>
 
 <div class="savebar">
@@ -265,10 +272,47 @@ async function save() {
   $('save').disabled = false;
 }
 
+async function loadScheduled() {
+  const box = $('sched-list');
+  try {
+    const r = await fetch('/api/followups');
+    const list = await r.json();
+    if (!list.length) { box.innerHTML = '<div class="empty">No scheduled messages.</div>'; return; }
+    box.innerHTML = '';
+    list.forEach((f) => {
+      const when = new Date(f.sendAt).toLocaleString();
+      const row = document.createElement('div');
+      row.className = 'kb-row';
+      row.style.background = '#fff';
+      const who = (f.contactName || f.rawNumber || '').toString();
+      const msg = (f.message || '').toString();
+      row.innerHTML =
+        '<div class="kb-head"><span class="n">⏰ ' + when + ' → ' +
+        who.replace(/</g, '&lt;') + '</span>' +
+        '<button class="btn btn-danger btn-sm" type="button">Cancel</button></div>' +
+        '<div style="font-size:0.85rem;color:#444">' + msg.replace(/</g, '&lt;').slice(0, 240) + '</div>';
+      row.querySelector('button').onclick = async () => {
+        if (!confirm('Cancel this scheduled message?')) return;
+        try {
+          const rr = await fetch('/api/followups/cancel', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: f.id }),
+          });
+          const out = await rr.json();
+          if (out.ok && out.removed) { toast('Scheduled message cancelled', 'success'); loadScheduled(); }
+          else toast('Could not cancel', 'error');
+        } catch (e) { toast('Cancel failed', 'error'); }
+      };
+      box.appendChild(row);
+    });
+  } catch (e) { box.innerHTML = '<div class="empty">Could not load scheduled messages.</div>'; }
+}
+
 $('add-kb').onclick = () => addKb();
 $('save').onclick = save;
-$('reload').onclick = load;
+$('reload').onclick = () => { load(); loadScheduled(); };
 load();
+loadScheduled();
 </script>
 </body>
 </html>

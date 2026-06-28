@@ -3497,6 +3497,35 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       return;
     }
 
+    // Scheduled messages — GET lists pending, POST /cancel removes one by id.
+    if (pathname === '/api/followups' && req.method === 'GET') {
+      const list = [...followUps].sort((a, b) => a.sendAt - b.sendAt)
+        .map(f => ({ id: f.id, rawNumber: f.rawNumber, contactName: f.contactName || '',
+                     message: f.message, sendAt: f.sendAt }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(list));
+      return;
+    }
+    if (pathname === '/api/followups/cancel' && req.method === 'POST') {
+      let body = '';
+      req.on('data', d => { if (body.length < 4096) body += d; });
+      req.on('end', () => {
+        try {
+          const { id } = JSON.parse(body);
+          const before = followUps.length;
+          followUps = followUps.filter(f => String(f.id) !== String(id));
+          const removed = before - followUps.length;
+          if (removed) saveFollowUps();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, removed }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+      return;
+    }
+
     res.writeHead(404);
     res.end();
   }).listen(3000);

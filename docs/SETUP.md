@@ -236,6 +236,33 @@ the legacy single-owner Mac setup, but **not** for a shared-number client.
 
 ---
 
+## Operator Console (browser)
+
+The agent serves a password-gated console on `:3000` (localhost + Tailscale). Set a strong
+`DASHBOARD_PASSWORD` in `.env` — the agent refuses to start the console without one. Tabs:
+
+| Tab | Path | What it does |
+|---|---|---|
+| 📊 Logs | `/` | Live message log with filters |
+| 📈 Analytics | `/analytics` | Detailed log-based charts |
+| 💰 ROI | `/roi` | Bookings confirmed, hot leads captured, owner hours saved, response speed (7/30/90-day) |
+| 👥 Contacts | `/contacts` | Add/edit/delete/import/export contacts |
+| ⚙️ Settings | `/settings` | Edit all settings + the 40-slot knowledge base in a form |
+
+**Web onboarding:** the Settings tab is the fast way to configure a new client — fill in the
+business basics, operations, and knowledge base, and Save. It writes `settings.csv` atomically
+and takes effect immediately (no restart). The WhatsApp `!setup` wizard still works as a
+fallback. Operator notifications/replies and message approval stay in WhatsApp — the console is
+configuration + visibility only.
+
+**ROI tuning:** owner-hours-saved is an estimate = auto-answered messages × `minutes_saved_per_msg`
+(a settings key, default 2). Adjust that key to match the client's real handling time.
+
+**Run the console without WhatsApp:** `DASHBOARD_ONLY=true node index.js` starts the console
+alone (no QR / linked device) — handy for onboarding prep or reviewing a client's data.
+
+---
+
 ## Switching AI Providers / Models
 Edit `AI_PROVIDER` and `AI_MODEL` in `.env`. Add the matching API key. Restart the agent (or rebuild the container on Docker).
 
