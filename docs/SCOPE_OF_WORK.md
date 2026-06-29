@@ -122,7 +122,7 @@ of the problem, never with price. (Brand Voice §9, Locked Decisions §12.)
 | B6 | Hosting hardening | **CI/CD already exists** (`deploy.yml` auto-deploys to one droplet on push to `main`, Tailscale-served). Remaining: generalise from the single hardcoded path (`/root/cay-cay-ai-client1`) to repeatable **multi-client provisioning**; document the per-client runbook |
 | B7 | Onboarding template | Annotated tourism `settings.csv` + step list so a new tourism client is configured in under an hour. **Builds on the existing `defaults/settings.csv`, `!setup` wizard, and `!addcontact`** |
 | B8 | Pre-flight test pass | Extend the **existing `tests/index.test.js` / `npm test` harness**: all KB entries auto-answer ≥75% confidence; setup wizard preserves locked fields; opt-out fast-path verified |
-| B9 | Operator web console | **Promoted to priority by founder.** Per-instance, password-gated browser console that *complements* WhatsApp (no in-browser customer-message send/approve). **U1 — web Settings + KB editor (DONE):** `settings.html` + `/api/settings`, replaces the 18-step `!setup` for onboarding. **U2 — server-computed ROI/analytics (DONE):** `roi.html` + `/api/analytics` (bookings, leads, owner hours saved). **U3 — scheduled-message view/cancel (planned).** Added `DASHBOARD_ONLY=true` to run the console without WhatsApp. Boundaries: not multi-tenant, no new auth surface, never public |
+| B9 | Operator web console | **Promoted to priority by founder.** Per-instance, password-gated browser console that *complements* WhatsApp (no in-browser customer-message send/approve). **Full 4-page dashboard delivered:** Logs (`logs.html`), Analytics (`analytics.html`), Contacts (`contacts.html`), Settings (`settings.html`). **Dashboard UX upgrade (DONE):** system health panel on Logs (WhatsApp state, uptime, memory, messages today), two-tab Settings (Business Settings / Operations), collapsible sections, industry KB Quick Start templates (7 verticals × 6 Q&A), AI model selector in Operations tab, responsive design at 900px and 600px across all 4 pages, `waState` variable tracking connection state in `index.js`, `waState` + `memMB` added to `/api/logs` response. **U3 — scheduled-message view/cancel (planned).** Added `DASHBOARD_ONLY=true` to run the console without WhatsApp. Boundaries: not multi-tenant, no new auth surface, never public |
 
 **Build constraints (inherited, non-negotiable):** single `index.js` — do not split into
 modules; no database; no message to a customer that bypasses the autonomy/escalation rules;
@@ -214,7 +214,8 @@ run in parallel — that's what makes 30 days viable.
 
 ---
 
-*Founder-confirmed and locked; v1.1 reconciled against the live repo. Shipped: B3 increment 1,
-B9 (full operator web console), B1 (intent tuning), B2 (tourism KB template). Critical-path
-remaining: B4 (qualify + handoff), B3 increment 2, B5 (reliability), B6 (multi-client), B7, B8.
-For live build status see `docs/TODO.md`.*
+*Founder-confirmed and locked; v1.2 updated June 2026. Shipped: B3 increment 1, B9 (full
+4-page operator web console + UX upgrade: health panel, two-tab Settings, industry KB
+templates, responsive design, waState tracking), B1 (intent tuning), B2 (tourism KB template).
+Critical-path remaining: B4 (qualify + handoff), B3 increment 2, B5 (reliability), B6
+(multi-client), B7, B8. For live build status see `docs/TODO.md`.*

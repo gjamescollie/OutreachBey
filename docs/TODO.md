@@ -12,6 +12,7 @@
 |---|---|---|
 | B3-inc1 | Control-channel routing (`getControlChannel`, `control_channel` setting) | ✅ Done |
 | B9 | Operator web console (Settings/KB, ROI, Contacts, Scheduled msgs, nav) | ✅ Done |
+| B9-ux | Dashboard UX upgrade — health panel, two-tab Settings, industry KB templates, responsive design, waState tracking | ✅ Done |
 | B2 | Tourism KB template (`demo/settings_tour.csv` + `defaults/settings_tour.csv`) | ✅ Done |
 | B1 | Tourism intent tuning — `classifyIntent()` uses `business_context`; tourism examples added | ✅ Done |
 | B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ⬜ Pending |
