@@ -1,43 +1,63 @@
 # Cay AI — Handoff Guide
 
-This document contains everything a new developer (or future-you returning after a break) needs to understand, run, and extend Cay AI without re-reading the full conversation history.
+Everything a new developer (or future-you returning after a break) needs to understand, run, and extend Cay AI without re-reading the full conversation history.
 
 ---
 
 ## The Short Version
-Cay AI is a Node.js WhatsApp agent that:
+Cay AI is a Node.js WhatsApp agent + operator dashboard that:
 1. Connects to WhatsApp via a linked device (QR scan, like WhatsApp Web)
-2. Lets the owner send AI-written outreach messages via WhatsApp commands
+2. Lets the owner send AI-written outreach messages via `!commands` from WhatsApp
 3. Automatically classifies and responds to inbound messages using AI
 4. Stores everything in CSV files — no database
+5. Serves a password-gated operator console on `:3000` (Logs, Analytics, Contacts, Settings)
 
-It runs on a Mac. One instance per client. Each client has their own WhatsApp number and folder.
+One instance per client. Each client has their own WhatsApp number and Docker container on their own droplet.
 
 ---
 
-## Credentials & Keys (Cay AI instance)
-- **WhatsApp number:** 12425254093 (Lucayan Labs)
+## Credentials & Keys
 - **OpenRouter API key:** in `.env` as `OPENROUTER_API_KEY`
-- **AI model:** `anthropic/claude-haiku-4-5` via OpenRouter
+- **Default AI model:** `anthropic/claude-haiku-4-5` via OpenRouter
+- **Dashboard password:** in `.env` as `DASHBOARD_PASSWORD` (never commit)
 - **Calendar:** https://calendly.com/gjamescollie/30min
-- **Pricing:** $49 / $129 / $299 per month
 
 ---
 
-## Quick Start
+## Running Locally (Mac)
+
 ```bash
-cd '/path/to/cayai-agent'
-npm install --ignore-scripts       # first time only
-# then double-click start.command
-# or:
-PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node index.js
+# First time
+npm install --ignore-scripts
+
+# Start (double-click or terminal)
+DASHBOARD_PASSWORD=yourpassword node index.js
+# or just double-click start.command
+```
+
+Dashboard at `http://localhost:3000` — password from `.env`.
+
+## Running in Docker
+
+```bash
+# Start
+docker compose up -d
+
+# View logs
+docker compose logs -f outreachbey
+
+# Stop
+docker compose down
+
+# Full rebuild after code changes
+docker compose build --no-cache && docker compose up -d
 ```
 
 ---
 
-## How to Test the AI Connection
+## Testing AI Connection
+
 ```bash
-cd '/path/to/cayai-agent'
 node -e "
 require('dotenv').config();
 fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -49,147 +69,147 @@ fetch('https://openrouter.ai/api/v1/chat/completions', {
     'X-Title': 'Cay AI',
   },
   body: JSON.stringify({
-    model: process.env.AI_MODEL || 'anthropic/claude-haiku-4-5',
+    model: 'anthropic/claude-haiku-4-5',
     max_tokens: 50,
     messages: [{ role: 'user', content: 'Reply with the word WORKING' }]
   })
-}).then(r => r.json()).then(d => console.log(JSON.stringify(d, null, 2))).catch(console.error);
+}).then(r => r.json()).then(d => console.log(d?.choices?.[0]?.message?.content)).catch(console.error);
 "
 ```
-A good response has `choices[0].message.content` containing "WORKING". An error response will have an `error` key with a message describing what's wrong (usually invalid model name or bad API key).
+
+Should print `WORKING`. An `error` key in the response means bad API key or invalid model.
 
 ---
 
-## Code Map (index.js sections in order)
+## index.js Section Map (in order)
 
 | Section | What it does |
 |---|---|
 | `require / dotenv` | Load env vars |
-| `AI_PROVIDER / AI_MODEL` | Config from .env |
 | `callAI()` | Routes AI calls to correct provider, returns `{ text, tokens }` |
-| `generateMessage()` | Builds system prompt from settings + contact, calls AI, returns `{ message, tokens }` |
+| `generateMessage()` | Builds system prompt from settings + contact, calls AI |
 | `generateCheckin()` | Same but for check-in messages |
-| `buildTemplateFallback()` | Template-based fallback if AI fails |
+| `buildTemplateFallback()` | Template fallback if AI fails |
 | `parseCSV()` | Reads CSV files, skips comment lines |
 | `appendToLog()` | Writes to log.csv |
-| `updateLastContacted()` | Updates last_contacted in contacts.csv |
+| `updateLastContacted()` | Updates contacts.csv |
 | `getSettings()` | Returns settings.csv as key/value object |
-| `findContact()` | Looks up contact by number |
-| `findContactByName()` | Looks up contacts by name (partial match) |
+| `findContact()` | Lookup by number |
+| `findContactByName()` | Lookup by name (partial match) |
 | `resolveRecipient()` | Accepts name or number, returns `{ resolved, rawNumber, contact }` |
-| `getContactsByTag()` | Returns all contacts with a given tag |
-| `getFAQAnswer()` | Keyword-based KB lookup (used for `!faq` command) |
-| `getStats()` | Reads log.csv and returns counts |
+| `getContactsByTag()` | Returns contacts with a given tag |
+| `getFAQAnswer()` | Keyword-based KB lookup |
+| `getStats()` | Reads log.csv, returns counts + ROI metrics |
 | `loadFollowUps() / saveFollowUps()` | followups.json persistence |
 | `pendingPreviews` | In-memory store for messages awaiting yes/no approval |
 | `pendingPurpose` | In-memory store for commands awaiting purpose selection |
 | `MESSAGE_PURPOSES` | 5 purpose categories with AI guidance strings |
 | `SETUP_STEPS` | 18-step setup wizard definition |
-| `saveSettings()` | Writes settings.csv, preserving fields not covered by setup |
+| `saveSettings()` | Writes settings.csv, preserving fields not in wizard |
 | `handleSetup()` | Setup wizard state machine |
+| `waState` | Tracks WA connection: `connecting` / `connected` / `disconnected` |
 | `CLIENT SETUP` | whatsapp-web.js client initialization |
-| `message_create listener` | Handles owner commands (!send, !checkin etc.) |
-| `INBOUND MESSAGE HANDLER` | AI classifier + 10 intent handlers |
-| `handleInbound()` | Routes inbound messages by classified intent |
-| `message listener` | Fires handleInbound for non-owner incoming messages |
+| `message listener` | Inbound handler — fires handleInbound() |
+| `message_create listener` | Owner command handler — !send, !checkin, !broadcast etc. |
+| `handleBroadcastApproval()` | Loops through contacts and sends broadcast |
 | `startFollowUpChecker()` | 30s interval, fires due scheduled messages |
+| `classifyIntent()` | AI intent classifier |
+| `handleInbound()` | Routes inbound by classified intent |
+| `HEALTH + DASHBOARD` | HTTP server on :3000, all /api/* endpoints |
 | `client.initialize()` | Starts everything |
 
 ---
 
-## Key Functions to Know
+## Key Functions
 
 ### `resolveRecipient(input)`
-Takes a name or number string. Returns:
 ```javascript
 { resolved: true, rawNumber: '12425550100', contact: {...} }
 // or
-{ resolved: false, reply: 'Error message to send back' }
+{ resolved: false, reply: 'Error message to send back to owner' }
 ```
 
 ### `callAI(systemPrompt, userPrompt, maxTokens)`
-Returns: `{ text: string | null, tokens: number }`
-Never throws — returns `{ text: null, tokens: 0 }` on failure.
+Returns `{ text: string | null, tokens: number }`. Never throws.
 
 ### `generateMessage(intent, contact, settings, tokenLimit, purposeGuide)`
-Returns: `{ message: string, tokens: number }`
-Falls back to template if AI fails.
+Returns `{ message: string, tokens: number }`. Falls back to template if AI fails.
 
 ### `classifyIntent(message, contact, settings)`
-Returns:
-```javascript
-{ intent: 'DEMO', confidence: 0.95, kb_index: null, reasoning: '...', tokens: 730 }
-```
-Returns `null` if AI call fails or JSON can't be parsed.
+Returns `{ intent, confidence, kb_index, reasoning, tokens }` or `null` if AI fails.
 
 ### `saveSettings(data)`
-Reads existing settings first, merges new values, preserves `calendar_link`, `response_window`, `token_limit_*`, and existing KB entries. Safe to call multiple times.
+Always reads existing settings first and merges. Safe to call from the web console without wiping operator-configured fields.
 
 ---
 
-## Adding a New Command
+## How to Add a New Command
 1. Add a handler block in the `message_create` listener following the existing pattern
 2. Use `resolveRecipient(input)` for any command that takes a name/number
-3. If it involves AI writing, call `generateMessage()` and put result in `pendingPreviews`
+3. If it involves AI writing, call `generateMessage()` and store in `pendingPreviews`
 4. Add the command to the `!help` reply string
-5. Document it in `docs/SETUP.md`
 
-## Adding a New Inbound Intent
-1. Add the intent string to the classifier's system prompt in `classifyIntent()`
-2. Add a `case 'YOUR_INTENT':` block in the switch statement in `handleInbound()`
-3. Document it in `docs/SETUP.md` inbound table
+## How to Add a New Inbound Intent
+1. Add the intent string to the classifier system prompt in `classifyIntent()`
+2. Add a `case 'YOUR_INTENT':` block in `handleInbound()`
 
-## Adding a New AI Provider
-1. Add a new `if (AI_PROVIDER === 'yourprovider')` block in `callAI()`
-2. Follow the existing pattern — return `{ text, tokens }`
-3. Add the API key to `.env` template
-4. Document the model name format
+## How to Add a New API Endpoint
+1. Add an `if (pathname === '/api/your-endpoint')` block in the HTTP server section
+2. Follow the auth pattern — check `authOk(req)` is already done above this block
+3. Return JSON with `res.writeHead(200, { 'Content-Type': 'application/json' })`
 
 ---
 
-## Current State (as of last build)
+## Deploying a New Client
+
+1. SSH to the droplet (or provision a new one)
+2. Run the one-command deploy:
+   ```bash
+   bash <(curl -s https://raw.githubusercontent.com/gjamescollie/OutreachBey/main/deploy.sh) \
+     client_name openrouter_api_key whatsapp_number
+   ```
+3. Stream the QR code and scan with the client's WhatsApp (Linked Devices → Link a Device)
+4. Once `🚀 ... WhatsApp Agent is live!` appears, the agent is running
+5. Share the Tailscale IP + dashboard password with the client
+6. Have client run `!setup` in WhatsApp to configure their business details
+
+---
+
+## If WhatsApp Stops Responding
+
+1. Check logs: `docker compose logs --tail=60 outreachbey`
+2. If session is corrupted: `docker compose down && rm -rf .wwebjs_auth && docker compose up -d`
+3. Scan the new QR code that appears in the logs
+
+## If Dashboard Shows No Data
+
+- Contacts and logs live in `~/cay-cay-ai-client1/data/` on the droplet — **not in the repo**
+- Copy real data from source machine: `scp ./data/contacts.csv root@<ip>:~/cay-cay-ai-client1/data/`
+- No restart needed — files are read fresh on every request
+
+---
+
+## Current State
 
 ### Working
-- All outbound commands with name/number lookup
-- Purpose selection (5 categories)
-- Preview/approval flow for !send, !checkin, !broadcast
-- AI inbound classifier with 10 intent categories
+- All outbound commands (`!send`, `!checkin`, `!broadcast`, `!schedule`, `!sendnoai`)
+- Purpose selection (5 categories) + preview → approve flow
+- AI inbound classifier (14 intents, confidence-gated)
+- `ON_THE_FENCE_BUYER` soft-nudge + owner review
 - Hybrid opt-out (keyword fast-path + AI confirmation)
-- 20-entry knowledge base
-- Setup wizard (!setup / !cancelsetup)
+- Knowledge base (up to 40 Q&A entries) for QUESTION intents
+- Setup wizard (`!setup` / `!cancelsetup`, 18 steps)
+- `!followuplist` — contacts not messaged in 30+ days
 - Token tracking in terminal and log.csv
-- response_window in system prompts
-- @c.us and @lid both handled
-
-### Known Issues / Debug Items
-- **Debug logging is still active** — `📩 Raw message event` lines print on every inbound message. Remove before production by simplifying the `message` listener (remove the console.log lines).
-- **KB match for questions** — confidence can be low if the question phrasing doesn't match KB entry wording. Improve KB entries with more natural question phrasings.
+- Operator console: Logs, Analytics, Contacts, Settings (4 pages)
+- System health panel (WhatsApp state, memory, uptime)
+- Industry KB templates (7 industries, client-side)
+- Live model switching via Settings page
+- Responsive design across all dashboard pages
+- Docker auto-deploy via GitHub Actions on push to main
 
 ### Not Yet Built
-See `docs/TODO.md` for full list. Key gaps:
-- Windows support
-- Cloud deployment
-- !addcontact command
-- Multi-number (Pro tier)
-
----
-
-## Deploying for a New Client
-1. Copy the entire folder
-2. Clear `/.wwebjs_auth/` (so it prompts for a fresh QR scan)
-3. Reset `followups.json` to `[]`
-4. Reset `data/log.csv` to header only
-5. Update `data/contacts.csv` with client's contacts
-6. Have client run `!setup` to configure their business
-7. Update `.env` if using a different API key
-8. Run `chmod +x start.command` on the client's machine
-9. Scan QR with client's WhatsApp number
-
----
-
-## File Sizes & Performance Notes
-- `index.js` is ~1,340 lines — all logic in one file by design for portability
-- CSV parsing reads the full file on every operation — fine for hundreds of contacts, revisit at thousands
-- AI calls add 1-3 seconds latency per message — acceptable for WhatsApp
-- Token cost: ~$0.001 per outbound message, ~$0.0003 per inbound classification
-- 1,000 inbound messages ≈ $0.30 in AI costs
+- Windows support (`start.bat`)
+- Multi-number support (Pro tier)
+- `!addcontact` command
+- Inbound auto-reply outside `response_window`

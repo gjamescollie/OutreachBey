@@ -1,36 +1,62 @@
 # Cay AI — Architecture
 
 ## Stack
-- **Runtime:** Node.js v18+ (tested on v24)
+- **Runtime:** Node.js v18+
 - **WhatsApp layer:** whatsapp-web.js (linked device via Puppeteer)
-- **Browser:** System Google Chrome (not Puppeteer's bundled Chrome)
-- **AI:** OpenRouter API (default model: `anthropic/claude-haiku-4-5`)
-- **Storage:** CSV files (no database)
+- **Browser (Mac):** System Google Chrome — hardcoded path `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+- **Browser (Docker):** Chromium installed in container — path set via `PUPPETEER_EXECUTABLE_PATH`
+- **AI:** OpenRouter API (default model: `anthropic/claude-haiku-4-5`) — also supports Anthropic, OpenAI, Google direct
+- **Storage:** CSV files only — no database
 - **Config:** `.env` file
 
 ## File Structure
 ```
-cayai-agent/
-├── index.js              ← All agent logic
-├── package.json          ← Dependencies
-├── start.command         ← Mac double-click launcher
-├── contacts.html         ← Local browser-based contact manager
-├── .env                  ← API keys and provider config (never commit)
-├── followups.json        ← Scheduled messages (auto-managed)
-└── data/
+OutreachBey/
+├── index.js              ← ALL agent + server logic (~3,800 lines, one file by design)
+├── package.json
+├── logs.html             ← Operator console: live logs + system health
+├── analytics.html        ← Operator console: ROI + analytics
+├── contacts.html         ← Operator console: contact manager CRM
+├── settings.html         ← Operator console: settings + KB editor
+├── Dockerfile
+├── docker-compose.yml
+├── entrypoint.sh         ← Seeds data/ on first run, clears Chromium locks, starts agent
+├── deploy.sh             ← One-command droplet provisioner
+├── .github/workflows/deploy.yml  ← Auto-deploys to droplet on push to main
+├── defaults/             ← Template settings.csv for new client onboarding
+├── demo/                 ← Industry demo personas (settings + KB) for live demos
+├── docs/                 ← Architecture, project, handoff, decisions
+├── tests/                ← index.test.js
+├── .env                  ← API keys + DASHBOARD_PASSWORD (never commit)
+├── followups.json        ← Scheduled messages (volume-mounted, not in repo)
+└── data/                 ← Volume-mounted, never committed
     ├── settings.csv      ← Business config, tone, KB, token limits
     ├── contacts.csv      ← Contact list
-    └── log.csv           ← All messages sent and received with tokens
+    └── log.csv           ← All messages sent/received with tokens
 ```
 
+**One file by design.** Do not split `index.js` into modules. Portability is a core product requirement — each client deployment is a single folder.
+
+## Operator Console
+Static HTML files served by the Node.js HTTP server on `:3000`. Auth is a single session cookie (`dash_session`) checked on every request. Pages fetch data from `/api/*` JSON endpoints.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/logs` | GET | Paginated log entries + system health (waState, memMB, uptime) |
+| `/api/analytics` | GET | Aggregated stats for a day range |
+| `/api/contacts` | GET/POST | Read or write contacts.csv |
+| `/api/settings` | GET/POST | Read or write settings.csv + KB |
+| `/api/followups` | GET | List scheduled messages |
+| `/api/followups/cancel` | POST | Cancel a scheduled message |
+| `/api/model` | POST | Switch AI model live (no restart) |
+| `/health` | GET | No-auth health check |
+
 ## WhatsApp Connection
-- Uses `whatsapp-web.js` with `LocalAuth` — session persists after first QR scan
+- Uses `whatsapp-web.js` with `LocalAuth` — session persists after first QR scan in `.wwebjs_auth/`
 - Connects as a **linked device** (like WhatsApp Web), not the Meta Cloud API
-- This avoids phone number verification requirements but is technically against WhatsApp ToS
-- Two event listeners:
-  - `message_create` — fires on messages the **owner sends** (command interface)
-  - `message` — fires on messages **received from contacts** (inbound handler)
-- Both `@c.us` and `@lid` sender formats are supported (WhatsApp changed format for some accounts)
+- Both `@c.us` and `@lid` sender formats are handled
+- `waState` variable tracks connection: `'connecting'` → `'connected'` (on ready) → `'disconnected'` (on disconnect)
+- Auto-reconnect: up to 3 attempts with 5s/10s/15s delays
 
 ## AI Layer
 All AI calls go through `callAI(systemPrompt, userPrompt, maxTokens)` which routes based on `AI_PROVIDER` in `.env`:
@@ -39,9 +65,9 @@ All AI calls go through `callAI(systemPrompt, userPrompt, maxTokens)` which rout
 - `openai` — OpenAI API direct
 - `google` — Google Gemini API direct
 
-Model is set via `AI_MODEL` in `.env`. Every call returns `{ text, tokens }` and logs token usage to terminal and `log.csv`.
+Model is switchable live via the Settings page (calls `POST /api/model`) without restart. Returns `{ text, tokens }` — never throws.
 
-### Token Limits (configurable in settings.csv)
+### Token Limits (configurable in Settings)
 | Setting | Default | Used for |
 |---|---|---|
 | `token_limit_send` | 300 | !send, !schedule outbound messages |
@@ -54,45 +80,35 @@ Model is set via `AI_MODEL` in `.env`. Every call returns `{ text, tokens }` and
 Contact sends message
         ↓
 Hard opt-out keyword check (instant, no AI)
-  → "stop messages", "unsubscribe" etc.
+  "stop messages", "unsubscribe", "remove me from" etc.
         ↓
-AI Intent Classifier (classifyIntent)
-  → Returns: { intent, confidence, kb_index, reasoning }
+AI Intent Classifier → { intent, confidence, kb_index, reasoning }
         ↓
 Confidence gate:
   < 0.45  → escalate to owner, no auto-action
-  0.45-0.75 → notify owner with suggested reply
+  0.45–0.75 → notify owner with suggested reply
   > 0.75  → act automatically
         ↓
 Route by intent:
-  OPT_OUT | DEMO | CALL | HOT_LEAD | QUESTION
-  COMPLAINT | BOOKING_CONFIRMATION | REFERRAL | GREETING | OTHER
-```
-
-### Confidence Thresholds
-```javascript
-const AUTO_ACT_THRESHOLD = 0.75;  // above this → auto-act
-const SUGGEST_THRESHOLD  = 0.45;  // below this → always escalate
+  OPT_OUT | DEMO | CALL | HOT_LEAD | ON_THE_FENCE_BUYER
+  QUESTION | COMPLAINT | BOOKING_CONFIRMATION | REFERRAL
+  GREETING | ACKNOWLEDGEMENT | CONVERSATION_CONTINUATION
+  PERSONAL_CONVERSATION | WRONG_NUMBER | OTHER
 ```
 
 ## Outbound Message Flow
 ```
 Owner sends !send John follow up on proposal
         ↓
-Resolve recipient (name or number lookup)
+resolveRecipient() — name or number lookup
         ↓
-Ask purpose (1-5 categories)
+PURPOSE_PROMPT sent to owner (5 categories)
         ↓
-AI generates message with:
-  - Contact name, business, notes
-  - Business context + custom instructions
-  - Tone + language style + response_window
-  - Message length + avoid_words
-  - Purpose guide
+generateMessage() with contact + purpose + settings
         ↓
-Show preview → owner approves with "yes" / "no"
+Preview shown to owner → "yes" / "no"
         ↓
-Send + log + update last_contacted
+Send + log + updateLastContacted()
 ```
 
 ## CSV Schema
@@ -102,72 +118,51 @@ Send + log + update last_contacted
 key,value
 business_name, owner_number, tone, signature
 business_context, custom_instructions, message_length, language_style, avoid_words
-response_window
-calendar_link
+response_window, calendar_link, control_channel, ai_model
 token_limit_send, token_limit_checkin, token_limit_broadcast
-faq_1_q, faq_1_a ... faq_20_q, faq_20_a
+faq_1_q, faq_1_a ... faq_40_q, faq_40_a
 ```
-Comment lines starting with `#` are ignored by the parser.
 
 ### contacts.csv
 ```
-number, name, business, tags, notes, last_contacted
+number, name, business, tags, notes, last_contacted, email, industry
 ```
-Tags are used for `!broadcast [tag]`. Reserved tag: `inactive` (opt-out).
+- Numbers in international format, no `+` or spaces (`12425550100`)
+- `tags` space-separated: `lead`, `client`, `vip`, `inactive`, `stage:demo` etc.
+- `inactive` tag = opted out — agent will not message them
 
 ### log.csv
 ```
-timestamp, to_number, to_name, message, status, tokens
+timestamp, to_number, to_name, message, status, tokens, confidence, direction, command
 ```
-Status values: `sent`, `received`, `auto-replied`, `opt-out`, `hot-lead`, `demo`, `call`, `complaint`, `booking`, `referral`, `greeting`, `needs-reply`, `unhandled`, `possible-opt-out`
-
-## Mac-Specific Setup
-- Chrome path: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` — selected automatically when `IS_DOCKER` is not set
-- Docker path: `/usr/bin/chromium` — selected when `IS_DOCKER=true` (set by docker-compose)
-- `PROXY_URL` env var injects `--proxy-server=<url>` into Chromium args at launch (both Mac and Docker)
-- `start.command` is a bash launcher that handles dependencies, quarantine flags, and Chrome path
-- Must run `chmod +x start.command` after each fresh download
-- `npm install --ignore-scripts` prevents Puppeteer from downloading its own Chrome
+Status values: `inbound`, `outbound`, `auto-reply`, `opt-out`, `demo`, `owner`, `outside`, `escalated` etc.
 
 ## Docker Deployment
 
-Each client runs as an isolated Docker container on a $6/mo DigitalOcean droplet.
+Each client runs as an isolated Docker container on a DigitalOcean droplet ($6/mo).
 
-### One-command deploy
-```bash
-bash <(curl -s https://raw.githubusercontent.com/gjamescollie/OutreachBey/main/deploy.sh) \
-  client_name api_key whatsapp_number
-```
-
-This script: installs Docker if missing → clones repo → writes `.env` → scaffolds `data/` → builds image → starts container → streams QR code to terminal.
-
-### Container layout
-| Path in container | Host mount | Purpose |
+### Container volume mounts
+| Path in container | Host path | Purpose |
 |---|---|---|
 | `/app/data/` | `./data/` | Settings, contacts, log CSV |
-| `/app/.wwebjs_auth/` | `./.wwebjs_auth/` | WhatsApp session (delete to re-scan) |
+| `/app/.wwebjs_auth/` | `./.wwebjs_auth/` | WhatsApp session (delete to re-scan QR) |
 | `/app/followups.json` | `./followups.json` | Scheduled messages |
 
-### Health endpoint
-`GET http://<droplet-ip>:3000/health` returns:
-```json
-{ "status": "ok", "client_id": "acme", "uptime": 3600 }
-```
-Hook this into UptimeRobot (5-min interval) for uptime alerts.
-
-### Environment variables
+### Key environment variables
 | Variable | Purpose |
 |---|---|
+| `DASHBOARD_PASSWORD` | Required — gates the operator console |
 | `CLIENT_ID` | Human-readable client name shown in `/health` |
-| `DATA_DIR` | Override data directory path (default: `./data`) |
-| `FOLLOWUPS_FILE` | Override followups.json path |
 | `AI_PROVIDER` | `openrouter` \| `anthropic` \| `openai` \| `google` |
 | `AI_MODEL` | Model string passed to provider |
-| `PROXY_URL` | `http://user:pass@ip:port` — static residential proxy injected into Chromium |
-| `IS_DOCKER` | Set by docker-compose — switches Chrome to `/usr/bin/chromium` |
+| `IS_DOCKER` | Set by docker-compose — switches Chrome to Chromium path |
+| `PUPPETEER_EXECUTABLE_PATH` | Full path to Chromium binary in container |
+| `PROXY_URL` | Optional residential proxy for WhatsApp connection |
+
+### Auto-deploy
+Push to `main` → GitHub Actions SSHs to droplet → `git pull` → `docker compose build --no-cache` → `docker compose up -d`
 
 ## Known Limitations
-- Single WhatsApp number per instance (Pro tier will support multi-number)
-- Agent must stay running (container must be up)
-- No Windows support yet (`start.bat` needed)
-- followups.json is in-memory + file — survives restarts but not corruption
+- Single WhatsApp number per instance (Pro tier: multi-number)
+- No Windows support (no `start.bat`)
+- CSV parsing reads full file on every operation — fine for hundreds of contacts, revisit at thousands
