@@ -11,6 +11,11 @@ node_modules/
 *.log
 logs/
 
+# Runtime data (Docker volumes — never commit)
+data/
+followups.json
+.wwebjs_auth/
+
 # System
 .DS_Store
 *.swp
