@@ -1459,17 +1459,27 @@ client.on('message_create', async (msg) => {
   const settings = getSettings();
   const bizName = settings.business_name || 'Lucayan Labs';
 
+  // ── B3-inc2: GROUP ORIGIN GUARD ──
+  // Only process commands from the operator's own chat or the configured Cay Control group.
+  // Commands from any other group the operator is in are silently ignored.
+  const _fromGroup = msg.from.endsWith('@g.us');
+  if (_fromGroup) {
+    const _controlChannel = getControlChannel(settings);
+    if (msg.from !== _controlChannel) return;
+  }
+
   // ── LOG ALL OWNER MESSAGES WITHOUT DISCRIMINATION ──
   // Every message the owner sends — commands, replies to agent prompts, manual texts — is recorded.
-  if (body && !msg.from.endsWith('@g.us')) {
-    const toChatId = msg.to || msg.from;
-    const toNumber = await resolveRealNumber(toChatId);
+  // Also log commands typed in the Cay Control group.
+  if (body && (!_fromGroup || msg.from === getControlChannel(settings))) {
+    const toChatId = _fromGroup ? msg.from : (msg.to || msg.from);
+    const toNumber = _fromGroup ? null : await resolveRealNumber(toChatId);
     const toContact = toNumber ? findContact(toNumber) : null;
     const toName = toContact ? toContact.name : (toNumber || 'self');
     const ownerSettings = getSettings();
     const ownerNum = (ownerSettings.owner_number || '').replace(/\D/g, '');
-    // Distinguish: message to self (agent commands/replies) vs message to a customer
-    const isToSelf = !toNumber || toNumber === ownerNum;
+    // Distinguish: message to self/group (agent commands) vs message to a customer
+    const isToSelf = _fromGroup || !toNumber || toNumber === ownerNum;
     const statusLabel = isToSelf ? 'owner:command' : 'owner:manual';
     appendToLog(isToSelf ? ownerNum : toNumber, isToSelf ? 'OWNER-SELF' : toName, `[OWNER] ${body}`, statusLabel, '', '', 'out', '');
   }
@@ -2638,14 +2648,14 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
   const bizName = settings.business_name || 'Cay AI';
   const sc = customerSessions[from] ? customerSessions[from].collected : {};
 
-  // AI: extract date, party size, and notes from their reply
+  // AI: extract date, party size, trip type, and notes from their reply
   const extractResult = await callAI(
     'You extract booking qualification data from a customer WhatsApp reply. Return ONLY valid JSON, no other text.',
-    `Original inquiry: "${pq.originalMessage.slice(0, 200)}"\nWe asked for date, group size, and any special requests.\nCustomer replied: "${body.slice(0, 300)}"\n\nExtract: {"date": string or null, "party_size": string or null, "notes": string or null}\nUse null for anything not mentioned.`,
-    150
+    `Original inquiry: "${pq.originalMessage.slice(0, 200)}"\nWe asked for date, group size, trip type, and any special requests.\nCustomer replied: "${body.slice(0, 300)}"\n\nExtract: {"date": string or null, "party_size": string or null, "trip_type": string or null, "notes": string or null}\nUse null for anything not mentioned.`,
+    180
   );
 
-  let aiDate = null, aiPartySize = null, aiNotes = null;
+  let aiDate = null, aiPartySize = null, aiTripType = null, aiNotes = null;
   if (extractResult.text) {
     try {
       const m = extractResult.text.replace(/```json/gi, '').replace(/```/g, '').trim().match(/\{[\s\S]*\}/);
@@ -2653,6 +2663,7 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
         const parsed = JSON.parse(m[0]);
         aiDate = parsed.date || null;
         aiPartySize = parsed.party_size || null;
+        aiTripType = parsed.trip_type || null;
         aiNotes = parsed.notes || null;
       }
     } catch (_) {}
@@ -2661,6 +2672,7 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
   // Session memory supplements AI extraction
   const date = aiDate || sc.date || null;
   const partySize = aiPartySize || sc.groupSize || null;
+  const tripType = aiTripType || sc.service || null;
   const notes = aiNotes || null;
   const time = sc.time || null;
 
@@ -2668,6 +2680,7 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
   if (customerSessions[from]) {
     if (date) customerSessions[from].collected.date = date;
     if (partySize) customerSessions[from].collected.groupSize = partySize;
+    if (tripType) customerSessions[from].collected.service = tripType;
   }
 
   // Check availability when date + time are both known
@@ -2690,6 +2703,7 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
     date      && `Date: ${date}`,
     time      && `Time: ${time}`,
     partySize && `Party: ${partySize}`,
+    tripType  && `Trip: ${tripType}`,
     notes     && `Notes: ${notes}`,
   ].filter(Boolean);
   const qualNotes = qualParts.join(' | ');
@@ -2707,6 +2721,7 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
     date      ? `*Date:* ${date}` : null,
     time      ? `*Time:* ${time}` : null,
     partySize ? `*Group:* ${partySize}` : null,
+    tripType  ? `*Trip type:* ${tripType}` : null,
     notes     ? `*Notes:* ${notes}` : null,
     ``,
     `*Inquiry:* "${pq.originalMessage.slice(0, 120)}"`,
@@ -3064,6 +3079,7 @@ async function handleInbound(msg) {
         const qualLines = [];
         if (!sc.date) qualLines.push(`📅 *What date* are you thinking?`);
         if (!sc.groupSize) qualLines.push(`👥 *How many people* in your group?`);
+        if (!sc.service) qualLines.push(`🚢 *What type of trip* are you interested in? (e.g. snorkel tour, sunset cruise, private charter)`);
         qualLines.push(`💬 *Any special requests* or questions?`);
         const qualifyMsg =
           `${firstName ? `Hey ${firstName}! ` : `Hey! `}We'd love to get you sorted 😊` +
