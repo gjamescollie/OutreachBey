@@ -3,7 +3,7 @@
 **Prepared for:** Granville Collie, Founder & CEO, Lucayan Labs
 **Prepared by:** Product (Claude Code), acting as senior PM
 **Date:** June 2026
-**Version:** 1.1 — Reconciled against repo audit (see §0 revision note)
+**Version:** 1.3 — Workstream C GTM kit complete; qualifying criteria expanded (see §4 C)
 **Governing document:** *Lucayan Labs Brand Architecture v1.0* (all locked decisions inherited)
 
 ---
@@ -135,14 +135,16 @@ surface, no in-browser customer-message send/approve, never public.)*
 
 ### Workstream C — Go-to-Market & Close (founder-led, Claude-supported)
 
-| ID | Deliverable | Detail |
-|---|---|---|
-| C1 | Target list | 10–15 Nassau boat-tour / fishing-charter / excursion / water-sports operators |
-| C2 | Outreach motion | Short DM/email sequence + call script anchored on the cost-of-problem story |
-| C3 | Live demo instance | **Demo verticals already built** (`TOUR`/`FOOD`/`REALTY`/`DRIVE`/`BEAUTY` in `demo/`). Remaining: stand up a dedicated always-on "Cay Receptionist Demo" number prospects can message live in a meeting |
-| C4 | Proposal + close | Proposal template populated per prospect; $2,500 + $499/mo, no discount |
-| C5 | Onboarding + go-live | KB build from operator's real FAQs, QR link to their number, staff training, go-live |
-| C6 | Success readout | After 2 weeks live: inquiries answered, leads captured, bookings influenced, hours saved → first case study |
+**Build complete (v1.3).** All GTM scripts, templates, and guides shipped to `brand/sales/`. Qualifying criteria expanded beyond tourism to cover all Nassau small businesses that take inbound WhatsApp inquiries (restaurants, salons/spas, real estate, car rental, driving services). C3 requires one founder action to go live (SIM + deployment). C4 and C6 are populated per prospect/client at execution time.
+
+| ID | Deliverable | Detail | Status |
+|---|---|---|---|
+| C1 | Target list | 12-prospect CRM across Nassau tourism, hospitality, and service sectors. Qualifying criteria: active WhatsApp, takes bookings or reservations, owner-operated or small team, Facebook/Maps presence. | ✅ Done — `brand/sales/target-list-tourism-c1.csv` |
+| C2 | Outreach motion | WhatsApp DM scripts for 5 business types + 48-hr follow-up; 3-touch email sequence with subject lines; 20-minute discovery call script with 6 objection handlers (price, trust, discount, competitor, capacity, timing). Anchor: cost-of-problem, never price. | ✅ Done — `outreach-dm-script-c2.md`, `outreach-email-sequence-c2.md`, `call-script-c2.md` |
+| C3 | Live demo instance | `demo/settings_tour.csv` "Blue Cay Charters" persona deployed to a dedicated Bahamian number; prospects message it live mid-call. Deployment guide written. **Founder action: buy BTC/Aliv SIM + run deployment steps.** | ✅ Done (guide) — `brand/sales/demo-setup-guide-c3.md` · ⬜ Founder: provision + deploy |
+| C4 | Proposal + close | Populate `brand/sales/proposal-template.html` per prospect within 2 hours of each positive call. No discount. 30-day cancel clause is the objection handler. Send as WhatsApp + email. | ✅ Done (process) — populate per prospect |
+| C5 | Onboarding + go-live | 10-topic structured KB intake (60-min call), go-live checklist (pre-session → QR scan → dashboard walkthrough → 48-hr check), staff briefing. Uses existing `demo/settings_tour.csv` as KB template. | ✅ Done — `onboarding-intake-form-c5.md`, `onboarding-checklist-c5.md` |
+| C6 | Success readout | 14-day ROI metrics (log.csv + contacts.csv via dashboard), client quote, standout booking example, case study seed, referral ask. Populate after first client Day 14. | ✅ Done (template) — `success-readout-template-c6.md` · ⬜ Populate after go-live |
 
 ---
 
@@ -216,8 +218,12 @@ run in parallel — that's what makes 30 days viable.
 
 ---
 
-*Founder-confirmed and locked; v1.2 updated June 2026. Shipped: B3 increment 1, B9 (full
+*Founder-confirmed and locked; v1.3 updated June 2026. Shipped: B3 increment 1, B9 (full
 4-page operator web console + UX upgrade: health panel, two-tab Settings, industry KB
-templates, responsive design, waState tracking), B1 (intent tuning), B2 (tourism KB template).
+templates, responsive design, waState tracking), B1 (intent tuning), B2 (tourism KB template),
+C1–C6 GTM sales kit (target list, DM/email/call scripts, demo deployment guide, onboarding
+intake + go-live checklist, 14-day success readout template). Qualifying criteria expanded to
+all Nassau small businesses taking inbound WhatsApp inquiries (not tourism-only).
 Critical-path remaining: B4 (qualify + handoff), B3 increment 2, B5 (reliability), B6
-(multi-client), B7, B8. For live build status see `docs/TODO.md`.*
+(multi-client), B7, B8; C3 founder action (SIM + demo deployment). For live build status see
+`docs/TODO.md`.*

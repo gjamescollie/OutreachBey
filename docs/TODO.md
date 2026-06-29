@@ -42,12 +42,12 @@
 
 | ID | Item | Status |
 |---|---|---|
-| C1 | Target list — 10–15 Nassau boat-tour / fishing-charter / excursion operators | ⬜ Pending |
-| C2 | Outreach motion — DM/email sequence + call script on cost-of-problem story | ⬜ Pending |
-| C3 | Live demo instance — always-on "Cay Receptionist Demo" number for meetings | ⬜ Pending |
-| C4 | Proposal + close — per-prospect proposal at $2,500 + $499/mo | ⬜ Pending |
-| C5 | Onboarding + go-live — KB build, QR link, staff training, go-live | ⬜ Pending |
-| C6 | Success readout — 2-week case study with at least one ROI data point | ⬜ Pending |
+| C1 | Target list — 12 Nassau prospects across tourism, hospitality, and service sectors | ✅ Done — `brand/sales/target-list-tourism-c1.csv` (template + qualifying criteria) |
+| C2 | Outreach motion — WhatsApp DM scripts (5 business types), 3-touch email sequence, 20-min call script with 6 objection handlers | ✅ Done — `brand/sales/outreach-dm-script-c2.md`, `outreach-email-sequence-c2.md`, `call-script-c2.md` |
+| C3 | Live demo instance — always-on "Cay Receptionist Demo" number; deployment guide written; **founder action: buy SIM + deploy** | ✅ Done (scripts) — `brand/sales/demo-setup-guide-c3.md` · ⬜ Founder action: provision SIM + run deployment |
+| C4 | Proposal + close — per-prospect HTML proposal (duplicate from existing template); proposal follow-up cadence and close trigger documented | ✅ Done (process) — `brand/sales/proposal-template.html` (existing); populate per prospect per call |
+| C5 | Onboarding + go-live — 10-topic KB intake form, go-live checklist (pre-session → QR scan → dashboard walkthrough → Day 14) | ✅ Done — `brand/sales/onboarding-intake-form-c5.md`, `onboarding-checklist-c5.md` |
+| C6 | Success readout — 14-day ROI metric template, case study seed, referral ask | ✅ Done — `brand/sales/success-readout-template-c6.md`; populate after first client Day 14 |
 
 ---
 
