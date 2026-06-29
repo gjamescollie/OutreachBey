@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal — Cay Receptionist for [CLIENT NAME]</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal: #0F6E56;
+      --teal-light: #e6f2ee;
+      --dark: #1a1a1a;
+      --mid: #4a4a4a;
+      --white: #ffffff;
+      --border: #d4e8e2;
+      --light: #f7f9f8;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--dark);
+      background: #e8e8e8;
+    }
+
+    /* USAGE NOTE */
+    .usage-note {
+      max-width: 760px;
+      margin: 24px auto;
+      background: #fff8e6;
+      border: 1.5px solid #f4a433;
+      border-radius: 8px;
+      padding: 16px 24px;
+      font-size: 13px;
+      color: #7a5a00;
+    }
+    .usage-note strong { color: #7a5a00; }
+
+    .doc {
+      max-width: 760px;
+      margin: 0 auto 48px;
+      background: var(--white);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    }
+
+    /* HEADER */
+    .doc-header {
+      background: var(--teal);
+      padding: 40px 48px 32px;
+    }
+    .doc-header .brand { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.65); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+    .doc-header h1 { font-size: 28px; color: var(--white); font-weight: 800; margin-bottom: 8px; }
+    .doc-header .meta { font-size: 13px; color: rgba(255,255,255,0.65); }
+
+    /* BODY */
+    .doc-body { padding: 48px; }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--teal-light);
+    }
+    h2:first-child { margin-top: 0; }
+
+    p { margin-bottom: 14px; color: var(--mid); }
+    p:last-child { margin-bottom: 0; }
+
+    .fill-in {
+      background: #fffbea;
+      border: 1.5px dashed #f4a433;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-style: italic;
+      color: #a07000;
+      font-size: 14px;
+    }
+
+    /* SCOPE TABLE */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th {
+      background: var(--teal);
+      color: var(--white);
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--mid);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: var(--light); }
+
+    /* TIMELINE */
+    .timeline { list-style: none; margin: 16px 0; }
+    .timeline li {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .timeline li:last-child { border-bottom: none; }
+    .tl-week {
+      font-weight: 800;
+      color: var(--teal);
+      min-width: 60px;
+    }
+
+    /* INVESTMENT */
+    .investment-box {
+      background: var(--teal-light);
+      border-radius: 10px;
+      border: 2px solid var(--teal);
+      padding: 28px 32px;
+      display: flex;
+      gap: 40px;
+      margin: 16px 0;
+    }
+    .inv-item { text-align: center; flex: 1; }
+    .inv-item .amount { font-size: 38px; font-weight: 800; color: var(--teal); line-height: 1; }
+    .inv-item .label { font-size: 13px; color: var(--mid); margin-top: 6px; }
+
+    /* SIGNATURE */
+    .sig-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      margin-top: 24px;
+    }
+    .sig-block { border-top: 1.5px solid var(--dark); padding-top: 10px; }
+    .sig-block p { font-size: 13px; color: var(--mid); }
+
+    /* FOOTER */
+    .doc-footer {
+      background: var(--light);
+      border-top: 1px solid var(--border);
+      padding: 20px 48px;
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+    }
+
+    @media print {
+      body { background: white; }
+      .usage-note { display: none; }
+      .doc { max-width: 100%; margin: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="usage-note">
+    <strong>Template instructions:</strong> Replace all <span style="background: #fffbea; border: 1.5px dashed #f4a433; padding: 1px 6px; border-radius: 4px; font-style: italic; color: #a07000;">[FILL-IN]</span> fields with the client's actual details before sending. Print to PDF via your browser.
+  </div>
+
+  <div class="doc">
+
+    <div class="doc-header">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+        <img src="../logos/Lucayan Labs logo.png" alt="Lucayan Labs" style="height:48px; width:auto; filter:brightness(0) invert(1);">
+        <img src="../logos/CayAI logo.png" alt="Cay AI" style="height:40px; width:auto; filter:brightness(0) invert(1);">
+      </div>
+      <h1>Cay Receptionist for <span class="fill-in">[CLIENT BUSINESS NAME]</span></h1>
+      <p class="meta">
+        Prepared for: <strong style="color: white;"><span class="fill-in">[CLIENT NAME]</span></strong> &nbsp;&bull;&nbsp;
+        Prepared by: <strong style="color: white;">Granville Collie, Lucayan Labs</strong> &nbsp;&bull;&nbsp;
+        Date: <span class="fill-in">[DATE]</span> &nbsp;&bull;&nbsp;
+        Valid for 30 days
+      </p>
+    </div>
+
+    <div class="doc-body">
+
+      <h2>Executive Summary</h2>
+      <p>This proposal is for <span class="fill-in">[CLIENT NAME]</span> at <span class="fill-in">[CLIENT BUSINESS NAME]</span> to deploy <strong>Cay Receptionist</strong> — an AI employee that handles WhatsApp inquiries 24/7, qualifies bookings, and captures leads on your existing number.</p>
+      <p>Based on what you shared, your business receives <span class="fill-in">[X inquiries/week]</span> on WhatsApp and currently responds during <span class="fill-in">[business hours / manually / describe]</span>. Cay Receptionist will answer every inquiry in seconds — in your voice, with your business knowledge — so you never miss a booking opportunity while you're running trips.</p>
+
+      <h2>Scope of Work</h2>
+      <table>
+        <tr>
+          <th style="width: 30%;">Deliverable</th>
+          <th>What we will do</th>
+        </tr>
+        <tr>
+          <td><strong>AI configuration</strong></td>
+          <td>Configure Cay Receptionist with your business name, tone, and WhatsApp signature</td>
+        </tr>
+        <tr>
+          <td><strong>Knowledge base build</strong></td>
+          <td>Build 20 Q&amp;A entries from your real FAQs — pricing, schedule, what's included, meeting point, cancellation policy, group sizes, and more</td>
+        </tr>
+        <tr>
+          <td><strong>Intent tuning</strong></td>
+          <td>Tune AI classifier for your specific inquiry language and booking patterns</td>
+        </tr>
+        <tr>
+          <td><strong>Cay Control setup</strong></td>
+          <td>Create your private Cay Control WhatsApp group for escalations and operator notifications</td>
+        </tr>
+        <tr>
+          <td><strong>Testing &amp; go-live</strong></td>
+          <td>Test all KB entries for accuracy and confidence, run pre-flight checks, connect to your WhatsApp number, and confirm live</td>
+        </tr>
+        <tr>
+          <td><strong>Operator training</strong></td>
+          <td>Walk-through of your operator dashboard, control commands, and how to handle escalated leads</td>
+        </tr>
+        <tr>
+          <td><strong>Ongoing support</strong></td>
+          <td>Direct support from Lucayan Labs — KB updates, tuning, and issue resolution included in monthly fee</td>
+        </tr>
+      </table>
+
+      <h2>What Is Not Included</h2>
+      <p>This engagement covers inbound inquiry handling and lead capture only. The following are out of scope but available as future enhancements:</p>
+      <ul style="padding-left: 18px; color: var(--mid); font-size: 14px;">
+        <li style="margin-bottom: 6px;">Live calendar availability or booking/payment processing</li>
+        <li style="margin-bottom: 6px;">Proactive outbound messaging campaigns (available as a separate Cay Sales service)</li>
+        <li style="margin-bottom: 6px;">Multi-number deployments or managing more than one WhatsApp number</li>
+        <li>Custom software development beyond the Cay Receptionist product</li>
+      </ul>
+
+      <h2>Proposed Timeline</h2>
+      <ul class="timeline">
+        <tr>
+          <li>
+            <span class="tl-week">Day 1–3</span>
+            <span>Onboarding call — collect your FAQs, pricing, schedule, tone preference, and business details. Provide your Cay Control WhatsApp number.</span>
+          </li>
+          <li>
+            <span class="tl-week">Day 4–7</span>
+            <span>Build and configure knowledge base, tune AI for your inquiry patterns, internal testing and confidence review.</span>
+          </li>
+          <li>
+            <span class="tl-week">Day 8–10</span>
+            <span>Soft launch on your WhatsApp number, operator review of test messages, final adjustments.</span>
+          </li>
+          <li>
+            <span class="tl-week">Day 11</span>
+            <span><strong>Go-live.</strong> Cay Receptionist is live on your number. Training walk-through with you and your team.</span>
+          </li>
+          <li>
+            <span class="tl-week">Day 25</span>
+            <span>First check-in call — review leads captured, bookings influenced, response stats, and any KB updates needed.</span>
+          </li>
+        </ul>
+
+      <h2>Investment</h2>
+      <div class="investment-box">
+        <div class="inv-item">
+          <div class="amount">$2,500</div>
+          <div class="label">One-time setup fee<br>Due before onboarding begins</div>
+        </div>
+        <div class="inv-item">
+          <div class="amount">$499</div>
+          <div class="label">Monthly retainer<br>Billed on go-live date</div>
+        </div>
+      </div>
+      <p style="font-size: 13px;">Payment accepted via bank transfer or credit card. Monthly fee is billed on the same date each month. No long-term contract — 30 days' notice to cancel.</p>
+
+      <h2>What You Need to Provide</h2>
+      <ul style="padding-left: 18px; color: var(--mid); font-size: 14px;">
+        <li style="margin-bottom: 6px;">Your WhatsApp number (the existing customer-facing number) — to link Cay Receptionist</li>
+        <li style="margin-bottom: 6px;">A second phone number for your Cay Control channel (personal or team number)</li>
+        <li style="margin-bottom: 6px;">Your real FAQs — we will convert them to the knowledge base during onboarding</li>
+        <li style="margin-bottom: 6px;">Your booking link (if you use one), pricing details, and trip schedule</li>
+        <li>30 minutes for the onboarding call and 30 minutes for go-live training</li>
+      </ul>
+
+      <h2>Next Steps</h2>
+      <p>To proceed, simply reply to this proposal or contact Granville directly. We will schedule the onboarding call and send the invoice for the setup fee.</p>
+      <p>Questions? Reply to this email or reach out on WhatsApp: <strong>+1 (242) 525-4093</strong></p>
+
+      <h2>Acceptance</h2>
+      <p>By signing below, <span class="fill-in">[CLIENT NAME]</span> on behalf of <span class="fill-in">[CLIENT BUSINESS NAME]</span> agrees to engage Lucayan Labs for the Cay Receptionist deployment as described above under the investment terms stated.</p>
+
+      <div class="sig-section" style="margin-top: 40px;">
+        <div class="sig-block">
+          <p><strong>Client</strong></p>
+          <p>Name: <span class="fill-in">[CLIENT NAME]</span></p>
+          <p>Business: <span class="fill-in">[BUSINESS NAME]</span></p>
+          <br>
+          <p>Signature: _________________________</p>
+          <p>Date: _________________________</p>
+        </div>
+        <div class="sig-block">
+          <p><strong>Lucayan Labs</strong></p>
+          <p>Name: Granville Collie</p>
+          <p>Title: Founder &amp; CEO</p>
+          <br>
+          <p>Signature: _________________________</p>
+          <p>Date: _________________________</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="doc-footer">
+      Lucayan Labs &bull; Nassau, Bahamas &bull; granville@lucayanlabs.com &bull; lucayanlabs.com &bull; Cay AI &trade; &copy; 2026 Lucayan Labs
+    </div>
+
+  </div>
+
+</body>
+</html>
