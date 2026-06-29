@@ -46,13 +46,14 @@
     nav a.active { background: rgba(0,0,0,0.25); color: #fff; }
 
     .live-badge {
-      background: rgba(0,0,0,0.2); color: #fff;
-      padding: 3px 10px 3px 6px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; letter-spacing: .04em;
-      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.22); color: #fff;
+      padding: 5px 12px 5px 8px; border-radius: 20px;
+      font-size: 12px; font-weight: 800; letter-spacing: .06em;
+      display: flex; align-items: center; gap: 7px;
+      border: 1px solid rgba(255,255,255,0.35);
     }
-    .live-dot { width: 7px; height: 7px; background: #fff; border-radius: 50%; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+    .live-dot { width: 9px; height: 9px; background: #fff; border-radius: 50%; animation: pulse 1.4s infinite; flex-shrink: 0; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 
     .container { max-width: 1280px; margin: 24px auto; padding: 0 20px 40px; }
 
@@ -163,11 +164,15 @@
     .empty { color: var(--text-muted); font-size: 0.84rem; text-align: center; padding: 20px; }
 
     /* Countdown ring in header */
-    .countdown-wrap { display: flex; align-items: center; gap: 6px; }
-    .cring-svg { width: 24px; height: 24px; transform: rotate(-90deg); }
-    .cring-track { fill: none; stroke: rgba(255,255,255,.2); stroke-width: 3; }
-    .cring-prog  { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 63.6; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
-    .cring-num   { font-size: 11px; color: rgba(255,255,255,.75); min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+    .countdown-wrap {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; padding: 4px 10px 4px 6px;
+    }
+    .cring-svg { width: 26px; height: 26px; transform: rotate(-90deg); }
+    .cring-track { fill: none; stroke: rgba(255,255,255,.25); stroke-width: 3.5; }
+    .cring-prog  { fill: none; stroke: #fff; stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 63.6; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+    .cring-num   { font-size: 12px; font-weight: 700; color: #fff; min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; }
 
     /* ── Responsive ─────────────────────────────────────────── */
     @media (max-width: 900px) {

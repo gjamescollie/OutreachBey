@@ -411,8 +411,16 @@
   async function loadContacts() {
     try {
       const res = await fetch('/api/contacts');
-      contacts = await res.json();
-    } catch(e) { contacts = []; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      contacts = Array.isArray(data) ? data : [];
+      // Normalise: ensure every contact has a tags string
+      contacts = contacts.map(c => ({ ...c, tags: c.tags || '', email: c.email || '', industry: c.industry || '', business: c.business || '', notes: c.notes || '' }));
+    } catch(e) {
+      contacts = [];
+      document.getElementById('table-container').innerHTML = '<div class="empty">Could not load contacts — ' + e.message + '</div>';
+      return;
+    }
     populateIndustryFilter();
     renderStats();
     renderFunnel();
