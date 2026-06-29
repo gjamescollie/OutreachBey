@@ -943,6 +943,102 @@ function buildDemoFollowUp(industry, calendarLink) {
   );
 }
 
+// ─── DEMO SESSION MEMORY HELPERS ────────────────────────────────────────────
+
+function parseCayNotes(notes) {
+  const match = (notes || '').match(/\[CAY\]\s+([^\|]+)/);
+  if (!match) return {};
+  const collected = {};
+  match[1].trim().split(/\s+/).forEach(pair => {
+    const idx = pair.indexOf(':');
+    if (idx > 0) {
+      const k = pair.slice(0, idx);
+      const v = pair.slice(idx + 1).replace(/_/g, ' ');
+      if (v) collected[k] = v;
+    }
+  });
+  return collected;
+}
+
+function extractDemoFacts(body, existing) {
+  const collected = Object.assign({}, existing);
+  const t = body.toLowerCase();
+  if (!collected.name) {
+    const nm = body.match(/(?:i'?m|my name is|call me)\s+([A-Z][a-z]+)/i) ||
+               body.match(/^([A-Z][a-z]+)\s+(?:here|speaking)/i);
+    if (nm) collected.name = nm[1];
+  }
+  if (!collected.groupSize) {
+    const gs = body.match(/\b(\d+)\s*(?:people|persons?|guests?|of us|pax)\b/i);
+    const solo = /\b(just me|solo|only me|one person)\b/i.test(t);
+    if (gs) collected.groupSize = gs[1];
+    else if (solo) collected.groupSize = '1';
+  }
+  if (!collected.date) {
+    const dm = body.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next\s+\w+|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\b/i);
+    if (dm) collected.date = dm[1];
+  }
+  if (!collected.time) {
+    const tm = body.match(/\b(\d{1,2}(?::\d{2})?\s*(?:am|pm))\b/i) ||
+               body.match(/\b(morning|afternoon|evening)\b/i);
+    if (tm) collected.time = tm[1];
+  }
+  if (!collected.pickup) {
+    const pk = body.match(/\b(cruise\s+port|nassau\s+cruise|hotel|airbnb|resort|atlantis|baha\s+mar|downtown|cable\s+beach)\b/i);
+    if (pk) collected.pickup = pk[1];
+  }
+  if (!collected.service) {
+    const sv = body.match(/\b(snorkel(?:l?ing)?|fishing|jet\s*ski|boat\s+tour|private\s+charter|swimming\s+pigs?|excursion|rental|manicure|pedicure)\b/i);
+    if (sv) collected.service = sv[1];
+  }
+  return collected;
+}
+
+function writeCayToContact(number, collected) {
+  try {
+    const fields = Object.entries(collected || {})
+      .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+      .map(([k, v]) => `${k}:${String(v).replace(/[\s,]/g, '_')}`)
+      .join(' ');
+    if (!fields) return;
+    const cayBlock = `[CAY] ${fields}`;
+    const raw = fs.readFileSync(CONTACTS_FILE, 'utf8').trim();
+    const lines = raw.split('\n');
+    const updated = lines.map((line, i) => {
+      if (i === 0) return line;
+      const cols = line.split(',');
+      if (cols[0].trim().replace(/\D/g, '') === number.replace(/\D/g, '')) {
+        const existing = (cols[4] || '').trim().replace(/\[CAY\][^|]*/g, '').replace(/\s*\|\s*$/,'').trim();
+        cols[4] = (existing ? existing + ' | ' : '') + cayBlock;
+        return cols.join(',');
+      }
+      return line;
+    });
+    fs.writeFileSync(CONTACTS_FILE, updated.join('\n'));
+    refreshContactCache();
+  } catch (e) {
+    console.error('[DEMO] Error writing session facts to contact:', e.message);
+  }
+}
+
+// calendar_type: 'simulated' (default) | 'google' (stub — OAuth not yet wired)
+// calendar_id: reserved for Google Calendar integration
+async function checkAvailability(date, time, vertical, settings) {
+  const calType = (settings.calendar_type || 'simulated').toLowerCase();
+  if (calType === 'google') {
+    console.warn('[CAY] Google Calendar not yet connected — falling back to simulated');
+  }
+  const t = (time || '').toLowerCase().replace(/\s/g, '');
+  const unavailable = ['9am', '9:00am', '2pm', '2:00pm', '14:00'];
+  if (unavailable.some(s => t.includes(s))) {
+    const isMorning = t.includes('9am') || t.includes('9:00');
+    return { available: false, alternatives: isMorning ? ['8am', '10am'] : ['1pm', '3pm'] };
+  }
+  return { available: true };
+}
+
+// ─── END DEMO SESSION MEMORY HELPERS ────────────────────────────────────────
+
 async function handleIndustryDemo(msg, from, body, mainSettings) {
   const session = demoSessions[from];
   // Original WhatsApp JID for sending — `from` is bare digits, which
@@ -952,6 +1048,7 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
 
   // Timeout check
   if (session.lastActivity < Date.now() - TWELVE_HOURS) {
+    writeCayToContact(from, session.collected);
     delete demoSessions[from];
     return false;
   }
@@ -964,6 +1061,7 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
   const hardStop = /\b(stop|unsubscribe|remove me|opt[\s-]?out)\b/i.test(body);
   const softExit = /\b(not interested|no thanks?|no thank you|exit|quit|cancel|leave me|go away|enough)\b/i.test(body);
   if (hardStop || softExit) {
+    writeCayToContact(from, session.collected);
     delete demoSessions[from];
     if (softExit && !hardStop) {
       await client.sendMessage(chatId, `No problem — thanks for checking it out! 👍`, { linkPreview: false })
@@ -987,17 +1085,33 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
     return true;
   }
 
+  session.collected = extractDemoFacts(body, session.collected || {});
   session.messageCount = (session.messageCount || 0) + 1;
 
   const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
   const shouldReveal = session.messageCount >= 6 || isDemoBookingIntent(body);
 
   if (shouldReveal) {
+    // Check availability before reveal when prospect has specified date + time
+    if (isDemoBookingIntent(body) && session.collected && session.collected.date && session.collected.time) {
+      const avail = await checkAvailability(session.collected.date, session.collected.time, session.keyword, session.settings);
+      if (!avail.available) {
+        const alts = avail.alternatives.join(' or ');
+        await humanDelay();
+        await client.sendMessage(chatId,
+          `That slot is taken — we have ${alts} available on that day. Which works for you?`,
+          { linkPreview: false }
+        ).catch(e => console.error('[DEMO] availability send failed:', e.message));
+        session.collected.time = null;
+        return true;
+      }
+    }
     session.state = 'revealed';
     const revealMsg = buildDemoReveal(session.persona, session.industry, calendarLink);
     await humanDelay();
     await client.sendMessage(chatId, revealMsg, { linkPreview: false })
       .catch(e => console.error('[DEMO] reveal send failed:', e.message));
+    writeCayToContact(from, session.collected);
     appendToLog(from, from, '[DEMO] Reveal sent', 'demo:revealed', '', '', 'out', 'demo');
     const controlChannel = getControlChannel(mainSettings);
     if (controlChannel) {
@@ -1010,6 +1124,11 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
   }
 
   // Generate AI response in persona
+  const knownFacts = Object.entries(session.collected || {})
+    .filter(([, v]) => v !== null && v !== undefined && String(v).trim())
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(', ');
+
   const demoSystemPrompt =
     `You are the WhatsApp receptionist for ${session.persona}, a real Nassau business.\n` +
     `Your job: answer customer enquiries naturally and helpfully, as if you work there.\n` +
@@ -1018,6 +1137,7 @@ async function handleIndustryDemo(msg, from, body, mainSettings) {
     `Sound like a real local team member — warm, knowledgeable, helpful.\n` +
     `Keep replies under 80 words. Max 1 emoji. No hashtags. No subject lines.\n` +
     `Sign off with: ${session.settings.signature}\n` +
+    (knownFacts ? `Known about this prospect: ${knownFacts}\nDo NOT ask for information already listed above.\n` : '') +
     `KNOWLEDGE BASE (use these to answer questions accurately):\n` +
     session.kb.map((e, i) => `${i + 1}. Q: ${e.q}\nA: ${e.a}`).join('\n\n') + '\n\n' +
     `Tone: ${session.settings.tone || 'friendly-pro'}\n` +
@@ -2090,6 +2210,7 @@ function startInactivityChecker() {
     for (const [from, session] of Object.entries(demoSessions)) {
       // 12-hour hard timeout
       if (session.lastActivity < now - TWELVE_HOURS_MS) {
+        writeCayToContact(from, session.collected);
         delete demoSessions[from];
         continue;
       }
@@ -2611,6 +2732,20 @@ async function handleInbound(msg) {
     const keyword = matchedKeyword;
     const vertical = loadDemoVertical(keyword);
     if (vertical) {
+      // Pre-populate collected from [CAY] notes if contact exists
+      const existingContact = findContact(from);
+      const priorFacts = existingContact ? parseCayNotes(existingContact.notes) : {};
+      const collectedInit = {
+        name: priorFacts.name || null,
+        business: priorFacts.business || null,
+        sells: priorFacts.sells || null,
+        groupSize: priorFacts.groupSize || null,
+        date: priorFacts.date || null,
+        time: priorFacts.time || null,
+        pickup: priorFacts.pickup || null,
+        service: priorFacts.service || null,
+        preference: priorFacts.preference || null,
+      };
       demoSessions[from] = {
         state: 'active',
         keyword,
@@ -2622,6 +2757,7 @@ async function handleInbound(msg) {
         lastActivity: Date.now(),
         followUpSent: false,
         chatId: msg.from, // original WhatsApp JID — required for sending replies
+        collected: collectedInit,
       };
       if (controlChannel) {
         await client.sendMessage(controlChannel,
@@ -2631,14 +2767,22 @@ async function handleInbound(msg) {
       }
       appendToLog(from, from, `[DEMO] Session started — ${keyword} (${vertical.persona})`, 'demo:started', '', '', 'in', 'demo');
 
-      // Generate opening message
-      const openingPrompt =
-        `You are the WhatsApp receptionist for ${vertical.persona}.\n` +
-        `Write a warm, natural opening reply to a prospect who just texted you.\n` +
-        `Under 30 words. Friendly greeting. Ask how you can help. One emoji max.\n` +
-        `Sign off: ${vertical.settings.signature}\n` +
-        `Do NOT mention AI or automation.`;
-      const openingUser = `The prospect just texted: "${body}". Reply as ${vertical.persona}.`;
+      // Generate opening message — personalize if returning contact
+      const returningName = collectedInit.name;
+      const openingPrompt = returningName
+        ? `You are the WhatsApp receptionist for ${vertical.persona}.\n` +
+          `This prospect's name is ${returningName} — greet them by first name.\n` +
+          `Under 30 words. Warm greeting. One emoji max.\n` +
+          `Sign off: ${vertical.settings.signature}\n` +
+          `Do NOT mention AI or automation.`
+        : `You are the WhatsApp receptionist for ${vertical.persona}.\n` +
+          `Write a warm, natural opening reply to a prospect who just texted you.\n` +
+          `Under 30 words. Friendly greeting. Ask how you can help. One emoji max.\n` +
+          `Sign off: ${vertical.settings.signature}\n` +
+          `Do NOT mention AI or automation.`;
+      const openingUser = returningName
+        ? `The prospect (${returningName}) texted: "${body}". Reply as ${vertical.persona}.`
+        : `The prospect just texted: "${body}". Reply as ${vertical.persona}.`;
       const openingResult = await callAI(openingPrompt, openingUser, 100);
       const openingMsg = openingResult.text || `Hi there! Thanks for reaching out. How can we help you today?\n\n${vertical.settings.signature}`;
 
@@ -2789,8 +2933,12 @@ async function handleInbound(msg) {
       setContactStage(from, 'demo');
       await humanDelay(true);
       await msg.reply(
-        `Happy to show you a live demo right here! 🚀\n\nWhich type of business should I demo? Reply with one:\n\n` +
-        `🏝️ *TOUR* · 🍽️ *FOOD* · 🏡 *REALTY* · 🚗 *DRIVE* · 💅 *BEAUTY*`,
+        `Happy to show you a live demo right here! 🚀\n\nReply with the keyword for your industry:\n\n` +
+        `TOUR — boat tours, charters, excursions\n` +
+        `FOOD — restaurants and bars\n` +
+        `REALTY — real estate\n` +
+        `DRIVE — car rentals\n` +
+        `BEAUTY — salons and personal care`,
         null, { linkPreview: false }
       );
       await notifyOwner('auto', 'Demo Interest', `\nThey asked about a demo — sent the keyword menu.`);
@@ -3660,6 +3808,7 @@ if (process.env.NODE_ENV === 'test') {
   module.exports = {
     // pure helpers
     pick, parseCSV, appendToLog, buildTemplateFallback, withNav, CANNED,
+    parseCayNotes, extractDemoFacts, writeCayToContact, checkAvailability,
     // constants
     SETUP_STEPS, KB_INTRO_INDEX, LOGICAL_TOTAL, AUTO_ACT_THRESHOLD, SUGGEST_THRESHOLD,
     // state
