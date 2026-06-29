@@ -34,8 +34,7 @@ RUN npm ci --omit=dev
 
 # Copy app source
 COPY index.js ./
-COPY contacts.html ./
-COPY dashboard.html ./
+COPY *.html ./
 
 # Default seed data — copied to the volume on first run by entrypoint.sh
 COPY defaults/ ./defaults/
