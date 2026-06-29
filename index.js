@@ -28,6 +28,8 @@ CRITICAL RULES — apply to every response without exception:
 
 async function callAI(systemPrompt, userPrompt, maxTokens = 300) {
   const safeSystem = systemPrompt + AI_SAFETY_SUFFIX;
+  // Allow runtime model override via settings.csv (set from dashboard)
+  const activeModel = (() => { try { return getSettings().ai_model || AI_MODEL; } catch(_) { return AI_MODEL; } })();
   try {
     if (AI_PROVIDER === 'openrouter') {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -39,7 +41,7 @@ async function callAI(systemPrompt, userPrompt, maxTokens = 300) {
           'X-Title': 'Cay AI WhatsApp Agent',
         },
         body: JSON.stringify({
-          model: AI_MODEL,
+          model: activeModel,
           max_tokens: maxTokens,
           messages: [
             { role: 'system', content: safeSystem },
@@ -50,7 +52,7 @@ async function callAI(systemPrompt, userPrompt, maxTokens = 300) {
       const data = await res.json();
       if (data.error) { console.error('OpenRouter error:', data.error.message); return { text: null, tokens: 0 }; }
       const tokens = data.usage?.total_tokens || 0;
-      console.log(`🔢 Tokens used: ${tokens} (model: ${AI_MODEL})`);
+      console.log(`🔢 Tokens used: ${tokens} (model: ${activeModel})`);
       return { text: data.choices?.[0]?.message?.content?.trim() || null, tokens };
     }
 
@@ -472,7 +474,7 @@ function getStats(dayRange = 7) {
     const rangeAgo = new Date(now - dayRange * 24 * 60 * 60 * 1000);
 
     let total = 0, today = 0, rangeSent = 0, rangeInbound = 0;
-    let hotLeads = 0, optOuts = 0, autoReplied = 0, failed = 0, complaints = 0;
+    let hotLeads = 0, optOuts = 0, autoReplied = 0, failed = 0, complaints = 0, bookings = 0;
     let totalTokens = 0;
     const allNumbers = new Set();
     const topContact = {};
@@ -509,6 +511,7 @@ function getStats(dayRange = 7) {
         if (status.includes('auto')) autoReplied++;
         if (status === 'failed' || status === 'outbound:failed') failed++;
         if (status.includes('complaint')) complaints++;
+        if (status.includes('booking')) bookings++;
       }
     });
 
@@ -533,7 +536,7 @@ function getStats(dayRange = 7) {
 
     return {
       total, today, rangeSent, rangeInbound, hotLeads, optOuts, autoReplied,
-      failed, complaints, totalTokens, costEst, uniqueContacts: allNumbers.size,
+      failed, complaints, bookings, totalTokens, costEst, uniqueContacts: allNumbers.size,
       avgVelocityMin, topContactName, velocityCount: velocities.length,
       // legacy
       week: rangeSent + rangeInbound
@@ -560,16 +563,9 @@ function saveFollowUps() {
 let followUps = loadFollowUps();
 const pendingPreviews = {};
 const demoSessions = {};   // tracks contacts inside the interactive demo flow
+const customerSessions = {};  // { [from]: { collected: {...}, lastActivity } } — memory for real contacts
 const pendingDisambiguation = {}; // { [from]: { options: [{index, question}], expires: timestamp } }
-
-const WMO_CODES = {
-  0: 'Clear skies ☀️', 1: 'Mainly clear 🌤️', 2: 'Partly cloudy ⛅', 3: 'Overcast ☁️',
-  45: 'Foggy 🌫️', 48: 'Icy fog 🌫️',
-  51: 'Light drizzle 🌧️', 53: 'Drizzle 🌧️', 55: 'Heavy drizzle 🌧️',
-  61: 'Light rain 🌧️', 63: 'Rain 🌧️', 65: 'Heavy rain 🌧️',
-  80: 'Rain showers 🌦️', 81: 'Rain showers 🌦️', 82: 'Heavy showers 🌦️',
-  95: 'Thunderstorm ⛈️', 96: 'Thunderstorm ⛈️', 99: 'Thunderstorm ⛈️',
-};
+const pendingQualifications = {}; // { [from]: { originalMessage, timestamp } } — awaiting B4 booking details
 
 // ─── PURPOSE SELECTION ────────────────────────────────────────────────────────
 const pendingPurpose = {}; // stores intent/contact/type while awaiting purpose selection
@@ -815,13 +811,20 @@ async function handleAddContact(msg, body) {
 
 function saveSettings(data) {
   try {
-    // Preserve existing values for anything the setup wizard doesn't ask about
+    // Preserve existing values for anything the setup wizard doesn't ask about.
+    // If `data` explicitly carries the key (the settings editor sends every field it
+    // owns), prefer that — even when empty, so the editor can clear a field. The
+    // !setup wizard never passes these keys, so its behaviour is unchanged.
     const existing = getSettings();
-    const keep = (key, fallback) => (existing[key] !== undefined && existing[key] !== '' ? existing[key] : fallback);
+    const keep = (key, fallback) => {
+      if (Object.prototype.hasOwnProperty.call(data, key)) return data[key];
+      return (existing[key] !== undefined && existing[key] !== '' ? existing[key] : fallback);
+    };
 
     const lines = ['key,value',
       `business_name,${data.business_name || existing.business_name || ''}`,
       `owner_number,${data.owner_number || existing.owner_number || ''}`,
+      `control_channel,${keep('control_channel', '')}`,
       `tone,${data.tone || 'friendly-pro'}`,
       `signature,${data.signature || `- ${data.business_name || 'us'}`}`,
       '',
@@ -843,13 +846,25 @@ function saveSettings(data) {
       `token_limit_checkin,${keep('token_limit_checkin', '150')}`,
       `token_limit_broadcast,${keep('token_limit_broadcast', '250')}`,
       '',
+      '# ── MODEL ─────────────────────────────────────────────────────────────────────',
+      // Runtime model override (set from the dashboard model selector). Empty = use
+      // the AI_MODEL from .env. Preserved here so /api/model actually persists.
+      `ai_model,${keep('ai_model', '')}`,
+      '',
       '# ── KNOWLEDGE BASE ───────────────────────────────────────────────────────────',
     ];
 
     for (let i = 1; i <= 40; i++) {
-      // Use new answer if provided in setup, otherwise keep existing
-      const q = data[`kb_${i}_q`] || existing[`faq_${i}_q`];
-      const a = data[`kb_${i}_a`] || existing[`faq_${i}_a`];
+      let q, a;
+      if (data.kbReplace) {
+        // Settings editor sends the full KB authoritatively — no fallback, so an
+        // emptied slot is genuinely deleted rather than resurrected from disk.
+        q = data[`kb_${i}_q`]; a = data[`kb_${i}_a`];
+      } else {
+        // Wizard merge — keep existing entries that weren't re-asked.
+        q = data[`kb_${i}_q`] || existing[`faq_${i}_q`];
+        a = data[`kb_${i}_a`] || existing[`faq_${i}_a`];
+      }
       if (q && a) {
         lines.push(`faq_${i}_q,${q}`);
         lines.push(`faq_${i}_a,${a}`);
@@ -866,267 +881,284 @@ function saveSettings(data) {
   }
 }
 
-// ─── DEMO STATE MACHINE ──────────────────────────────────────────────────────
+// ─── ⚡ CAY AI INDUSTRY DEMO SYSTEM ─────────────────────────────────────────
+// TO REMOVE FOR CLIENT DEPLOYMENT: delete this entire block and the
+// handleIndustryDemo() call in handleInbound(). Also delete the demo/ folder.
+// The agent will revert to full production behaviour automatically.
 
-async function fetchNewsHeadlines() {
-  const feeds = [
-    'https://www.tribune242.com/rss/headlines/local-news/',
-    'https://www.bahamaslocal.com/rss/',
-    'https://feeds.bbci.co.uk/news/world/rss.xml',
-  ];
-  for (const url of feeds) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CayAI/1.0)' },
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      const xml = await res.text();
-      const items = [...xml.matchAll(/<item[\s\S]*?<\/item>/g)].slice(0, 3);
-      const parsed = items.map(m => {
-        const decodeEntities = s => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;#x27;/g, "'");
-        const title = decodeEntities((m[0].match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/) || m[0].match(/<title>([\s\S]*?)<\/title>/))?.[1]?.trim().replace(/\s+/g, ' ') || '');
-        const desc  = (m[0].match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/) || m[0].match(/<description>([\s\S]*?)<\/description>/))?.[1]?.replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ').slice(0, 120) || '';
-        return { title, desc };
-      }).filter(i => i.title);
-      if (parsed.length > 0) return parsed;
-    } catch (_) { /* try next feed */ }
-  }
-  return null;
-}
+const DEMO_KEYWORDS = ['TOUR', 'FOOD', 'REALTY', 'DRIVE', 'BEAUTY'];
+const DEMO_VERTICAL_MAP = {
+  TOUR:   { file: 'tour',   persona: 'Blue Cay Charters',   industry: 'water tour'  },
+  FOOD:   { file: 'food',   persona: 'Solemar Nassau',       industry: 'restaurant'  },
+  REALTY: { file: 'realty', persona: 'Bahamas Realty',       industry: 'real estate' },
+  DRIVE:  { file: 'drive',  persona: 'A2B Car Rentals',      industry: 'car rental'  },
+  BEAUTY: { file: 'beauty', persona: 'The Nail Lounge',      industry: 'salon'       },
+};
 
-async function fetchNassauWeather() {
-  const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.06&longitude=-77.34&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&windspeed_unit=mph');
-  const data = await res.json();
-  return data.current;
-}
-
-async function startDemoMenu(msg, from, session = {}) {
-  demoSessions[from] = { state: 'menu', ...session, lastActivity: Date.now() };
-  const firstName = (session.demoName || '').split(' ')[0];
-  const greeting = firstName ? `Welcome, *${firstName}!* 👋\n\n` : '';
-  await msg.reply(
-    `🚀 *Cay AI Live Demo* 🇧🇸\n\n` +
-    `${greeting}` +
-    `I'm a live AI automation engine built to help Nassau small businesses convert leads, save time, and book more clients — on autopilot.\n\n` +
-    `Pick a feature to experience right here in this chat:\n\n` +
-    `1️⃣ *[SMART-UPDATES]* — Watch me pull live Nassau weather and auto-draft a proactive client message. 🌤️\n\n` +
-    `2️⃣ *[DEAL-CLOSER]* — I'll simulate a real inbound lead for your business and generate the perfect reply. 🎯\n\n` +
-    `3️⃣ *[NEWS BRIEF]* — 30-second brief on what's happening in Nassau right now. 📰\n\n` +
-    `4️⃣ *[BOOK]* — Schedule your free AI strategy consultation. 📅\n\n` +
-    `_Reply *1*, *2*, *3*, or *4* — or type the option name._`,
-    null, { linkPreview: false }
-  );
-}
-
-async function showDemoBooking(msg, from, calendarLink, ownerNumber, signature, session = {}) {
-  const firstName = (session.demoName || '').split(' ')[0];
-  const bizLine = session.demoBusiness ? ` for *${session.demoBusiness}*` : '';
-  delete demoSessions[from];
-  if (ownerNumber) {
-    const notifyExtra = session.demoName ? `\n*Name:* ${session.demoName}\n*Business:* ${session.demoBusiness || 'N/A'}\n*Sells:* ${session.demoSells || 'N/A'}` : '';
-    await client.sendMessage(ownerNumber,
-      `📅 *Demo Booking Triggered*\n\n*Number:* ${from}${notifyExtra}\n\nThey selected Book in the demo and were sent the calendar link.`,
-      { linkPreview: false }
-    ).catch(() => {});
-  }
-  appendToLog(from, from, 'Demo booking link sent', 'demo-booking', '', '', 'out', 'demo');
-  const bookingBody = pick([
-    `Our AI automation team will look at *${session.demoBusiness || 'your business'}* specifically, understand your needs, and determine exactly how Cay AI can work for you. 30 minutes, no pitch, no pressure.`,
-    `Our automation professionals will dig into *${session.demoBusiness || 'your business'}* — understand what you need and map out exactly how Cay AI fits. 30 minutes, no pitch, no pressure.`,
-    `We'll have one of our AI professionals look at *${session.demoBusiness || 'your business'}* specifically, understand your setup, and show you exactly how Cay AI can work for you. 30 minutes, no pitch, no pressure.`,
-  ]);
-  await msg.reply(
-    `📅 *Free AI Strategy Call*\n\n` +
-    `${firstName ? `${firstName} — ` : ''}${bookingBody}\n\n` +
-    `👇 *Pick your slot:*\n` +
-    `${calendarLink}\n\n` +
-    `${signature}`,
-    null, { linkPreview: false }
-  );
-}
-
-async function runDealCloser(msg, from, businessInfo, session = {}) {
-  demoSessions[from] = { ...demoSessions[from], state: 'feature_done' };
-  await msg.reply('⏳ Simulating live lead intake...', null, { linkPreview: false });
-  const result = await callAI(
-    `You are demonstrating the Cay AI WhatsApp agent. Generate a realistic simulation of an incoming lead for the given business. Reply ONLY in this exact format with no extra text:
-LEAD_MESSAGE: [realistic incoming WhatsApp from a customer, 2-3 sentences, specific Nassau scenario]
-PSYCHOLOGY: [one sentence on the unstated desire behind the message]
-INTENT: [exactly one of: HOT_LEAD / QUESTION / CALL / BOOKING]
-DRAFT: [perfect reply the owner would approve — warm, specific, ends with a question to lock the booking, under 60 words, no subject line, no hashtags]`,
-    `Business: ${businessInfo}${session.demoName ? `\nOwner first name: ${session.demoName.split(' ')[0]}` : ''}`,
-    450
-  );
-  if (!result.text) {
-    await msg.reply('❌ Simulation failed. Reply *MENU* to try another option.', null, { linkPreview: false });
-    return;
-  }
-  const t = result.text;
-  const leadMsg = (t.match(/LEAD_MESSAGE:\s*(.+)/)?.[1] || '').trim();
-  const psychology = (t.match(/PSYCHOLOGY:\s*(.+)/)?.[1] || '').trim();
-  const intent = (t.match(/INTENT:\s*(\S+)/)?.[1] || 'HOT_LEAD').trim();
-  const draft = (t.match(/DRAFT:\s*([\s\S]+)/)?.[1] || '').trim();
-  await msg.reply(
-    `🚨 *SIMULATED LIVE INBOUND LEAD!* 🚨\n\n` +
-    `_"${leadMsg}"_\n\n` +
-    `Here's what Cay AI does in milliseconds:\n\n` +
-    `*1️⃣ Unstated Psychology:* ${psychology}\n\n` +
-    `*2️⃣ Intent Classified:* \`[${intent}]\` 🔥\n\n` +
-    `🟢 *AI-drafted reply — sent to your phone for one-tap approval:*\n\n` +
-    `_"${draft}"_\n\n` +
-    `*The Value:* You type "yes" and the booking is locked — while you're on a job.\n\n` +
-    `_Reply *MENU* to go back, or *4* to book your strategy call._`,
-    null, { linkPreview: false }
-  );
-  appendToLog(from, from, `[DEMO] Deal-Closer simulation for: ${businessInfo}`, 'demo', '', '', 'out', 'demo');
-}
-
-async function handleDemoFlow(msg, from, body, settings) {
-  const session = demoSessions[from];
-  if (session) { session.lastActivity = Date.now(); session.nudged = false; delete session.nudgedAt; }
-  const lower = body.toLowerCase().trim();
-  const calendarLink = getCalendarLink(settings);
-  const signature = `- The Cay AI Team`;
-  const ownerNumber = formatNumber(settings.owner_number || '');
-
-  if (lower === 'menu') {
-    await startDemoMenu(msg, from, { demoName: session.demoName, demoBusiness: session.demoBusiness, demoSells: session.demoSells });
-    appendToLog(from, from, '[DEMO] Returned to menu', 'demo', '', '', 'out', 'demo');
-    return;
-  }
-
-  // ── INTRO: collect name, business, what they sell ──
-  if (session.state === 'intro') {
-    // Accept freeform "Name, Business, What they sell" or just store raw and parse
-    const parts = body.split(',').map(s => s.trim()).filter(Boolean);
-    const demoName = parts[0] || body.trim();
-    const demoBusiness = parts[1] || '';
-    const demoSells = parts[2] || '';
-    appendToLog(from, from, `[DEMO] Intro: ${demoName} | ${demoBusiness} | ${demoSells}`, 'demo', '', '', 'out', 'demo');
-    await startDemoMenu(msg, from, { demoName, demoBusiness, demoSells });
-    return;
-  }
-
-  // Helper: resolve menu selection by number or name
-  const resolveMenuChoice = (input) => {
-    const t = input.trim().toLowerCase();
-    if (t === '1' || t.includes('smart') || t.includes('weather') || t.includes('update')) return '1';
-    if (t === '2' || t.includes('deal') || t.includes('closer') || t.includes('lead') || t.includes('mind')) return '2';
-    if (t === '3' || t.includes('news') || t.includes('brief') || t.includes('headline')) return '3';
-    if (t === '4' || t.includes('book') || t.includes('consult') || t.includes('schedule') || t.includes('slot')) return '4';
+function loadDemoVertical(keyword) {
+  const vertical = DEMO_VERTICAL_MAP[keyword];
+  if (!vertical) return null;
+  try {
+    const settingsRows = parseCSV(`./demo/settings_${vertical.file}.csv`);
+    const settings = {};
+    settingsRows.forEach(r => { settings[r.key] = r.value; });
+    const kb = JSON.parse(fs.readFileSync(`./demo/kb/kb_${vertical.file}.json`, 'utf8'));
+    return { settings, kb, ...vertical };
+  } catch (e) {
+    console.error(`[DEMO] Failed to load vertical ${keyword}:`, e.message);
     return null;
-  };
-
-  // ── MENU: waiting for selection ──
-  if (session.state === 'menu') {
-    const choice = resolveMenuChoice(body);
-    if (choice === '1') {
-      const bizContext = session.demoBusiness && session.demoSells
-        ? `${session.demoBusiness} (sells: ${session.demoSells})`
-        : session.demoBusiness || 'a Nassau small business';
-      try {
-        const w = await fetchNassauWeather();
-        const condition = WMO_CODES[w.weathercode] || 'Variable conditions';
-        const weatherContext = `Temp: ${w.temperature_2m}°F, ${condition}, wind ${w.windspeed_10m} mph, humidity ${w.relative_humidity_2m}%`;
-        const draftResult = await callAI(
-          `You are the AI agent for ${bizContext} based in Nassau, Bahamas. Write a short proactive WhatsApp message to today's clients that naturally mentions the actual current weather conditions. Keep it casual, warm, and local. Under 40 words. End with a relevant emoji. No subject line, no greeting prefix, no signature. You MUST reference the specific temperature and sky conditions provided.`,
-          `Current Nassau conditions as of ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}: ${weatherContext}`,
-          120
-        );
-        const draft = draftResult.text || `Hey! It\'s ${w.temperature_2m}°F and ${condition.toLowerCase()} out today — great time to connect. ☀️`;
-        await msg.reply(
-          `🌤️ *Nassau Weather — ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}*\n` +
-          `🌡️ Temp: ${w.temperature_2m}°F\n` +
-          `💧 Humidity: ${w.relative_humidity_2m}%\n` +
-          `💨 Wind: ${w.windspeed_10m} mph\n` +
-          `☁️ ${condition}\n\n` +
-          `---\n\n` +
-          `🤖 *Cay AI just auto-drafted this for ${bizContext}:*\n\n` +
-          `_"${draft}"_\n\n` +
-          `*The Value:* You don\'t lift a finger — the AI monitors conditions and keeps your clients informed on autopilot.\n\n` +
-          `_Reply *MENU* to go back, or *4* to book your strategy call._`,
-          null, { linkPreview: false }
-        );
-        demoSessions[from].state = 'feature_done';
-        appendToLog(from, from, '[DEMO] Viewed weather smart-update feature', 'demo', '', '', 'out', 'demo');
-      } catch (e) {
-        await msg.reply('❌ Could not fetch live weather right now. Reply *MENU* to try another option.', null, { linkPreview: false });
-      }
-    } else if (choice === '2') {
-      demoSessions[from].state = 'mind_reader_input';
-      appendToLog(from, from, '[DEMO] Started Deal-Closer feature', 'demo', '', '', 'out', 'demo');
-      if (session.demoBusiness && session.demoSells) {
-        // We already have their info — go straight to simulation
-        await runDealCloser(msg, from, `${session.demoBusiness}, ${session.demoSells}`, session);
-      } else {
-        await msg.reply(
-          `🧠 *The Deal-Closer*\n\n` +
-          `Let\'s simulate a live lead for your business. Reply with your *Business Name and what you sell*.\n\n` +
-          `_(Example: Marlin Charters, Boat Tours — or — Glow Salon, Hair & Nails)_`,
-          null, { linkPreview: false }
-        );
-      }
-    } else if (choice === '3') {
-      demoSessions[from].state = 'news';
-      appendToLog(from, from, '[DEMO] Started News Brief feature', 'demo', '', '', 'out', 'demo');
-      await msg.reply('📰 Pulling the latest Nassau headlines...', null, { linkPreview: false });
-      try {
-        const headlines = await fetchNewsHeadlines();
-        if (!headlines || headlines.length === 0) throw new Error('no headlines');
-        const briefResult = await callAI(
-          `You are a sharp Nassau-based news anchor. Summarise the 3 headlines below in 3 punchy bullet points for a Nassau small-business audience. Each bullet: one relevant emoji + bold headline fragment + one tight sentence of context. Under 80 words total. No intro line, just the bullets.`,
-          `Headlines:\n${headlines.map(h => `- ${h.title}: ${h.desc}`).join('\n')}`,
-          160
-        );
-        const headlineFallback = headlines.map((h, i) => `${i + 1}. *${h.title}*`).join('\n');
-        const brief = briefResult.text || headlineFallback;
-        demoSessions[from].state = 'feature_done';
-        await msg.reply(
-          `📰 *Nassau & Local News Brief — ${new Date().toLocaleString('en-US', { timeZone: 'America/Nassau', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}*\n\n` +
-          `${brief}\n\n` +
-          `---\n\n` +
-          `*The Value:* Cay AI can send your clients timely updates like this automatically — keeping your business top of mind without any manual effort.\n\n` +
-          `_Reply *MENU* to go back, or *4* to book your strategy call._`,
-          null, { linkPreview: false }
-        );
-        appendToLog(from, from, '[DEMO] Viewed News Brief feature', 'demo', '', '', 'out', 'demo');
-      } catch (e) {
-        demoSessions[from].state = 'feature_done';
-        await msg.reply('❌ Could not fetch news right now. Reply *MENU* to try another option.', null, { linkPreview: false });
-      }
-    } else if (choice === '4') {
-      await showDemoBooking(msg, from, calendarLink, ownerNumber, signature, session);
-    } else {
-      await msg.reply('_Reply with *1*, *2*, *3*, or *4* — or type the option name (e.g. "news" or "book")._', null, { linkPreview: false });
-    }
-    return;
   }
-
-  // ── FEATURE DONE: only accept book or MENU ──
-  if (session.state === 'feature_done' || session.state === 'news') {
-    const choice = resolveMenuChoice(body);
-    if (choice === '4') {
-      await showDemoBooking(msg, from, calendarLink, ownerNumber, signature, session);
-    } else if (choice) {
-      // Let them jump to another feature
-      demoSessions[from].state = 'menu';
-      await handleDemoFlow(msg, from, body, settings);
-    } else {
-      await msg.reply('_Reply *MENU* to go back, or *4* to book your strategy call._', null, { linkPreview: false });
-    }
-    return;
-  }
-
-  // ── DEAL-CLOSER: waiting for business type (only if not already collected) ──
-  if (session.state === 'mind_reader_input') {
-    await runDealCloser(msg, from, body.trim(), session);
-    return;
-  }
-
 }
+
+function isDemoBookingIntent(body) {
+  const t = body.toLowerCase();
+  return (
+    t.includes('book') || t.includes('yes') || t.includes('sounds good') ||
+    t.includes('let\'s do it') || t.includes("let's do it") || t.includes('sign me up') ||
+    t.includes('i\'m in') || t.includes("i'm in") || t.includes('confirm') ||
+    t.includes('reserve') || t.includes('schedule') || t.includes('perfect') ||
+    (t.includes('great') && body.length < 30)
+  );
+}
+
+function buildDemoReveal(persona, industry, calendarLink) {
+  return (
+    `Before I send that over — I have to be straight with you. 😊\n\n` +
+    `You weren't actually talking to ${persona} just now.\n\n` +
+    `You were talking to *Cay AI* — an AI employee built for Nassau businesses by *Lucayan Labs*. 🇧🇸\n\n` +
+    `Every question you just asked? A real ${industry} operator gets those same questions on WhatsApp dozens of times a week — while they're busy serving customers, unavailable, losing bookings.\n\n` +
+    `Cay AI answers instantly, 24/7, and routes serious enquiries straight to the owner for follow-up. One recovered booking or lead can cover the entire monthly fee.\n\n` +
+    `Want to see what this looks like set up for *your* business?\n\n` +
+    `📅 Book a free 20-minute call — we'll show you exactly how it works:\n${calendarLink}\n\n` +
+    `— Granville Collie, Founder & CEO\n` +
+    `Lucayan Labs | Building the AI Workforce for the Caribbean 🇧🇸`
+  );
+}
+
+function buildDemoFollowUp(industry, calendarLink) {
+  return (
+    `Hey — just following up from yesterday's demo. 👋\n\n` +
+    `If a call doesn't work for you, I can send a short voice note walking you through what Cay AI would look like set up for your ${industry} business specifically.\n\n` +
+    `Just reply *YES* and I'll send it over.\n\n` +
+    `— Granville, Lucayan Labs 🇧🇸`
+  );
+}
+
+// ─── DEMO SESSION MEMORY HELPERS ────────────────────────────────────────────
+
+function parseCayNotes(notes) {
+  const match = (notes || '').match(/\[CAY\]\s+([^\|]+)/);
+  if (!match) return {};
+  const collected = {};
+  match[1].trim().split(/\s+/).forEach(pair => {
+    const idx = pair.indexOf(':');
+    if (idx > 0) {
+      const k = pair.slice(0, idx);
+      const v = pair.slice(idx + 1).replace(/_/g, ' ');
+      if (v) collected[k] = v;
+    }
+  });
+  return collected;
+}
+
+function extractDemoFacts(body, existing) {
+  const collected = Object.assign({}, existing);
+  const t = body.toLowerCase();
+  if (!collected.name) {
+    const nm = body.match(/(?:i'?m|my name is|call me)\s+([A-Z][a-z]+)/i) ||
+               body.match(/^([A-Z][a-z]+)\s+(?:here|speaking)/i);
+    if (nm) collected.name = nm[1];
+  }
+  if (!collected.groupSize) {
+    const gs = body.match(/\b(\d+)\s*(?:people|persons?|guests?|of us|pax)\b/i);
+    const solo = /\b(just me|solo|only me|one person)\b/i.test(t);
+    if (gs) collected.groupSize = gs[1];
+    else if (solo) collected.groupSize = '1';
+  }
+  if (!collected.date) {
+    const dm = body.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next\s+\w+|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\b/i);
+    if (dm) collected.date = dm[1];
+  }
+  if (!collected.time) {
+    const tm = body.match(/\b(\d{1,2}(?::\d{2})?\s*(?:am|pm))\b/i) ||
+               body.match(/\b(morning|afternoon|evening)\b/i);
+    if (tm) collected.time = tm[1];
+  }
+  if (!collected.pickup) {
+    const pk = body.match(/\b(cruise\s+port|nassau\s+cruise|hotel|airbnb|resort|atlantis|baha\s+mar|downtown|cable\s+beach)\b/i);
+    if (pk) collected.pickup = pk[1];
+  }
+  if (!collected.service) {
+    const sv = body.match(/\b(snorkel(?:l?ing)?|fishing|jet\s*ski|boat\s+tour|private\s+charter|swimming\s+pigs?|excursion|rental|manicure|pedicure)\b/i);
+    if (sv) collected.service = sv[1];
+  }
+  return collected;
+}
+
+function writeCayToContact(number, collected) {
+  try {
+    const fields = Object.entries(collected || {})
+      .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+      .map(([k, v]) => `${k}:${String(v).replace(/[\s,]/g, '_')}`)
+      .join(' ');
+    if (!fields) return;
+    const cayBlock = `[CAY] ${fields}`;
+    const raw = fs.readFileSync(CONTACTS_FILE, 'utf8').trim();
+    const lines = raw.split('\n');
+    const updated = lines.map((line, i) => {
+      if (i === 0) return line;
+      const cols = line.split(',');
+      if (cols[0].trim().replace(/\D/g, '') === number.replace(/\D/g, '')) {
+        const existing = (cols[4] || '').trim().replace(/\[CAY\][^|]*/g, '').replace(/\s*\|\s*$/,'').trim();
+        cols[4] = (existing ? existing + ' | ' : '') + cayBlock;
+        return cols.join(',');
+      }
+      return line;
+    });
+    fs.writeFileSync(CONTACTS_FILE, updated.join('\n'));
+    refreshContactCache();
+  } catch (e) {
+    console.error('[DEMO] Error writing session facts to contact:', e.message);
+  }
+}
+
+// calendar_type: 'simulated' (default) | 'google' (stub — OAuth not yet wired)
+// calendar_id: reserved for Google Calendar integration
+async function checkAvailability(date, time, vertical, settings) {
+  const calType = (settings.calendar_type || 'simulated').toLowerCase();
+  if (calType === 'google') {
+    console.warn('[CAY] Google Calendar not yet connected — falling back to simulated');
+  }
+  const t = (time || '').toLowerCase().replace(/\s/g, '');
+  const unavailable = ['9am', '9:00am', '2pm', '2:00pm', '14:00'];
+  if (unavailable.some(s => t.includes(s))) {
+    const isMorning = t.includes('9am') || t.includes('9:00');
+    return { available: false, alternatives: isMorning ? ['8am', '10am'] : ['1pm', '3pm'] };
+  }
+  return { available: true };
+}
+
+// ─── END DEMO SESSION MEMORY HELPERS ────────────────────────────────────────
+
+async function handleIndustryDemo(msg, from, body, mainSettings) {
+  const session = demoSessions[from];
+  // Original WhatsApp JID for sending — `from` is bare digits, which
+  // client.sendMessage cannot route to. Prefer the stored/live chat id.
+  const chatId = session.chatId || msg.from || `${from}@c.us`;
+  const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+  // Timeout check
+  if (session.lastActivity < Date.now() - TWELVE_HOURS) {
+    writeCayToContact(from, session.collected);
+    delete demoSessions[from];
+    return false;
+  }
+
+  session.lastActivity = Date.now();
+
+  // Respect disengagement at any point — don't keep pushing the booking link
+  // at someone who is trying to leave. Hard opt-out words end silently; softer
+  // "not interested / exit" gets one polite acknowledgement.
+  const hardStop = /\b(stop|unsubscribe|remove me|opt[\s-]?out)\b/i.test(body);
+  const softExit = /\b(not interested|no thanks?|no thank you|exit|quit|cancel|leave me|go away|enough)\b/i.test(body);
+  if (hardStop || softExit) {
+    writeCayToContact(from, session.collected);
+    delete demoSessions[from];
+    if (softExit && !hardStop) {
+      await client.sendMessage(chatId, `No problem — thanks for checking it out! 👍`, { linkPreview: false })
+        .catch(e => console.error('[DEMO] exit ack send failed:', e.message));
+    }
+    appendToLog(from, from, `[DEMO] Ended — prospect disengaged ("${body.slice(0, 40)}")`, 'demo:ended', '', '', 'in', 'demo');
+    return true;
+  }
+
+  // Already revealed — send the booking reminder ONCE, then go quiet so we
+  // don't spam the CTA on every subsequent message.
+  if (session.state === 'revealed' || session.state === 'done') {
+    if (!session.ctaSent) {
+      session.ctaSent = true;
+      const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
+      await client.sendMessage(chatId,
+        `Still interested? Book your free 20-minute call here:\n${calendarLink}\n\n— Granville, Lucayan Labs 🇧🇸`,
+        { linkPreview: false }
+      ).catch(e => console.error('[DEMO] CTA send failed:', e.message));
+    }
+    return true;
+  }
+
+  session.collected = extractDemoFacts(body, session.collected || {});
+  session.messageCount = (session.messageCount || 0) + 1;
+
+  const calendarLink = session.settings.calendar_link || 'https://calendly.com/gjamescollie/30min';
+  const shouldReveal = session.messageCount >= 6 || isDemoBookingIntent(body);
+
+  if (shouldReveal) {
+    // Check availability before reveal when prospect has specified date + time
+    if (isDemoBookingIntent(body) && session.collected && session.collected.date && session.collected.time) {
+      const avail = await checkAvailability(session.collected.date, session.collected.time, session.keyword, session.settings);
+      if (!avail.available) {
+        const alts = avail.alternatives.join(' or ');
+        await humanDelay();
+        await client.sendMessage(chatId,
+          `That slot is taken — we have ${alts} available on that day. Which works for you?`,
+          { linkPreview: false }
+        ).catch(e => console.error('[DEMO] availability send failed:', e.message));
+        session.collected.time = null;
+        return true;
+      }
+    }
+    session.state = 'revealed';
+    const revealMsg = buildDemoReveal(session.persona, session.industry, calendarLink);
+    await humanDelay();
+    await client.sendMessage(chatId, revealMsg, { linkPreview: false })
+      .catch(e => console.error('[DEMO] reveal send failed:', e.message));
+    writeCayToContact(from, session.collected);
+    appendToLog(from, from, '[DEMO] Reveal sent', 'demo:revealed', '', '', 'out', 'demo');
+    const controlChannel = getControlChannel(mainSettings);
+    if (controlChannel) {
+      await client.sendMessage(controlChannel,
+        `🎯 *[DEMO REVEAL]* ${from} completed the *${session.keyword}* demo path (${session.messageCount} messages). Reveal sent.`,
+        { linkPreview: false }
+      ).catch(() => {});
+    }
+    return true;
+  }
+
+  // Generate AI response in persona
+  const knownFacts = Object.entries(session.collected || {})
+    .filter(([, v]) => v !== null && v !== undefined && String(v).trim())
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(', ');
+
+  const demoSystemPrompt =
+    `You are the WhatsApp receptionist for ${session.persona}, a real Nassau business.\n` +
+    `Your job: answer customer enquiries naturally and helpfully, as if you work there.\n` +
+    `NEVER mention AI, automation, Cay AI, or Lucayan Labs.\n` +
+    `NEVER break character.\n` +
+    `Sound like a real local team member — warm, knowledgeable, helpful.\n` +
+    `Keep replies under 80 words. Max 1 emoji. No hashtags. No subject lines.\n` +
+    `Sign off with: ${session.settings.signature}\n` +
+    (knownFacts ? `Known about this prospect: ${knownFacts}\nDo NOT ask for information already listed above.\n` : '') +
+    `KNOWLEDGE BASE (use these to answer questions accurately):\n` +
+    session.kb.map((e, i) => `${i + 1}. Q: ${e.q}\nA: ${e.a}`).join('\n\n') + '\n\n' +
+    `Tone: ${session.settings.tone || 'friendly-pro'}\n` +
+    `Language: ${session.settings.language_style || 'standard'}\n` +
+    `Business context: ${session.settings.business_context || ''}`;
+
+  const demoUserPrompt = `Customer message: "${body}"\n\nReply naturally as ${session.persona}.`;
+
+  const result = await callAI(demoSystemPrompt, demoUserPrompt, 200);
+  const reply = result.text || `Thanks for reaching out! We'll get back to you shortly.\n\n${session.settings.signature}`;
+
+  await humanDelay();
+  await client.sendMessage(chatId, reply, { linkPreview: false })
+    .catch(e => console.error('[DEMO] reply send failed:', e.message));
+  appendToLog(from, from, reply, 'demo:active', result.tokens || '', '', 'out', 'demo');
+  return true;
+}
+
+// ─── END CAY AI INDUSTRY DEMO SYSTEM ────────────────────────────────────────
+
 
 async function handleSetup(msg, body) {
   const userId = msg.from;
@@ -1324,6 +1356,24 @@ const client = new Client({
   },
 });
 
+// ─── BOT-SENT MESSAGE TRACKING ───────────────────────────────────────────────
+// message_create fires with fromMe=true for BOTH owner-typed messages and the
+// bot's own programmatic sends (the bot is the linked device). We wrap
+// client.sendMessage to record the ids of messages WE send, so the
+// message_create listener can skip them and not treat them as owner input.
+const botSentMsgIds = new Set();
+const _origSendMessage = client.sendMessage.bind(client);
+client.sendMessage = async (...args) => {
+  const sent = await _origSendMessage(...args);
+  const sid = sent?.id?._serialized;
+  if (sid) {
+    botSentMsgIds.add(sid);
+    // Bound memory — keep only the most recent ids.
+    if (botSentMsgIds.size > 500) botSentMsgIds.delete(botSentMsgIds.values().next().value);
+  }
+  return sent;
+};
+
 client.on('qr', (qr) => {
   console.log('\n📱 Scan this QR code with your WhatsApp:\n');
   qrcode.generate(qr, { small: true });
@@ -1337,6 +1387,7 @@ client.on('ready', () => {
   startFollowUpChecker();
   startInactivityChecker();
   startReviewAgent();
+  startUptimeRobotPing();
 });
 client.on('auth_failure', () => console.error('❌ Auth failed — re-scan the QR code'));
 
@@ -1379,9 +1430,9 @@ client.on('disconnected', (reason) => {
     fs.writeFileSync(script, 'display notification "Cay AI disconnected. Restart required." with title "Cay AI Agent" sound name "Basso"');
     execFile('osascript', [script], (err) => { if (err) console.error('Notification failed:', err.message); });
     const settings = getSettings();
-    const ownerNumber = (settings.owner_number || '').replace(/\D/g, '');
-    if (ownerNumber) {
-      client.sendMessage(formatNumber(ownerNumber), `⚠️ *Agent Disconnected*\n\nReason: ${reason}\n\nPlease restart the agent.`, { linkPreview: false }).catch(() => {});
+    const controlChannel = getControlChannel(settings);
+    if (controlChannel) {
+      client.sendMessage(controlChannel, `⚠️ *Agent Disconnected*\n\nReason: ${reason}\n\nPlease restart the agent.`, { linkPreview: false }).catch(() => {});
     }
   }
 });
@@ -1389,6 +1440,15 @@ client.on('disconnected', (reason) => {
 // ─── MESSAGE HANDLER ──────────────────────────────────────────────────────────
 client.on('message_create', async (msg) => {
   if (!msg.fromMe) return;
+
+  // Skip the bot's own programmatic sends — only react to messages the OWNER
+  // actually typed. The id may not be registered yet if this event fires before
+  // client.sendMessage resolves, so wait briefly and re-check to avoid a race.
+  const sid = msg.id?._serialized;
+  if (sid) {
+    if (!botSentMsgIds.has(sid)) await new Promise(r => setTimeout(r, 250));
+    if (botSentMsgIds.has(sid)) { botSentMsgIds.delete(sid); return; }
+  }
 
   const body = msg.body.trim();
   const lower = body.toLowerCase();
@@ -1836,6 +1896,21 @@ async function handleBroadcastApproval(preview, settings) {
   return { sent, failed };
 }
 
+// ─── UPTIMEROBOT PUSH HEARTBEAT ──────────────────────────────────────────────
+// Set UPTIME_ROBOT_PUSH_URL in .env to the push URL from your UptimeRobot
+// "Push" monitor (https://uptimerobot.com → Add Monitor → Push). The agent
+// pings it every 5 minutes to confirm it is alive. No-op when unset.
+function startUptimeRobotPing() {
+  const pushUrl = process.env.UPTIME_ROBOT_PUSH_URL;
+  if (!pushUrl) return;
+  const ping = () =>
+    fetch(pushUrl, { method: 'GET' })
+      .then(() => console.log('💓 UptimeRobot ping sent'))
+      .catch(e => console.error('UptimeRobot ping failed:', e.message));
+  ping();
+  setInterval(ping, 5 * 60 * 1000);
+}
+
 // ─── FOLLOW-UP CHECKER ────────────────────────────────────────────────────────
 function startFollowUpChecker() {
   setInterval(async () => {
@@ -1844,7 +1919,7 @@ function startFollowUpChecker() {
     if (due.length === 0) return;
 
     const settings = getSettings();
-    const ownerNumber = formatNumber(settings.owner_number || '');
+    const controlChannel = getControlChannel(settings);
 
     for (const f of due) {
       try {
@@ -1852,15 +1927,15 @@ function startFollowUpChecker() {
         updateLastContacted(f.rawNumber);
         appendToLog(f.rawNumber, f.contactName || '', f.message, 'outbound:sent', 0, '', 'out', '!schedule');
         console.log(`✅ Scheduled message sent to ${f.number}`);
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber, `📤 Scheduled message sent to ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}`, { linkPreview: false });
+        if (controlChannel) {
+          await client.sendMessage(controlChannel, `📤 Scheduled message sent to ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}`, { linkPreview: false });
         }
       } catch (e) {
         console.error(`❌ Scheduled message failed for ${f.number}:`, e.message);
         appendToLog(f.rawNumber, f.contactName || '', f.message, 'outbound:failed', 0, '', 'out', '!schedule');
-        if (ownerNumber) {
+        if (controlChannel) {
           console.error(`[ERROR] Scheduled message failed for ${f.rawNumber}:`, e);
-          await client.sendMessage(ownerNumber, `❌ Scheduled message FAILED for ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}. Check the terminal for details.`, { linkPreview: false }).catch(() => {});
+          await client.sendMessage(controlChannel, `❌ Scheduled message FAILED for ${f.rawNumber}${f.contactName ? ` (${f.contactName})` : ''}. Check the terminal for details.`, { linkPreview: false }).catch(() => {});
         }
       }
     }
@@ -1881,9 +1956,9 @@ function startFollowUpChecker() {
       const rate = stats.optOuts / stats.rangeInbound;
       if (rate >= 0.1) { // 10% opt-out rate threshold
         const settings = getSettings();
-        const ownerNumber = formatNumber(settings.owner_number || '');
-        if (ownerNumber) {
-          await client.sendMessage(ownerNumber,
+        const controlChannel = getControlChannel(settings);
+        if (controlChannel) {
+          await client.sendMessage(controlChannel,
             `⚠️ *Opt-Out Alert*\n\n${stats.optOuts} opt-outs in the last 7 days (${(rate * 100).toFixed(1)}% of inbound messages).\n\nConsider reviewing your message frequency or content.`,
             { linkPreview: false }).catch(() => {});
         }
@@ -2024,9 +2099,9 @@ function startReviewAgent() {
     lastFiredDay = bahamasDay;
 
     try {
-      const settings    = getSettings();
-      const ownerNumber = formatNumber(settings.owner_number || '');
-      if (!ownerNumber) return;
+      const settings        = getSettings();
+      const controlChannel  = getControlChannel(settings);
+      if (!controlChannel) return;
 
       // ── Read last 24h of log entries ──
       const raw = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n');
@@ -2039,7 +2114,7 @@ function startReviewAgent() {
       if (recent.length === 0) {
         if (isSunday) {
           const staleSection = buildStaleLeadSection();
-          if (staleSection) await client.sendMessage(ownerNumber, staleSection, { linkPreview: false });
+          if (staleSection) await client.sendMessage(controlChannel, staleSection, { linkPreview: false });
         }
         return;
       }
@@ -2125,7 +2200,7 @@ Unfollowed lead numbers: ${unfollowedLeads.join(', ') || 'None'}`;
       if (isSunday) {
         const staleSection = buildStaleLeadSection();
         const combined = ai.text + (staleSection ? '\n\n' + staleSection : '');
-        await client.sendMessage(ownerNumber, combined, { linkPreview: false });
+        await client.sendMessage(controlChannel, combined, { linkPreview: false });
         console.log('📊 Sunday report sent');
       } else {
         console.log('📄 Daily review HTML updated (no WhatsApp on weekdays)');
@@ -2146,23 +2221,36 @@ function startInactivityChecker() {
     const now = Date.now();
     const settings = getSettings();
 
-    // ── DEMO SESSIONS (customer-facing) ──
+    // ── DEMO SESSIONS (industry persona) ──
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
     for (const [from, session] of Object.entries(demoSessions)) {
-      const idle = now - (session.lastActivity || now);
-      if (!session.nudged && idle >= INACTIVITY_NUDGE_MS) {
-        session.nudged = true;
-        session.nudgedAt = now;
-        await client.sendMessage(from,
-          `Still there? 👋 Reply *menu* to jump back in, or just send a message to continue.\n\n- The ${settings.business_name || 'Cay AI'} Team`,
-          { linkPreview: false }
-        ).catch(() => {});
-      } else if (session.nudged && now - session.nudgedAt >= INACTIVITY_EXPIRE_MS) {
+      // 12-hour hard timeout
+      if (session.lastActivity < now - TWELVE_HOURS_MS) {
+        writeCayToContact(from, session.collected);
         delete demoSessions[from];
-        await client.sendMessage(from,
-          `Looks like we got cut off! Feel free to message us anytime to start fresh. 🙂\n\n- The ${settings.business_name || 'Cay AI'} Team`,
-          { linkPreview: false }
-        ).catch(() => {});
-        appendToLog(from, from, '[DEMO] Session expired (inactivity)', 'demo:expired', '', '', 'out', 'demo');
+        continue;
+      }
+      // 24-hour follow-up for revealed sessions
+      if (
+        session.state === 'revealed' &&
+        !session.followUpSent &&
+        session.lastActivity < now - TWENTY_FOUR_HOURS_MS
+      ) {
+        const calendarLink = (session.settings && session.settings.calendar_link) || 'https://calendly.com/gjamescollie/30min';
+        const followUpMsg = buildDemoFollowUp(session.industry || 'Nassau business', calendarLink);
+        await client.sendMessage(session.chatId || `${from}@c.us`, followUpMsg, { linkPreview: false })
+          .catch(e => console.error('[DEMO] follow-up send failed:', e.message));
+        session.followUpSent = true;
+        appendToLog(from, from, '[DEMO] Follow-up sent', 'demo:followup', '', '', 'out', 'demo');
+      }
+    }
+
+    // ── CUSTOMER SESSIONS (real-contact memory — 4-hour idle expiry) ──
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+    for (const [from, session] of Object.entries(customerSessions)) {
+      if (session.lastActivity < now - FOUR_HOURS_MS) {
+        delete customerSessions[from];
       }
     }
 
@@ -2226,6 +2314,22 @@ function getCalendarLink(settings) {
   return settings.calendar_link || 'https://calendly.com/gjamescollie';
 }
 
+// Where the operator receives escalations and AI activity notifications.
+// On a shared-number deployment the agent runs on the client's own customer-facing
+// WhatsApp, so escalations must NOT land in that line's "Message Yourself" chat where
+// staff or the customer thread can see them. Set `control_channel` in settings.csv to a
+// dedicated "Cay Control" group JID (…@g.us) or the operator's personal number to route
+// all notifications there instead. Falls back to the owner's own number, preserving the
+// legacy single-owner Mac behaviour when `control_channel` is unset.
+function getControlChannel(settings) {
+  const raw = (settings.control_channel || '').trim();
+  if (raw) {
+    if (raw.endsWith('@g.us') || raw.endsWith('@c.us')) return raw;
+    return formatNumber(raw); // bare number → @c.us
+  }
+  return formatNumber(settings.owner_number || '');
+}
+
 // Hard opt-out check — requires a clear multi-word phrase to avoid accidental funnel drop-off
 function isHardOptOut(message) {
   const msg = message.toLowerCase().trim();
@@ -2254,8 +2358,9 @@ async function classifyIntent(message, contact, settings) {
     : 'This person is not yet in the contact list. Treat them as a new contact at stage: new.';
 
   const responseWindow = settings.response_window || '';
+  const bizContext = (settings.business_context || '').slice(0, 400);
 
-  const systemPrompt = `You are an intent classifier for ${bizName}, a business that sells a WhatsApp AI outreach tool to small businesses in the Bahamas.
+  const systemPrompt = `You are an intent classifier for ${bizName}.${bizContext ? `\nBusiness: ${bizContext}` : ''}
 ${responseWindow ? `Owner response window: ${responseWindow}. Factor this in when assessing urgency.` : ''}
 
 Your job: read an incoming WhatsApp message from a potential or existing customer and classify it into EXACTLY ONE intent category. Return ONLY valid JSON, no other text.
@@ -2270,7 +2375,7 @@ INTENT CATEGORIES:
 - "BOOKING_CONFIRMATION" — confirming or acknowledging an appointment, meeting time, or booking
 - "REFERRAL" — recommending or referring someone else, or asking about referring a friend/business
 - "GREETING" — opening message with no specific request: "hello", "hi", "hey", "good morning", "what's up", "how are you" — first contact or a bare greeting with no actionable ask
-- "ON_THE_FENCE_BUYER" — interested in WhatsApp automation, AI messaging, or business automation but still deciding; shows curiosity, hesitation, or business pain without a direct price or demo ask
+- "ON_THE_FENCE_BUYER" — interested in the business's product or service but still deciding; shows curiosity, hesitation, or relevant pain without a direct price or booking ask
 - "ACKNOWLEDGEMENT" — short non-question reply with no new request: "ok", "thanks", "got it", "sounds good", "cool", thumbs up emoji, etc.
 - "CONVERSATION_CONTINUATION" — continuing a prior thread; follow-up that implies history (e.g. "what about pricing?", "actually one more thing", "following up on that")
 - "PERSONAL_CONVERSATION" — the person is clearly talking personally (not about business): venting, chatting casually, sharing personal news, asking personal questions — they know who they're texting but it's not a business inquiry
@@ -2297,13 +2402,14 @@ Rules:
 - A message like "lol how was your weekend" from a known contact is PERSONAL_CONVERSATION. "Hey Sarah did you pick up the kids" is WRONG_NUMBER.
 
 KEY PHRASE EXAMPLES (use these to calibrate intent):
-- QUESTION → "What is [business name]?", "What exactly do you do?", "How does this work?", "What are your hours?", "Are you open on weekends?", "Where are you located?", "Do you service [island/area]?", "How long before I see results?", "When can this be delivered?", "What's the difference between your plans?", "Do you offer a guarantee?", "What happens if something goes wrong?", "Do you offer support?"
-- HOT_LEAD → "How much does this cost?", "What are your pricing plans?", "Are there any hidden fees?", "Is there a setup cost?", "How do I sign up?", "How do I get started?", "How much this costing?", "What y'all prices looking like?", "Any hidden fees or setup costs tacked onto this?", "Are there any discounts if I pay for the whole year upfront?", "Is there a free trial available before I have to pay?", "What happens if I need to cancel my subscription or plan?", "Do you offer custom pricing packages if my business needs more?", "Is the price per user, or is it a flat monthly rate?"
+- QUESTION → "What is [business name]?", "What exactly do you do?", "How does this work?", "What are your hours?", "Are you open on weekends?", "Where are you located?", "Do you service [island/area]?", "How long before I see results?", "When can this be delivered?", "What's the difference between your plans?", "Do you offer a guarantee?", "What happens if something goes wrong?", "Do you offer support?", "What's included in the tour?", "How long does it last?", "Where do we meet you?", "Do you pick up from the cruise ship?", "Can kids come?", "What do we need to bring?", "Is snorkel gear provided?", "What happens if it rains?", "How many people fit on the boat?", "Can someone who can't swim come?"
+- HOT_LEAD → "How much does this cost?", "What are your pricing plans?", "Are there any hidden fees?", "Is there a setup cost?", "How do I sign up?", "How do I get started?", "How much this costing?", "What y'all prices looking like?", "Any hidden fees or setup costs tacked onto this?", "Are there any discounts if I pay for the whole year upfront?", "Is there a free trial available before I have to pay?", "What happens if I need to cancel my subscription or plan?", "Do you offer custom pricing packages if my business needs more?", "Is the price per user, or is it a flat monthly rate?", "How much for 4 people?", "Do you have availability this weekend?", "I want to book for my family", "We'd like to come Saturday — is there space?", "Can I pay to reserve a spot now?", "I want to book a tour for my birthday group"
+- BOOKING_CONFIRMATION → "Confirmed for Saturday — party of 4", "See you at the pier tomorrow at 10!", "Just confirmed our tour booking", "We're booked and confirmed — see you then", "Confirmed for our appointment next Tuesday"
 - DEMO → "Can I see a demo?", "How can I try it?", "Can you show me how it works?", "I could see a demo?", "How I could try it out?"
 - CALL → "Can we book a call?", "Can I speak to someone?", "We could book a quick call?", "How I get started with this?"
 - QUESTION → also includes Bahamian dialect variants: "What is [business name] anyway?", "What y'all does do?", "How this does work?", "What y'all hours is?", "Y'all open over the weekend?", "Where y'all located?", "You does service other islands or just Nassau?", "How long before I see real results?", "When this could get delivered?", "What's the true-true difference between the plans?"
 - CONVERSATION_CONTINUATION → "Tell me more", "Fill me in.", "What's the deal with that?", "Keep going", "I'm listening.", "Give me the scoop.", "Can you expand on that a bit?", "Go on", "And then what?", "Keep it coming"
-- ON_THE_FENCE_BUYER → "I was thinking about automating my WhatsApp but still tryna decide.", "I run a small business in Nassau, looking into WhatsApp automation but not sure yet.", "Business gets busy on weekends and I sometimes miss messages. Looking at AI but still deciding.", "I'm curious how it works but I don't know if it's worth it.", "I get plenty inquiries every day, just exploring my options.", "I don't want to hire more staff but WhatsApp is getting hard to manage.", "I've been considering AI for customer replies but haven't pulled the trigger yet."
+- ON_THE_FENCE_BUYER → "I was thinking about automating my WhatsApp but still tryna decide.", "I run a small business in Nassau, looking into WhatsApp automation but not sure yet.", "Business gets busy on weekends and I sometimes miss messages. Looking at AI but still deciding.", "I'm curious how it works but I don't know if it's worth it.", "I get plenty inquiries every day, just exploring my options.", "I don't want to hire more staff but WhatsApp is getting hard to manage.", "I've been considering AI for customer replies but haven't pulled the trigger yet.", "Been thinking about doing a boat tour, still deciding between a few options.", "Looking at excursions for our Nassau trip next month, haven't booked yet.", "Saw your tours mentioned — still weighing up what to do while we're here."
 - Treat Bahamian dialect the same as standard English — do not lower confidence just because of dialect.
 - ON_THE_FENCE_BUYER vs HOT_LEAD: HOT_LEAD means they are ready to buy (asking price, how to sign up, ready to start). ON_THE_FENCE_BUYER means interested but undecided. HOT_LEAD always outranks ON_THE_FENCE_BUYER.
 - ON_THE_FENCE_BUYER vs DEMO: DEMO means they want to see the product right now. ON_THE_FENCE_BUYER means they're still in research/consideration mode.
@@ -2311,8 +2417,9 @@ KEY PHRASE EXAMPLES (use these to calibrate intent):
 - Confidence for ON_THE_FENCE_BUYER: 0.90+ = clear interest + clear hesitation + business pain; 0.75–0.89 = clear interest + either hesitation or pain; 0.60–0.74 = possible but vague — lower confidence; below 0.60 = use QUESTION or OTHER instead.
 - Bahamas local context (Nassau, Freeport, local business, tour, salon, barber, restaurant, car rental, real estate, Airbnb) increases confidence for ON_THE_FENCE_BUYER.`;
 
-  // Delimiters prevent prompt injection: instructions inside <message> cannot override the system prompt
-  const userPrompt = `Classify this incoming message:\n\n<inbound_message>\n${message}\n</inbound_message>\n\nReturn ONLY valid JSON.`;
+  // Strip delimiter tags from user content to prevent prompt injection
+  const safeMessage = message.replace(/<\/?inbound_message>/gi, '');
+  const userPrompt = `Classify this incoming message:\n\n<inbound_message>\n${safeMessage}\n</inbound_message>\n\nReturn ONLY valid JSON.`;
 
   const result = await callAI(systemPrompt, userPrompt, 250);
   if (!result.text) return null;
@@ -2380,6 +2487,27 @@ function setContactStage(number, stage) {
   }
 }
 
+function updateContactNotes(number, additionalNotes) {
+  try {
+    const raw = fs.readFileSync(CONTACTS_FILE, 'utf8').trim();
+    const lines = raw.split('\n');
+    const updated = lines.map((line, i) => {
+      if (i === 0) return line;
+      const cols = line.split(',');
+      if (cols[0].trim().replace(/\D/g, '') === number.replace(/\D/g, '')) {
+        const existing = (cols[4] || '').trim();
+        cols[4] = (existing ? existing + ' | ' : '') + additionalNotes.replace(/,/g, ';');
+        return cols.join(',');
+      }
+      return line;
+    });
+    fs.writeFileSync(CONTACTS_FILE, updated.join('\n'));
+    refreshContactCache();
+  } catch (e) {
+    console.error('Error updating contact notes:', e.message);
+  }
+}
+
 function getKBAnswer(index, settings) {
   if (!index) return null;
   const q = settings[`faq_${index}_q`];
@@ -2419,7 +2547,8 @@ Given a contact's funnel stage, their message, and the classified intent, return
 
 Return ONLY valid JSON. No other text.`;
 
-  const userPrompt = `Contact: ${contactLabel}\nStage: ${stage}\nIntent: ${intent}\n\n<inbound_message>\n${body}\n</inbound_message>`;
+  const safeBody = body.replace(/<\/?inbound_message>/gi, '');
+  const userPrompt = `Contact: ${contactLabel}\nStage: ${stage}\nIntent: ${intent}\n\n<inbound_message>\n${safeBody}\n</inbound_message>`;
 
   const result = await callAI(systemPrompt, userPrompt, 200);
   if (!result.text) return null;
@@ -2498,14 +2627,123 @@ function isSpam(message) {
   return SPAM_PATTERNS.some(p => p.test(message));
 }
 
+// ─── B4: QUALIFY + CAPTURE + HANDOFF ─────────────────────────────────────────
+async function handleQualification(from, body, pq, msg, settings, contact, contactName, firstName, controlChannel, signature, calendarLink) {
+  delete pendingQualifications[from];
+
+  const bizName = settings.business_name || 'Cay AI';
+  const sc = customerSessions[from] ? customerSessions[from].collected : {};
+
+  // AI: extract date, party size, and notes from their reply
+  const extractResult = await callAI(
+    'You extract booking qualification data from a customer WhatsApp reply. Return ONLY valid JSON, no other text.',
+    `Original inquiry: "${pq.originalMessage.slice(0, 200)}"\nWe asked for date, group size, and any special requests.\nCustomer replied: "${body.slice(0, 300)}"\n\nExtract: {"date": string or null, "party_size": string or null, "notes": string or null}\nUse null for anything not mentioned.`,
+    150
+  );
+
+  let aiDate = null, aiPartySize = null, aiNotes = null;
+  if (extractResult.text) {
+    try {
+      const m = extractResult.text.replace(/```json/gi, '').replace(/```/g, '').trim().match(/\{[\s\S]*\}/);
+      if (m) {
+        const parsed = JSON.parse(m[0]);
+        aiDate = parsed.date || null;
+        aiPartySize = parsed.party_size || null;
+        aiNotes = parsed.notes || null;
+      }
+    } catch (_) {}
+  }
+
+  // Session memory supplements AI extraction
+  const date = aiDate || sc.date || null;
+  const partySize = aiPartySize || sc.groupSize || null;
+  const notes = aiNotes || null;
+  const time = sc.time || null;
+
+  // Update session with confirmed facts
+  if (customerSessions[from]) {
+    if (date) customerSessions[from].collected.date = date;
+    if (partySize) customerSessions[from].collected.groupSize = partySize;
+  }
+
+  // Check availability when date + time are both known
+  if (date && time) {
+    const avail = await checkAvailability(date, time, null, settings);
+    if (!avail.available) {
+      const alts = avail.alternatives.join(' or ');
+      await humanDelay(true);
+      await msg.reply(
+        `Got it${firstName ? `, ${firstName}` : ''}! One thing — that time is taken. We have *${alts}* available on that day. Which works for you?\n\n${signature}`,
+        null, { linkPreview: false }
+      );
+      if (customerSessions[from]) customerSessions[from].collected.time = null;
+      pendingQualifications[from] = { originalMessage: pq.originalMessage, timestamp: Date.now() };
+      return;
+    }
+  }
+
+  const qualParts = [
+    date      && `Date: ${date}`,
+    time      && `Time: ${time}`,
+    partySize && `Party: ${partySize}`,
+    notes     && `Notes: ${notes}`,
+  ].filter(Boolean);
+  const qualNotes = qualParts.join(' | ');
+
+  if (qualNotes) updateContactNotes(from, qualNotes);
+  writeCayToContact(from, customerSessions[from] ? customerSessions[from].collected : {});
+  setContactStage(from, 'exploring');
+
+  // Cay Control warm lead summary
+  const summaryLines = [
+    `🔥 *WARM LEAD — ${bizName}*`,
+    ``,
+    `*Name:* ${contactName}`,
+    `*Number:* ${from}`,
+    date      ? `*Date:* ${date}` : null,
+    time      ? `*Time:* ${time}` : null,
+    partySize ? `*Group:* ${partySize}` : null,
+    notes     ? `*Notes:* ${notes}` : null,
+    ``,
+    `*Inquiry:* "${pq.originalMessage.slice(0, 120)}"`,
+    calendarLink ? `*Booking link:* ${calendarLink}` : null,
+    ``,
+    `⚡ Follow up to close — they're ready.`,
+  ].filter(l => l !== null).join('\n');
+
+  await client.sendMessage(controlChannel, summaryLines, { linkPreview: false }).catch(() => {});
+
+  // Customer confirmation + booking link
+  const confirmedSlot = date && time ? ` for *${date}* at *${time}*` : '';
+  const confirmMsg = calendarLink
+    ? `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along${confirmedSlot} and someone will be in touch shortly to confirm everything.\n\nYou can also secure your spot directly here: ${calendarLink}\n\n${signature}`
+    : `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along${confirmedSlot} and someone will be in touch shortly to confirm everything.\n\n${signature}`;
+
+  await humanDelay(true);
+  await msg.reply(confirmMsg, null, { linkPreview: false });
+  appendToLog(from, contactName, `[QUALIFIED] ${qualNotes || 'details captured'}`, 'inbound:qualified', extractResult.tokens || '', '', 'in', 'auto');
+}
+
 async function handleInbound(msg) {
   const settings = getSettings();
-  const ownerNumber = formatNumber(settings.owner_number || '');
-  if (!ownerNumber) return;
+  // All operator-facing notifications go to the control channel (a dedicated Cay Control
+  // group or the operator's personal number) so escalations stay off the shared customer
+  // line. Defaults to the owner's number when control_channel is unset.
+  const controlChannel = getControlChannel(settings);
+  if (!controlChannel) return;
 
   const phoneNumber = await resolveRealNumber(msg.from);
   const from = phoneNumber;
-  const contact = findContact(phoneNumber);
+  let contact = findContact(phoneNumber);
+  if (!contact) {
+    let pushName = '';
+    try {
+      const waContact = await msg.getContact();
+      pushName = (waContact.pushname || waContact.name || '').slice(0, 60).replace(/,/g, ' ').trim();
+    } catch (_) {}
+    appendContact({ number: from, name: pushName || from, tags: 'inbound', notes: '', business: '' });
+    contact = findContact(from);
+  }
   const contactName = contact ? contact.name : '(unknown)';
   const firstName = contact ? contact.name.split(' ')[0] : '';
   // Neutralize any formula injection from inbound body before any further use
@@ -2517,12 +2755,35 @@ async function handleInbound(msg) {
   // ── FAST PATH: empty/media-only messages (no text to classify) ──
   if (!body) return;
 
+  // ── CUSTOMER SESSION MEMORY ──
+  // Initialize on first message (pre-populate from [CAY] notes); update on every message.
+  if (!customerSessions[from]) {
+    const priorFacts = contact ? parseCayNotes(contact.notes) : {};
+    customerSessions[from] = {
+      collected: {
+        name: priorFacts.name || null,
+        business: priorFacts.business || null,
+        sells: priorFacts.sells || null,
+        groupSize: priorFacts.groupSize || null,
+        date: priorFacts.date || null,
+        time: priorFacts.time || null,
+        pickup: priorFacts.pickup || null,
+        service: priorFacts.service || null,
+        preference: priorFacts.preference || null,
+      },
+      lastActivity: Date.now(),
+    };
+  } else {
+    customerSessions[from].lastActivity = Date.now();
+  }
+  customerSessions[from].collected = extractDemoFacts(body, customerSessions[from].collected);
+
   console.log(`📨 Inbound from ${contactName}: ${body}`);
   const spamFlag = isSpam(body) ? ' [⚠️ SPAM?]' : '';
   appendToLog(from, contactName, `[INBOUND${spamFlag}] ${body}`, 'inbound:received', '', '', 'in', 'auto');
   if (spamFlag) {
     console.warn(`⚠️ Possible spam from ${contactName} (${from}): ${body.slice(0, 80)}`);
-    await client.sendMessage(ownerNumber, `⚠️ *Possible Spam* flagged\n\n*From:* ${contactName} (${from})\n*Message:* _"${body.slice(0, 200)}"_\n\nAgent will continue to classify normally.`, { linkPreview: false }).catch(() => {});
+    await client.sendMessage(controlChannel, `⚠️ *Possible Spam* flagged\n\n*From:* ${contactName} (${from})\n*Message:* _"${body.slice(0, 200)}"_\n\nAgent will continue to classify normally.`, { linkPreview: false }).catch(() => {});
   }
 
   // ── FAST PATH: hard opt-out (no AI needed) ──
@@ -2533,7 +2794,7 @@ async function handleInbound(msg) {
       `Hi${firstName ? ` ${firstName}` : ''}! We have removed you from our outreach list and will not contact you again.\n\nIf you ever change your mind we are always here to help.\n\n${signature}`,
       null, { linkPreview: false }
     );
-    await client.sendMessage(ownerNumber,
+    await client.sendMessage(controlChannel,
       `🚫 *Opt-Out*\n\n${contactName} (${from}) has opted out and been tagged inactive.\n\n_"${body}"_`,
       { linkPreview: false }
     );
@@ -2541,25 +2802,93 @@ async function handleInbound(msg) {
     return;
   }
 
-  // ── DEMO STATE MACHINE (intercept before AI) ──
+  // ── INDUSTRY DEMO INTERCEPT ──
   if (demoSessions[from]) {
-    await handleDemoFlow(msg, from, body, settings);
-    return;
+    const handled = await handleIndustryDemo(msg, from, body, settings);
+    if (handled) return;
+    // Session timed out — fall through to normal handling
   }
-  if (body.toLowerCase().trim() === 'demo') {
-    demoSessions[from] = { state: 'intro', lastActivity: Date.now() };
-    setContactStage(from, 'demo');
-    if (ownerNumber) await client.sendMessage(ownerNumber, `🎯 *Demo Started*\n\n*From:* ${contactName} (${from})\n\nThey entered the interactive demo flow.`, { linkPreview: false }).catch(() => {});
-    appendToLog(from, contactName, 'Demo started', 'demo', '', '', 'in', 'auto');
-    await humanDelay();
-    await msg.reply(
-      `🚀 *Welcome to Cay AI!* 🇧🇸\n\n` +
-      `Before I show you what I can do, let me make this personal.\n\n` +
-      `Reply with your *Name*, *Business Name*, and *what you sell* — separated by commas.\n\n` +
-      `_(Example: James, Marlin Charters, Boat Tours)_`,
-      null, { linkPreview: false }
-    );
-    return;
+  const upperBody = body.trim().toUpperCase();
+  const matchedKeyword = DEMO_KEYWORDS.find(k => upperBody === k);
+
+  // Demos start ONLY on an explicit industry keyword (TOUR/FOOD/REALTY/DRIVE/
+  // BEAUTY). We no longer drop every unknown contact into a random demo.
+  if (matchedKeyword && !demoSessions[from]) {
+    const keyword = matchedKeyword;
+    const vertical = loadDemoVertical(keyword);
+    if (vertical) {
+      // Pre-populate collected from [CAY] notes if contact exists
+      const existingContact = findContact(from);
+      const priorFacts = existingContact ? parseCayNotes(existingContact.notes) : {};
+      const collectedInit = {
+        name: priorFacts.name || null,
+        business: priorFacts.business || null,
+        sells: priorFacts.sells || null,
+        groupSize: priorFacts.groupSize || null,
+        date: priorFacts.date || null,
+        time: priorFacts.time || null,
+        pickup: priorFacts.pickup || null,
+        service: priorFacts.service || null,
+        preference: priorFacts.preference || null,
+      };
+      demoSessions[from] = {
+        state: 'active',
+        keyword,
+        persona: vertical.persona,
+        industry: vertical.industry,
+        settings: vertical.settings,
+        kb: vertical.kb,
+        messageCount: 0,
+        lastActivity: Date.now(),
+        followUpSent: false,
+        chatId: msg.from, // original WhatsApp JID — required for sending replies
+        collected: collectedInit,
+      };
+      if (controlChannel) {
+        await client.sendMessage(controlChannel,
+          `🎯 *[DEMO STARTED]* ${from} entered the *${keyword}* demo path (${vertical.persona})`,
+          { linkPreview: false }
+        ).catch(() => {});
+      }
+      appendToLog(from, from, `[DEMO] Session started — ${keyword} (${vertical.persona})`, 'demo:started', '', '', 'in', 'demo');
+
+      // Generate opening message — personalize if returning contact
+      const returningName = collectedInit.name;
+      const openingPrompt = returningName
+        ? `You are the WhatsApp receptionist for ${vertical.persona}.\n` +
+          `This prospect's name is ${returningName} — greet them by first name.\n` +
+          `Under 30 words. Warm greeting. One emoji max.\n` +
+          `Sign off: ${vertical.settings.signature}\n` +
+          `Do NOT mention AI or automation.`
+        : `You are the WhatsApp receptionist for ${vertical.persona}.\n` +
+          `Write a warm, natural opening reply to a prospect who just texted you.\n` +
+          `Under 30 words. Friendly greeting. Ask how you can help. One emoji max.\n` +
+          `Sign off: ${vertical.settings.signature}\n` +
+          `Do NOT mention AI or automation.`;
+      const openingUser = returningName
+        ? `The prospect (${returningName}) texted: "${body}". Reply as ${vertical.persona}.`
+        : `The prospect just texted: "${body}". Reply as ${vertical.persona}.`;
+      const openingResult = await callAI(openingPrompt, openingUser, 100);
+      const openingMsg = openingResult.text || `Hi there! Thanks for reaching out. How can we help you today?\n\n${vertical.settings.signature}`;
+
+      await humanDelay();
+      await client.sendMessage(msg.from, openingMsg, { linkPreview: false })
+        .catch(e => console.error('[DEMO] opening send failed:', e.message));
+      appendToLog(from, from, openingMsg, 'demo:active', openingResult.tokens || '', '', 'out', 'demo');
+      return;
+    }
+    // If vertical load failed, fall through to normal handling
+  }
+
+  // ── QUALIFICATION RESOLUTION (B4) ──
+  const pq = pendingQualifications[from];
+  if (pq) {
+    if (Date.now() - pq.timestamp > 30 * 60 * 1000) {
+      delete pendingQualifications[from];
+    } else {
+      await handleQualification(from, body, pq, msg, settings, contact, contactName, firstName, controlChannel, signature, calendarLink);
+      return;
+    }
   }
 
   // ── DISAMBIGUATION RESOLUTION ──
@@ -2593,11 +2922,22 @@ async function handleInbound(msg) {
   }
 
   // ── OUTSIDE RESPONSE WINDOW ──
-  // Send a warm holding reply but still classify and log normally
+  // Outside hours: send ONE warm holding reply, log it, and notify the owner.
+  // Do NOT fall through to AI classification — that sends a second auto-reply
+  // and double-texts the customer. (Hard opt-out keywords are already handled
+  // above this point, so explicit opt-outs are still caught outside hours.)
   if (settings.response_window && isOutsideResponseWindow(settings.response_window)) {
     await humanDelay();
     await msg.reply(CANNED.outsideHours(firstName, settings.response_window, signature), null, { linkPreview: false });
     appendToLog(from, contactName, `[OUTSIDE HOURS] ${body}`, 'inbound:outside-hours', '', '', 'in', 'auto');
+    if (controlChannel) {
+      const displayName = contact ? contactName : '(unknown)';
+      await client.sendMessage(controlChannel,
+        `🌙 *[OUTSIDE HOURS]* Inbound from ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\nHolding reply sent — review when you're back.`,
+        { linkPreview: false }
+      ).catch(() => {});
+    }
+    return;
   }
 
   // ── AI CLASSIFICATION ──
@@ -2608,7 +2948,7 @@ async function handleInbound(msg) {
     await humanDelay(true);
     await msg.reply(CANNED.bufferReply(firstName, signature), null, { linkPreview: false });
     const displayName = contact ? contactName : '(unknown)';
-    await client.sendMessage(ownerNumber,
+    await client.sendMessage(controlChannel,
       `🔴 ESCALATE — 📨 *Inbound Message* _(could not classify)_ — ${displayName} · ${phoneNumber}\n✉️ _"${body}"_\n!send ${phoneNumber}`,
       { linkPreview: false }
     );
@@ -2634,7 +2974,7 @@ async function handleInbound(msg) {
     const parts = [line1, line2];
     if (extra) parts.push('', extra.trim());
     if (actionType === 'human') parts.push('', `!send ${phoneNumber}`);
-    await client.sendMessage(ownerNumber, parts.join('\n'), { linkPreview: false });
+    await client.sendMessage(controlChannel, parts.join('\n'), { linkPreview: false });
   };
 
   // ── LOW CONFIDENCE: always escalate to human regardless of intent ──
@@ -2673,11 +3013,21 @@ async function handleInbound(msg) {
     }
 
     case 'DEMO': {
-      await humanDelay(true);
-      await startDemoMenu(msg, from);
+      // Don't auto-assign a random vertical — ask the prospect to pick one so
+      // the demo always reflects an explicitly chosen industry.
       setContactStage(from, 'demo');
-      await notifyOwner('auto', 'Demo Started', `\nThey entered the interactive demo flow.`);
-      appendToLog(from, contactName, 'Demo started', 'demo', '', confStr, 'in', 'auto');
+      await humanDelay(true);
+      await msg.reply(
+        `Happy to show you a live demo right here! 🚀\n\nReply with the keyword for your industry:\n\n` +
+        `TOUR — boat tours, charters, excursions\n` +
+        `FOOD — restaurants and bars\n` +
+        `REALTY — real estate\n` +
+        `DRIVE — car rentals\n` +
+        `BEAUTY — salons and personal care`,
+        null, { linkPreview: false }
+      );
+      await notifyOwner('auto', 'Demo Interest', `\nThey asked about a demo — sent the keyword menu.`);
+      appendToLog(from, contactName, 'Demo intent — sent keyword menu', 'demo', '', confStr, 'in', 'auto');
       return;
     }
 
@@ -2705,16 +3055,31 @@ async function handleInbound(msg) {
       if (stageOrder.indexOf(stage) < stageOrder.indexOf('exploring')) setContactStage(from, 'exploring');
       await humanDelay(true);
       if (conf >= AUTO_ACT_THRESHOLD) {
-        const hotDemoNudge = ['new','exploring'].includes(stage) ? `\n\nWant to see it live in this chat first? Reply *demo* to try it — no commitment. 🚀` : '';
-        await msg.reply(CANNED.hotLead(firstName, calendarLink, signature) + hotDemoNudge, null, { linkPreview: false });
+        // B4: qualify before handing off the booking link — skip already-known fields
+        const sc = customerSessions[from] ? customerSessions[from].collected : {};
+        const qualLines = [];
+        if (!sc.date) qualLines.push(`📅 *What date* are you thinking?`);
+        if (!sc.groupSize) qualLines.push(`👥 *How many people* in your group?`);
+        qualLines.push(`💬 *Any special requests* or questions?`);
+        const qualifyMsg =
+          `${firstName ? `Hey ${firstName}! ` : `Hey! `}We'd love to get you sorted 😊` +
+          (qualLines.length > 1 ? ` Just a couple quick things:\n\n` : ` Quick question:\n\n`) +
+          qualLines.join('\n') + `\n\n` +
+          `Once I have those I'll get everything confirmed for you!\n\n${signature}`;
+        await msg.reply(qualifyMsg, null, { linkPreview: false });
+        pendingQualifications[from] = { originalMessage: body, timestamp: Date.now() };
+        await client.sendMessage(controlChannel,
+          `🔥 *HOT LEAD — ${bizName}*\n\n*Name:* ${contactName}\n*Number:* ${from}\n*Inquiry:* "${body.slice(0, 160)}"\n\n_Qualifying questions sent — warm lead summary incoming once they reply._`,
+          { linkPreview: false }
+        ).catch(() => {});
       } else {
         await msg.reply(CANNED.bufferReply(firstName, signature), null, { linkPreview: false });
+        const aiHot = await generateAssessment(contact, stage, body, intent, settings);
+        await notifyOwner('human', 'HOT LEAD 🔥 — Low Confidence',
+          `\n⚡ Possible hot lead but low confidence — holding reply sent. Follow up manually!` +
+          (aiHot ? `\n\n💡 _${aiHot.assessment}_\n✏️ _"${aiHot.suggested_reply}"_` : '')
+        );
       }
-      const aiHot = await generateAssessment(contact, stage, body, intent, settings);
-      await notifyOwner(conf >= AUTO_ACT_THRESHOLD ? 'review' : 'human', 'HOT LEAD 🔥',
-        (conf >= AUTO_ACT_THRESHOLD ? `\n⚡ They showed buying interest — follow up fast! Calendar link was sent.` : `\n⚡ Possible hot lead but low confidence — holding reply sent. Follow up manually!`) +
-        (aiHot ? `💡 _${aiHot.assessment}_\n✏️ _"${aiHot.suggested_reply}"_` : '')
-      );
       appendToLog(from, contactName, 'Hot lead', 'inbound:hot-lead', '', confStr, 'in', 'auto');
       return;
     }
@@ -2883,27 +3248,647 @@ async function handleInbound(msg) {
   }
 }
 
-// ─── HEALTH ENDPOINT ──────────────────────────────────────────────────────────
+// ─── HEALTH + DASHBOARD ───────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
   const http = require('http');
   const START_TIME = Date.now();
-  http.createServer((req, res) => {
-    if (req.url === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'ok',
-        client_id: process.env.CLIENT_ID || 'default',
-        uptime: Math.floor((Date.now() - START_TIME) / 1000),
-      }));
+  const DASH_PASS = process.env.DASHBOARD_PASSWORD || '';
+  // Refuse to start with no password rather than falling back to a public
+  // default — an unauthenticated dashboard would expose all customer data.
+  if (!DASH_PASS) {
+    console.error('❌ DASHBOARD_PASSWORD is not set. Refusing to start the dashboard.');
+    console.error('   Set a strong DASHBOARD_PASSWORD in your .env file and restart.');
+    process.exit(1);
+  }
+  if (DASH_PASS === 'cayai2024') {
+    console.warn('⚠️  DASHBOARD_PASSWORD is set to the well-known default "cayai2024".');
+    console.warn('   Change it to a strong, unique value in your .env file.');
+  }
+
+  // Random per-process session token — never equals the password
+  const SESSION_TOKEN = require('crypto').randomBytes(32).toString('hex');
+
+  // In-memory brute-force protection for /login, keyed by client IP.
+  // After MAX_FAILS failed attempts, lock that IP out for LOCKOUT_MS.
+  const loginAttempts = new Map();
+  const MAX_FAILS = 5;
+  const LOCKOUT_MS = 15 * 60 * 1000;
+  function clientIp(req) {
+    return (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || req.socket.remoteAddress || 'unknown';
+  }
+  function isLockedOut(ip) {
+    const rec = loginAttempts.get(ip);
+    return rec && rec.count >= MAX_FAILS && (Date.now() - rec.first) < LOCKOUT_MS;
+  }
+  function recordFail(ip) {
+    const rec = loginAttempts.get(ip);
+    if (!rec || (Date.now() - rec.first) >= LOCKOUT_MS) {
+      loginAttempts.set(ip, { count: 1, first: Date.now() });
     } else {
-      res.writeHead(404);
-      res.end();
+      rec.count++;
     }
+  }
+
+  function authOk(req) {
+    const cookie = req.headers.cookie || '';
+    const match = cookie.match(/(?:^|;\s*)dash_session=([^;]+)/);
+    return match ? match[1] === SESSION_TOKEN : false;
+  }
+
+  function htmlEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function fmtUptime(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${h}h ${m}m ${sec}s`;
+  }
+
+  function readAllLogs() {
+    try {
+      const raw = fs.readFileSync(LOG_FILE, 'utf8').trim();
+      if (!raw) return [];
+      const lines = raw.split('\n').filter(Boolean);
+      // skip header
+      const rows = lines[0].startsWith('timestamp') ? lines.slice(1) : lines;
+      return rows.reverse().map(line => {
+        const parts = line.split(',');
+        return {
+          ts:        parts[0] || '',
+          number:    parts[1] || '',
+          name:      parts[2] || '',
+          message:   parts[3] || '',
+          status:    parts[4] || '',
+          tokens:    parts[5] || '',
+          direction: parts[7] || '',
+        };
+      });
+    } catch(_) { return []; }
+  }
+
+  function statusColor(status) {
+    if (!status) return '#888';
+    if (status.includes('demo'))         return '#8b5cf6';
+    if (status.includes('opt-out'))      return '#ef4444';
+    if (status.includes('outbound'))     return '#3b82f6';
+    if (status.includes('inbound'))      return '#10b981';
+    if (status.includes('owner'))        return '#f59e0b';
+    if (status.includes('outside'))      return '#6b7280';
+    return '#888';
+  }
+
+  function buildDashboard(page, filter) {
+    const settings = getSettings();
+    const uptime   = fmtUptime(Math.floor((Date.now() - START_TIME) / 1000));
+    const allLogs  = readAllLogs();
+    const filtered = filter ? allLogs.filter(r => r.status.includes(filter)) : allLogs;
+    const PAGE_SIZE = 100;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const pageNum    = Math.min(Math.max(1, page), totalPages);
+    const pageLogs   = filtered.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
+
+    const activeDemos = Object.entries(demoSessions).map(([num, s]) => `
+      <tr>
+        <td>${htmlEsc(num)}</td>
+        <td>${htmlEsc(s.keyword || '—')}</td>
+        <td>${htmlEsc(s.persona || '—')}</td>
+        <td>${htmlEsc(s.messageCount || 0)}</td>
+        <td>${htmlEsc(s.state || '—')}</td>
+        <td>${htmlEsc(new Date(s.lastActivity).toLocaleTimeString())}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="color:#888;text-align:center">No active demo sessions</td></tr>';
+
+    const logRows = pageLogs.map(r => `
+      <tr>
+        <td style="white-space:nowrap;color:#aaa">${htmlEsc(r.ts)}</td>
+        <td style="color:#e2e8f0">${htmlEsc(r.number)}</td>
+        <td style="color:#e2e8f0">${htmlEsc(r.name)}</td>
+        <td style="color:#cbd5e1;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${htmlEsc(r.message)}">${htmlEsc(r.message)}</td>
+        <td><span style="background:${statusColor(r.status)};padding:2px 6px;border-radius:4px;font-size:11px;color:#fff">${htmlEsc(r.status)}</span></td>
+        <td style="color:#aaa">${htmlEsc(r.tokens)}</td>
+      </tr>`).join('');
+
+    const filterOptions = ['','inbound','outbound','demo','opt-out','outside','owner'].map(f =>
+      `<option value="${f}" ${filter===f?'selected':''}>${f||'All'}</option>`).join('');
+
+    const filterParam = encodeURIComponent(filter);
+    const pagerPrev = pageNum > 1
+      ? `<a href="/?page=${pageNum-1}&filter=${filterParam}" style="color:#7c3aed">← Prev</a>` : '';
+    const pagerNext = pageNum < totalPages
+      ? `<a href="/?page=${pageNum+1}&filter=${filterParam}" style="color:#7c3aed">Next →</a>` : '';
+
+    const currentModel = settings.ai_model || process.env.AI_MODEL || 'anthropic/claude-haiku-4-5';
+    const modelOptions = [
+      'anthropic/claude-haiku-4-5',
+      'anthropic/claude-haiku-4-5:beta',
+      'anthropic/claude-sonnet-4-5',
+      'anthropic/claude-sonnet-4-5:beta',
+      'openai/gpt-4o-mini',
+      'openai/gpt-4o',
+      'google/gemini-flash-1.5',
+      'google/gemini-pro-1.5',
+    ].map(m => `<option value="${m}"${m===currentModel?' selected':''}>${m.split('/')[1]}</option>`).join('');
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Cay AI — Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0f1e;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;min-height:100vh}
+h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em}
+h2{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.header{background:linear-gradient(135deg,#1a1f35 0%,#1e293b 100%);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;box-shadow:0 1px 0 rgba(255,255,255,.04)}
+.badge{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;box-shadow:0 0 12px rgba(124,58,237,.4)}
+.badge::before{content:'';display:inline-block;width:6px;height:6px;background:#4ade80;border-radius:50%;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+.nav{background:#0a0f1e;padding:6px 24px;display:flex;gap:4px;border-bottom:1px solid #1a2035}
+.nav a{color:#64748b;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;transition:background .15s,color .15s}
+.nav a:hover{background:#1e293b;color:#e2e8f0}
+.nav a.active{background:linear-gradient(135deg,#7c3aed22,#6d28d922);color:#a78bfa;border:1px solid #7c3aed44}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;padding:20px 24px}
+.card{background:linear-gradient(135deg,#1a2035 0%,#1e293b 100%);border:1px solid #1e2d45;border-radius:10px;padding:16px;transition:border-color .2s,transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,#4f46e5);opacity:0;transition:opacity .2s}
+.card:hover{border-color:#334155;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.card:hover::before{opacity:1}
+.card .val{font-size:24px;font-weight:700;color:#fff;margin-top:6px;font-variant-numeric:tabular-nums}
+.card .lbl{color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.model-select{background:#0a0f1e;border:1px solid #334155;color:#e2e8f0;padding:5px 8px;border-radius:6px;font-size:11px;margin-top:6px;width:100%;cursor:pointer;transition:border-color .15s}
+.model-select:hover,.model-select:focus{border-color:#7c3aed;outline:none}
+.section{padding:0 24px 28px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid #1a2035}
+td{padding:7px 10px;border-bottom:1px solid #111827;vertical-align:middle;transition:background .1s}
+tr:hover td{background:#111827}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+select,button{background:#1a2035;border:1px solid #1e2d45;color:#e2e8f0;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;transition:background .15s,border-color .15s}
+select:hover,button:hover{background:#1e293b;border-color:#334155}
+.pager{display:flex;gap:16px;align-items:center;padding:14px 0;color:#64748b;font-size:12px}
+.pager a{color:#7c3aed;font-weight:500;padding:4px 10px;border:1px solid #7c3aed33;border-radius:5px;transition:background .15s}
+.pager a:hover{background:#7c3aed22}
+a{text-decoration:none}
+.refresh-wrap{display:flex;align-items:center;gap:8px}
+.countdown-ring{width:28px;height:28px;transform:rotate(-90deg)}
+.countdown-ring .track{fill:none;stroke:#1e293b;stroke-width:3}
+.countdown-ring .progress{fill:none;stroke:#7c3aed;stroke-width:3;stroke-linecap:round;stroke-dasharray:75.4;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .5s}
+.countdown-num{font-size:10px;color:#64748b;font-variant-numeric:tabular-nums;min-width:18px;text-align:center}
+.section-card{background:linear-gradient(135deg,#111827 0%,#0f172a 100%);border:1px solid #1a2035;border-radius:10px;overflow:hidden;margin-bottom:0}
+.section-card th{background:#111827}
+</style>
+</head><body>
+<div class="header">
+  <div>
+    <h1>🤖 Cay AI Dashboard</h1>
+    <div style="color:#475569;font-size:12px;margin-top:3px">${htmlEsc(settings.business_name || 'Agent')} · ${htmlEsc(process.env.CLIENT_ID || 'default')}</div>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center">
+    <div class="refresh-wrap">
+      <svg class="countdown-ring" viewBox="0 0 28 28">
+        <circle class="track" cx="14" cy="14" r="12"/>
+        <circle class="progress" id="cring" cx="14" cy="14" r="12"/>
+      </svg>
+      <span class="countdown-num" id="cnum">30</span>
+    </div>
+    <span class="badge">LIVE</span>
+  </div>
+</div>
+<nav class="nav">
+  <a href="/" class="active">📊 Logs</a>
+  <a href="/analytics">📈 Analytics</a>
+  <a href="/roi">💰 ROI</a>
+  <a href="/contacts">👥 Contacts</a>
+  <a href="/settings">⚙️ Settings</a>
+</nav>
+
+<div class="grid">
+  <div class="card"><div class="lbl">Uptime</div><div class="val" style="font-size:16px">${uptime}</div></div>
+  <div class="card"><div class="lbl">Total Log Entries</div><div class="val">${allLogs.length}</div></div>
+  <div class="card"><div class="lbl">Active Demo Sessions</div><div class="val">${Object.keys(demoSessions).length}</div></div>
+  <div class="card"><div class="lbl">AI Provider</div><div class="val" style="font-size:14px">${process.env.AI_PROVIDER || 'openrouter'}</div></div>
+  <div class="card">
+    <div class="lbl">Model</div>
+    <select class="model-select" id="modelSel" onchange="setModel(this.value)">${modelOptions}</select>
+    <div id="modelStatus" style="font-size:10px;color:#64748b;margin-top:4px;min-height:14px"></div>
+  </div>
+</div>
+
+<script>
+// Animated countdown ring
+(function(){
+  var total=30, ring=document.getElementById('cring'), num=document.getElementById('cnum');
+  var circ=75.4, left=total;
+  var t=setInterval(function(){
+    left--;
+    var pct=(left/total);
+    ring.style.strokeDashoffset=circ*(1-pct);
+    ring.style.stroke=pct>0.4?'#7c3aed':pct>0.15?'#f59e0b':'#ef4444';
+    num.textContent=left;
+    if(left<=0){clearInterval(t);location.reload();}
+  },1000);
+})();
+// Model selector
+async function setModel(m){
+  var st=document.getElementById('modelStatus');
+  st.textContent='Saving…';st.style.color='#94a3b8';
+  try{
+    var r=await fetch('/api/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:m})});
+    if(r.ok){st.textContent='✓ Saved';st.style.color='#4ade80';}
+    else{st.textContent='✗ Failed';st.style.color='#f87171';}
+  }catch(e){st.textContent='✗ Error';st.style.color='#f87171';}
+  setTimeout(function(){st.textContent='';},2500);
+}
+</script>
+
+<div class="section">
+  <h2>Active Demo Sessions</h2>
+  <div class="section-card">
+  <table>
+    <tr><th>Number</th><th>Keyword</th><th>Persona</th><th>Messages</th><th>State</th><th>Last Active</th></tr>
+    ${activeDemos}
+  </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All Logs (${filtered.length} entries)</h2>
+  <div class="toolbar">
+    <form method="get" style="display:flex;gap:8px;align-items:center">
+      <label style="color:#64748b;font-size:12px">Filter:</label>
+      <select name="filter" onchange="this.form.submit()">${filterOptions}</select>
+      <input type="hidden" name="page" value="1">
+    </form>
+  </div>
+  <div class="section-card">
+  <table>
+    <tr><th>Timestamp</th><th>Number</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr>
+    ${logRows}
+  </table>
+  </div>
+  <div class="pager">${pagerPrev} <span>Page ${pageNum} of ${totalPages}</span> ${pagerNext}</div>
+</div>
+</body></html>`;
+  }
+
+  http.createServer((req, res) => {
+    const parsed = new URL(req.url, 'http://localhost');
+    const pathname = parsed.pathname;
+    const query = parsed.searchParams;
+
+    // Health endpoint (no auth)
+    if (pathname === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+      return;
+    }
+
+    // Login page
+    if (pathname === '/login') {
+      if (req.method === 'POST') {
+        const ip = clientIp(req);
+        if (isLockedOut(ip)) {
+          res.writeHead(429, { 'Content-Type': 'text/html' });
+          res.end('Too many failed attempts. Try again in 15 minutes.');
+          return;
+        }
+        let body = '';
+        req.on('data', d => { if (body.length < 4096) body += d; });
+        req.on('end', () => {
+          const pass = new URLSearchParams(body).get('password');
+          if (pass === DASH_PASS) {
+            loginAttempts.delete(ip);
+            res.writeHead(302, {
+              'Set-Cookie': `dash_session=${SESSION_TOKEN}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`,
+              'Location': '/',
+            });
+          } else {
+            recordFail(ip);
+            res.writeHead(302, { 'Location': '/login?err=1' });
+          }
+          res.end();
+        });
+        return;
+      }
+      const err = query.get('err') ? '<p style="color:#ef4444;margin-bottom:12px">Incorrect password.</p>' : '';
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cay AI Login</title>
+<style>*{box-sizing:border-box}body{background:#0f172a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;color:#e2e8f0}
+.box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:36px;width:320px}
+h1{font-size:20px;margin-bottom:20px;color:#fff}
+input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:10px;border-radius:6px;margin-bottom:14px;font-size:14px}
+button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-radius:6px;font-size:14px;cursor:pointer}
+</style></head><body><div class="box">
+<h1>🤖 Cay AI</h1>${err}
+<form method="post"><input type="password" name="password" placeholder="Dashboard password" autofocus>
+<button type="submit">Sign In</button></form></div></body></html>`);
+      return;
+    }
+
+    // All other routes require auth
+    if (!authOk(req)) {
+      res.writeHead(302, { 'Location': '/login' });
+      res.end();
+      return;
+    }
+
+    // Dashboard
+    if (pathname === '/' || pathname === '') {
+      const page   = parseInt(query.get('page') || '1');
+      const filter = query.get('filter') || '';
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(buildDashboard(page, filter));
+      return;
+    }
+
+    // Contacts page
+    if (pathname === '/contacts') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'contacts.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('contacts.html not found'); }
+      return;
+    }
+
+    // Analytics page
+    if (pathname === '/analytics') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('dashboard.html not found'); }
+      return;
+    }
+
+    // Raw CSV files for analytics page
+    if (pathname === '/data/log.csv') {
+      try {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(fs.readFileSync(LOG_FILE, 'utf8'));
+      } catch(_) { res.writeHead(404); res.end(''); }
+      return;
+    }
+    if (pathname === '/data/contacts.csv') {
+      try {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(fs.readFileSync(CONTACTS_FILE, 'utf8'));
+      } catch(_) { res.writeHead(404); res.end(''); }
+      return;
+    }
+
+    // Contacts API — GET returns JSON array, POST saves full array to contacts.csv
+    if (pathname === '/api/contacts') {
+      if (req.method === 'GET') {
+        try {
+          const rows = parseCSV(CONTACTS_FILE);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(rows));
+        } catch(_) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('[]'); }
+        return;
+      }
+      if (req.method === 'POST') {
+        let body = '';
+        let bodyTooLarge = false;
+        req.on('data', d => {
+          if (body.length < 1024 * 1024) { body += d; }
+          else { bodyTooLarge = true; req.destroy(); }
+        });
+        req.on('end', () => {
+          if (bodyTooLarge) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'Request too large' }));
+            return;
+          }
+          try {
+            const contacts = JSON.parse(body);
+            if (!Array.isArray(contacts)) throw new Error('Expected an array of contacts');
+            // Neutralize commas/newlines (CSV structure) and formula-injection
+            // characters so the exported file is safe to open in Excel.
+            const cell = (s) => String(s || '')
+              .replace(/,/g, ';').replace(/[\r\n]/g, ' ').replace(/^[=+\-@]/, "'$&");
+            const header = 'number,name,business,tags,notes,last_contacted,email,industry';
+            const rows = contacts.map(c => [
+              cell(c.number), cell(c.name), cell(c.business), cell(c.tags),
+              cell(c.notes), cell(c.last_contacted), cell(c.email), cell(c.industry),
+            ].join(','));
+            // Atomic write: write to a temp file then rename, so a crash
+            // mid-write can't truncate or corrupt the contacts database.
+            const tmp = CONTACTS_FILE + '.tmp';
+            fs.writeFileSync(tmp, [header, ...rows].join('\n') + '\n');
+            fs.renameSync(tmp, CONTACTS_FILE);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, count: contacts.length }));
+          } catch(e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: e.message }));
+          }
+        });
+        return;
+      }
+    }
+
+    // Model selector API
+    if (pathname === '/api/model' && req.method === 'POST') {
+      const ALLOWED_MODELS = new Set([
+        'anthropic/claude-haiku-4-5',
+        'anthropic/claude-haiku-4-5:beta',
+        'anthropic/claude-sonnet-4-5',
+        'anthropic/claude-sonnet-4-5:beta',
+        'openai/gpt-4o-mini',
+        'openai/gpt-4o',
+        'google/gemini-flash-1.5',
+        'google/gemini-pro-1.5',
+      ]);
+      let body = '';
+      req.on('data', d => { if (body.length < 1024) body += d; });
+      req.on('end', () => {
+        try {
+          const { model } = JSON.parse(body);
+          if (!model || typeof model !== 'string' || !ALLOWED_MODELS.has(model))
+            throw new Error('invalid model');
+          // Persist to settings.csv so it survives restarts
+          const cur = getSettings();
+          cur.ai_model = model;
+          saveSettings(cur);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, model }));
+        } catch(e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+      return;
+    }
+
+    // Settings editor page
+    if (pathname === '/settings') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'settings.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('settings.html not found'); }
+      return;
+    }
+
+    // Settings API — GET returns current settings + KB; POST saves operator edits.
+    if (pathname === '/api/settings') {
+      if (req.method === 'GET') {
+        const s = getSettings();
+        const kb = [];
+        for (let i = 1; i <= 40; i++) {
+          const q = s[`faq_${i}_q`], a = s[`faq_${i}_a`];
+          if ((q && q.length) || (a && a.length)) kb.push({ q: q || '', a: a || '' });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ settings: s, kb }));
+        return;
+      }
+      if (req.method === 'POST') {
+        let body = ''; let tooLarge = false;
+        req.on('data', d => {
+          if (body.length < 512 * 1024) { body += d; }
+          else { tooLarge = true; req.destroy(); }
+        });
+        req.on('end', () => {
+          if (tooLarge) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'Request too large' }));
+            return;
+          }
+          try {
+            const payload = JSON.parse(body);
+            // settings.csv is key,value — values must hold no commas/newlines and must
+            // not start with a spreadsheet formula char. Same neutralization as contacts.
+            const cell = (v) => String(v == null ? '' : v)
+              .replace(/,/g, ';').replace(/[\r\n]+/g, ' ').replace(/^[=+\-@]/, "'$&").trim();
+            // Allowlist of editable scalar keys — anything else is ignored so a crafted
+            // payload can't inject arbitrary settings.csv keys. owner_number is set at
+            // deployment and intentionally NOT web-editable.
+            const EDITABLE = ['business_name','tone','signature','business_context',
+              'custom_instructions','message_length','language_style','avoid_words',
+              'response_window','calendar_link','control_channel',
+              'token_limit_send','token_limit_checkin','token_limit_broadcast'];
+            const ENUMS = {
+              tone: ['friendly-pro','formal','casual','sales'],
+              message_length: ['short','medium','long'],
+              language_style: ['standard','bahamian','formal-english'],
+            };
+            const src = (payload && payload.settings) || {};
+            const data = { kbReplace: true };
+            for (const k of EDITABLE) {
+              if (!(k in src)) continue;
+              let v = cell(src[k]);
+              if (ENUMS[k] && v && !ENUMS[k].includes(v)) continue; // ignore invalid enum
+              if (k === 'custom_instructions') v = v.slice(0, 200);
+              if (k.startsWith('token_limit_')) {
+                const n = parseInt(v, 10);
+                if (!Number.isFinite(n) || n < 1) continue;
+                v = String(Math.min(n, 2000));
+              }
+              data[k] = v;
+            }
+            // Knowledge base — authoritative full replacement, capped at 40 slots.
+            const kb = Array.isArray(payload && payload.kb) ? payload.kb.slice(0, 40) : [];
+            for (let i = 1; i <= 40; i++) {
+              const e = kb[i - 1] || {};
+              data[`kb_${i}_q`] = cell(e.q);
+              data[`kb_${i}_a`] = cell(e.a);
+            }
+            const ok = saveSettings(data);
+            res.writeHead(ok ? 200 : 500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok }));
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: e.message }));
+          }
+        });
+        return;
+      }
+    }
+
+    // ROI summary page
+    if (pathname === '/roi') {
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'roi.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('roi.html not found'); }
+      return;
+    }
+
+    // Analytics / ROI API — server-computed metrics for a day range.
+    if (pathname === '/api/analytics') {
+      const days = Math.min(Math.max(parseInt(query.get('days') || '30', 10) || 30, 1), 365);
+      const s = getStats(days) || {};
+      // Owner time saved: each message the AI handled without a human is time the
+      // operator didn't spend. minutes_saved_per_msg is a tunable assumption.
+      const minsPer = Math.min(Math.max(parseFloat(getSettings().minutes_saved_per_msg) || 2, 0), 30);
+      const autoAnswered = s.autoReplied || 0;
+      const inbound = s.rangeInbound || 0;
+      const payload = {
+        days,
+        messagesHandled: inbound,
+        autoAnswered,
+        autoAnsweredPct: inbound ? Math.round((autoAnswered / inbound) * 100) : 0,
+        leadsCaptured: s.hotLeads || 0,
+        bookings: s.bookings || 0,
+        sent: s.rangeSent || 0,
+        optOuts: s.optOuts || 0,
+        complaints: s.complaints || 0,
+        failed: s.failed || 0,
+        responseSpeedMin: s.avgVelocityMin,
+        ownerHoursSaved: Math.round((autoAnswered * minsPer / 60) * 10) / 10,
+        minutesSavedPerMsg: minsPer,
+        uniqueContacts: s.uniqueContacts || 0,
+        costEst: s.costEst || '0',
+        topContact: s.topContactName || '—',
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(payload));
+      return;
+    }
+
+    // Scheduled messages — GET lists pending, POST /cancel removes one by id.
+    if (pathname === '/api/followups' && req.method === 'GET') {
+      const list = [...followUps].sort((a, b) => a.sendAt - b.sendAt)
+        .map(f => ({ id: f.id, rawNumber: f.rawNumber, contactName: f.contactName || '',
+                     message: f.message, sendAt: f.sendAt }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(list));
+      return;
+    }
+    if (pathname === '/api/followups/cancel' && req.method === 'POST') {
+      let body = '';
+      req.on('data', d => { if (body.length < 4096) body += d; });
+      req.on('end', () => {
+        try {
+          const { id } = JSON.parse(body);
+          const before = followUps.length;
+          followUps = followUps.filter(f => String(f.id) !== String(id));
+          const removed = before - followUps.length;
+          if (removed) saveFollowUps();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, removed }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+      return;
+    }
+
+    res.writeHead(404);
+    res.end();
   }).listen(3000);
+  console.log(`🩺 Dashboard on :3000`);
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
-if (process.env.NODE_ENV !== 'test') {
+// DASHBOARD_ONLY=true runs the web UI (analytics, settings, contacts) without the
+// WhatsApp client — useful for onboarding/UI work or inspecting a client's data
+// without a live phone session. Normal runs still initialize WhatsApp (and rely on
+// the process crashing → Docker restart as the reconnect path).
+if (process.env.NODE_ENV !== 'test' && process.env.DASHBOARD_ONLY !== 'true') {
   client.initialize();
 }
 
@@ -2912,16 +3897,16 @@ if (process.env.NODE_ENV === 'test') {
   module.exports = {
     // pure helpers
     pick, parseCSV, appendToLog, buildTemplateFallback, withNav, CANNED,
+    parseCayNotes, extractDemoFacts, writeCayToContact, checkAvailability,
     // constants
     SETUP_STEPS, KB_INTRO_INDEX, LOGICAL_TOTAL, AUTO_ACT_THRESHOLD, SUGGEST_THRESHOLD,
     // state
-    setupSessions, pendingPreviews, demoSessions,
+    setupSessions, pendingPreviews, demoSessions, customerSessions, pendingQualifications,
     // state machines
-    handleSetup, handleInbound, handleDemoFlow,
+    handleSetup, handleInbound, handleIndustryDemo, handleQualification,
     // data helpers
-    getSettings, findContact, resolveRecipient, classifyIntent,
-    // network
-    fetchNewsHeadlines, fetchNassauWeather,
+    getSettings, saveSettings, findContact, resolveRecipient, classifyIntent,
+    appendContact, updateContactNotes,
     // log path (so tests can inspect the file)
     LOG_FILE,
   };

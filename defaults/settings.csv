@@ -1,0 +1,95 @@
+key,value
+business_name,Cay AI by Lucayan Labs
+owner_number,12425254093
+tone,friendly-pro
+signature,- The Cay AI Team 🤖
+business_context,Cay AI is a WhatsApp AI outreach agent built for Nassau small businesses by Lucayan Labs. It handles inbound customer messages with AI and helps business owners send follow-ups check-ins and broadcast messages — all from their own WhatsApp number. No app download needed. No tech skills required.
+custom_instructions,Sound helpful knowledgeable and locally grounded. This is a Nassau-built product for Nassau businesses. Speak plainly and be direct about what the product does.
+message_length,medium
+language_style,standard
+avoid_words,bot,automated,AI,artificial intelligence
+response_window,Monday to Friday 9am to 6pm
+calendar_link,https://calendly.com/gjamescollie/30min
+token_limit_send,300
+token_limit_checkin,150
+token_limit_broadcast,250
+faq_1_q,What products or services do you offer?
+faq_1_a,Cay AI is a WhatsApp outreach agent for Nassau businesses. It handles inbound customer messages automatically using AI, and helps you send personalised follow-ups, check-ins, and broadcast messages — all from your own WhatsApp number. No extra app. No tech skills needed.
+faq_2_q,What are your business hours?
+faq_2_a,The Cay AI agent runs 24/7. You set a response window so it never implies instant human availability outside your actual hours. Our support team is available Monday to Friday 9am to 6pm.
+faq_3_q,Where are you located?
+faq_3_a,Lucayan Labs is based in Nassau, Bahamas. Setup is handled remotely — no office visit needed. We serve Nassau and Family Island businesses.
+faq_4_q,How can customers contact you?
+faq_4_a,WhatsApp is the fastest way — just message us here. You can also book a 30-minute demo call at calendly.com/gjamescollie/30min. We respond same business day.
+faq_5_q,What makes Cay AI different from other tools?
+faq_5_a,Cay AI is built specifically for Nassau and Bahamian businesses. It understands local tone, local context, and is priced for small local operations — not big enterprise tools. Your customers never know it's AI unless you want them to.
+faq_6_q,What are your prices or price range?
+faq_6_a,Pricing starts at $150 per month for a fully managed setup. We'll give you a quote based on your message volume and needs on the demo call.
+faq_7_q,How do customers book or sign up?
+faq_7_a,Book a free 30-minute demo at calendly.com/gjamescollie/30min or just reply here and we'll walk you through it. Setup takes 1 to 2 business days once you're ready.
+faq_8_q,What is your cancellation or refund policy?
+faq_8_a,Month-to-month subscription. Cancel any time with 30 days notice. No long-term contracts. We keep it simple.
+faq_9_q,Do you have testimonials or case studies?
+faq_9_a,Yes — ask us and we'll share examples from Nassau businesses using Cay AI right now. We're happy to connect you with a current client if you'd like a real reference.
+faq_10_q,Do you have any current promotions or specials?
+faq_10_a,Early adopter pricing is available for new clients. Message us to find out what's current — we don't advertise every offer publicly.
+faq_11_q,What payment methods do you accept?
+faq_11_a,Bank transfer, Visa, Mastercard, or cash for Nassau clients. We'll send an invoice each month.
+faq_12_q,Do you require a deposit or advance payment?
+faq_12_a,First month's payment is required before we begin setup. After that it's monthly.
+faq_13_q,How long does setup take?
+faq_13_a,Usually 1 to 2 business days. We configure the agent, connect your WhatsApp number, load your business info, and you're live. You don't need to do anything technical.
+faq_14_q,Do you offer discounts for longer commitments?
+faq_14_a,Yes — we offer reduced rates for 6-month and annual subscriptions. Ask us about multi-number setups too if you have more than one location.
+faq_15_q,Can you customise the agent for my specific business?
+faq_15_a,Absolutely. We adjust tone, language, response style, custom intents, and can tailor the flow to match exactly how your business operates. Every setup is personalised.
+faq_16_q,What areas do you serve?
+faq_16_a,Nassau and the Family Islands primarily. The agent itself runs anywhere a WhatsApp number exists — we've set up clients across the Bahamas.
+faq_17_q,How do I leave a review or give feedback?
+faq_17_a,Message us directly — we genuinely want to hear from clients. We also ask for a short testimonial after your first 60 days if you're happy.
+faq_18_q,Do you have social media pages?
+faq_18_a,Yes — ask us for our current social handles. We post tips and local business content regularly.
+faq_19_q,What is the best way to get a quote?
+faq_19_a,Reply here with a bit about your business and how many customers you message per week. Or book the 30-minute demo at calendly.com/gjamescollie/30min and we'll quote you on the call.
+faq_20_q,Is there anything important I should know before signing up?
+faq_20_a,Every outbound message goes through your approval before it sends — you always stay in control. The agent handles inbound automatically but flags anything it's unsure about for your review. You own your contacts and your data.
+faq_21_q,Is there anything to download or install?
+faq_21_a,No downloads needed on your end. You just link your existing WhatsApp number by scanning a QR code once. Everything else runs on our side.
+faq_22_q,Do my customers need to download anything?
+faq_22_a,No. Your customers just use regular WhatsApp like they always do. They message your number and the agent responds. Nothing changes on their end.
+faq_23_q,Who is the owner or main contact?
+faq_23_a,Granville Collie is the founder of Lucayan Labs and the person behind Cay AI. He handles all new client setups personally.
+faq_24_q,What happens after I sign up?
+faq_24_a,We schedule a 30-minute onboarding call, collect your business info, configure the agent, and connect your WhatsApp number. We test it together and you're live. Ongoing support is included in your subscription.
+faq_25_q,Is my customer data kept private?
+faq_25_a,Yes. Your contacts and message logs are stored only on your own server. We never share or sell your data. You own everything.
+faq_26_q,Will my customers know they're talking to AI?
+faq_26_a,By default, no. The agent writes like a human team member from your business and never identifies itself as AI. If you prefer to be transparent about it, we can adjust that in your settings.
+faq_27_q,Can I customise the messages the agent sends?
+faq_27_a,Yes. You set the tone, signature, language style, and specific instructions for how the agent should write. You also approve every outbound message before it sends.
+faq_28_q,What happens if the agent makes a mistake?
+faq_28_a,Outbound messages always require your approval before sending — so mistakes are caught before they reach a customer. For inbound, anything below the agent's confidence threshold gets flagged to you for review rather than auto-replied.
+faq_29_q,How fast does the agent respond to customers?
+faq_29_a,Inbound responses are sent within seconds of a customer message — as long as their intent is clear. Anything the agent is unsure about is flagged to you instead of guessed.
+faq_30_q,Can I pause or stop the agent temporarily?
+faq_30_a,Yes. You can stop the agent any time by shutting it down from your server. You can also adjust the response window so it only activates during certain hours.
+faq_31_q,What happens if your systems go down?
+faq_31_a,If the server goes offline, the agent stops responding until it's restarted. Your WhatsApp number still receives messages — they just won't get auto-replies until you're back online. We recommend a reliable server setup for 24/7 operation.
+faq_32_q,How do I know the system is working?
+faq_32_a,You get a dashboard at your server's IP address showing all message logs, active sessions, uptime, and token usage. You can also send a test message from your own phone to check it live any time.
+faq_33_q,Do you have a referral programme?
+faq_33_a,Yes — refer another Nassau business and you'll both receive a discount on your next month. Ask us for current referral terms.
+faq_34_q,Are there limits on messages or usage?
+faq_34_a,There are no hard limits on inbound messages. Outbound broadcasts and bulk sends are metered by AI token usage. Your plan includes a monthly token budget — we'll alert you if you're approaching it.
+faq_35_q,Can you handle group bookings or bulk outreach?
+faq_35_a,Yes. The broadcast command lets you send personalised messages to tagged groups of contacts in one go — each one is individually addressed, not a group blast.
+faq_36_q,Can I import my existing contacts?
+faq_36_a,Yes. We import your existing contact list into the system during setup. You just provide a spreadsheet or list and we handle the rest.
+faq_37_q,Can messages be scheduled in advance?
+faq_37_a,Yes. You can schedule follow-up messages to send at a specific date and time. The agent checks for due messages every 30 seconds and sends them automatically.
+faq_38_q,Do you serve businesses outside Nassau?
+faq_38_a,Yes — any business with a WhatsApp number can use Cay AI. We've set up clients across the Family Islands and can support anyone in the Bahamas.
+faq_39_q,How long before I see results?
+faq_39_a,Most clients notice more consistent follow-ups and faster response to leads within the first week. Measurable improvements in bookings and repeat customers typically show within 30 to 60 days.
+faq_40_q,What is the difference between your service tiers?
+faq_40_a,The core plan covers one WhatsApp number with full inbound AI handling and outbound commands. Premium adds multi-number support, priority support, and custom integrations. Ask us which fits your operation.

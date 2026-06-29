@@ -1,0 +1,55 @@
+key,value
+business_name,Blue Cay Charters
+owner_number,12425254093
+tone,friendly-pro
+signature,- The Blue Cay Charters Team 🐠
+business_context,Blue Cay Charters runs the Swimming Pigs Turtles and Snorkel experience out of Rose Island Nassau. We offer 3-hour boat tours for all ages with pickup from the cruise port and Paradise Island.
+custom_instructions,Always sound like a real local Nassau charter crew. Warm casual and knowledgeable. Never mention AI.
+message_length,medium
+language_style,bahamian
+avoid_words,bot,automated,AI,artificial intelligence
+response_window,Monday to Sunday 7am to 7pm
+calendar_link,https://calendly.com/gjamescollie/30min
+token_limit_send,300
+token_limit_checkin,150
+token_limit_broadcast,250
+faq_1_q,How much is the tour?
+faq_1_a,Our Swimming Pigs Turtles & Snorkel tour is $85 per adult and $50 for kids 4–12. Kids under 4 are free. Private charters start at $900 — message us with your group size for a quote. 🐠
+faq_2_q,How long does the tour last?
+faq_2_a,The tour is 3 hours. We cover Rose Island — swimming with the pigs and turtles — plus a snorkel stop at the reef and a sandbar break. Plenty of time to take it all in!
+faq_3_q,What time does the boat leave?
+faq_3_a,We run two daily departures: 9:00 AM and 1:00 PM seven days a week. The morning trip usually has smaller groups. Both trips cover the same highlights.
+faq_4_q,Where do we meet you?
+faq_4_a,We pick up from the Nassau Cruise Port (Prince George Wharf) and from Paradise Island near the Atlantis Bridge. Let us know your location when you book and we'll confirm your exact pickup spot.
+faq_5_q,Do you pick up from the cruise ship?
+faq_5_a,Yes — we pick up directly from the Nassau Cruise Port at Prince George Wharf. Just tell us your ship name and arrival time when booking and we'll be there when you dock. 🚢
+faq_6_q,What's included in the trip?
+faq_6_a,Everything — the swimming pigs, sea turtles, a snorkel stop at the reef, sandbar time, all snorkel gear, life jackets, and bottled water. Just bring your swimwear and towel and you're set!
+faq_7_q,Do we need to bring our own snorkel gear?
+faq_7_a,No need! Masks, fins, and snorkels are provided for every guest. Our gear is cleaned and maintained for each trip. Just bring yourself ready to explore. 🤿
+faq_8_q,Will we see the swimming pigs?
+faq_8_a,Yes — the swimming pigs are the highlight of every trip! You get right in the water with them at Rose Island. They're friendly and love to swim alongside guests. Best part of the day for most people! 🐷
+faq_9_q,Can kids come on the tour?
+faq_9_a,Absolutely — the tour is family-friendly for all ages. Kids love the pigs and turtles. Ages 4–12 get the kids' rate and little ones under 4 are free. Life jackets provided for everyone.
+faq_10_q,What happens if the weather is bad?
+faq_10_a,Safety comes first. If conditions aren't safe to go out we'll reschedule or give you a full refund — your choice. A little cloud cover is fine and often means less sun. We run through typical Bahamas weather. 🌤️
+faq_11_q,Can we do a private charter?
+faq_11_a,Yes! Private charters are available for groups, birthdays, and celebrations. Starting at $900 depending on group size and what you'd like to do. Message us your dates and headcount.
+faq_12_q,How many people fit on the boat?
+faq_12_a,Our shared tours hold up to 25 guests — a great size for a fun group without feeling crowded. Private charters are available for more intimate groups of up to 12.
+faq_13_q,Can we bring food and drinks on the boat?
+faq_13_a,Yes — you're welcome to bring a cooler with drinks and snacks. No glass bottles please. We provide bottled water on every trip. A lot of guests grab something from a dock spot before boarding.
+faq_14_q,What should we bring? What should we wear?
+faq_14_a,Wear your swimsuit and bring a towel and reef-safe sunscreen. Sunglasses and a hat are great for the ride out. Water shoes are handy but not required. Leave expensive jewelry and valuables at home.
+faq_15_q,Are life jackets provided?
+faq_15_a,Yes — life jackets are provided for every guest and required for all children. We do a quick safety briefing at the start of every trip. Safety is always the priority. ✅
+faq_16_q,How do we book?
+faq_16_a,Easy — just reply here to reserve your spot or book at calendly.com/gjamescollie/30min. Tell us your date, preferred time, and number of guests. A deposit holds your booking and full payment is due on the day.
+faq_17_q,Do you take credit cards?
+faq_17_a,We accept Visa, Mastercard, cash (USD or BSD), and Zelle. Payment is due on the day of the tour. Your deposit to hold the booking can be arranged here when you're ready.
+faq_18_q,What's your cancellation policy?
+faq_18_a,Free cancellation up to 24 hours before your trip. Less than 24 hours — the deposit is non-refundable but we'll do our best to reschedule you. Weather cancellations on our end always get a full refund.
+faq_19_q,My friend can't swim — can they still come?
+faq_19_a,Of course! Non-swimmers are very welcome. Life jackets are available for everyone and the sandbar areas are shallow enough to stand in. The boat is right there the whole time. Many guests come just to enjoy the experience.
+faq_20_q,Do you do sunset cruises or fishing trips?
+faq_20_a,Right now we focus on our Swimming Pigs Turtles & Snorkel experience. Private charters can be customized for special events or celebrations. Message us about what you have in mind and we'll see what we can do! 🌅

@@ -1,0 +1,58 @@
+key,value
+# Nassau boat tour / charter operator onboarding template
+# Replace bracketed values with your actual details
+# Edit everything in the browser console: Settings → Knowledge Base
+business_name,[Your Charter Name]
+owner_number,12425254093
+tone,friendly-pro
+signature,- The [Your Team Name]
+business_context,[Describe your tour — what you offer, where you depart from, and what customers experience. E.g. "We run 3-hour snorkel and sandbar tours out of Nassau for families and groups."]
+custom_instructions,Sound like a real local Nassau crew. Warm helpful and knowledgeable. Never mention AI.
+message_length,medium
+language_style,bahamian
+avoid_words,bot,automated,AI,artificial intelligence
+response_window,Monday to Sunday 7am to 7pm
+calendar_link,
+token_limit_send,300
+token_limit_checkin,150
+token_limit_broadcast,250
+faq_1_q,How much is the tour?
+faq_1_a,[Your adult rate and any child or group rates. Mention private charter pricing or say to ask for a quote.]
+faq_2_q,How long does the tour last?
+faq_2_a,[Duration of your tour. Briefly describe what's covered during that time so guests know what they're getting.]
+faq_3_q,What time does the boat leave?
+faq_3_a,[Your daily departure times and days of operation. If you run multiple trips per day list them here.]
+faq_4_q,Where do we meet you?
+faq_4_a,[Your pickup or departure location with landmarks. Mention hotel or cruise port pickup if you offer it.]
+faq_5_q,Do you pick up from the cruise ship?
+faq_5_a,[Yes or no. If yes, confirm pickup from Prince George Wharf and what info you need from the guest — ship name, arrival time, group size.]
+faq_6_q,What's included in the trip?
+faq_6_a,[List all highlights and inclusions — tour stops, snorkel gear, life jackets, water, food if any. Be specific — this is one of the most-asked questions guests have.]
+faq_7_q,Do we need to bring our own snorkel gear?
+faq_7_a,[Yes or no. If gear is provided say what's included — masks, fins, snorkels. If guests should bring their own, say so clearly.]
+faq_8_q,What are the highlights? What will we see?
+faq_8_a,[Describe your main attractions vividly — swimming pigs, sea turtles, reef, sandbar, shipwreck, local wildlife, etc. This is your selling point.]
+faq_9_q,Can kids come on the tour?
+faq_9_a,[Yes or no. Note any age limits or minimum age. Include reduced rates for children if applicable and anything that makes it family-friendly.]
+faq_10_q,What happens if the weather is bad?
+faq_10_a,[Your weather and cancellation policy. Explain what conditions stop you from going out and what guests can expect — reschedule or full refund. Reassure them safety comes first.]
+faq_11_q,Can we do a private charter?
+faq_11_a,[Yes or no. If yes, note starting price or that pricing is by quote, and ask them to message you with group size and preferred dates.]
+faq_12_q,How many people can come on the boat?
+faq_12_a,[Max capacity for your shared tours. Note private charter capacity separately if different. Guests want to know if it feels crowded or intimate.]
+faq_13_q,Can we bring food and drinks on the boat?
+faq_13_a,[Yes or no. Note any rules — no glass bottles etc. Mention what you provide such as bottled water or snacks.]
+faq_14_q,What should we wear and what do we need to bring?
+faq_14_a,Wear your swimsuit and bring a towel and reef-safe sunscreen. Sunglasses and a hat are great. Water shoes are handy but not required. Leave valuables at home. [Add any tour-specific items.]
+faq_15_q,Are life jackets provided?
+faq_15_a,Yes — life jackets are provided for every guest and required for children. We do a safety briefing at the start of every trip. [Add any other safety equipment details.]
+faq_16_q,How do we book?
+faq_16_a,[Explain your booking process — reply here, follow a link, call a number. Include deposit info if any and what details you need to confirm the booking — date, time, group size.]
+faq_17_q,Do you take credit cards?
+faq_17_a,[List your accepted payment methods — cash, Visa, Mastercard, Zelle, etc. Note when payment is due and how the deposit works.]
+faq_18_q,What's your cancellation policy?
+faq_18_a,[Your guest cancellation window and refund terms. Keep your weather-cancellation policy separate — guests should know they always get a refund if you cancel due to conditions.]
+faq_19_q,Can someone who can't swim still come?
+faq_19_a,Yes — non-swimmers are welcome. Life jackets are available for everyone. [Note if any stops are shallow enough for non-swimmers to comfortably enjoy.]
+faq_20_q,Do you offer other tours or experiences?
+faq_20_a,[Describe any additional offerings — sunset cruises, fishing trips, private events. If you don't offer anything else say so and mention that private charters can be customized for special occasions.]

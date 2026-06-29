@@ -10,7 +10,7 @@ services:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PROXY_URL=${PROXY_URL:-}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       # WhatsApp session — survives restarts, only re-scan if deleted
       - ./.wwebjs_auth:/app/.wwebjs_auth

@@ -1,54 +1,65 @@
-# Cay AI — Future Plans
+# Cay AI — Working TODO
 
-## Immediate (before using with real clients)
-
-- [x] **Remove debug logging from inbound listener** — stripped from `index.js`.
-- [ ] **Test all 20 KB entries** — run through the comprehensive test plan in SETUP.md section 6 to confirm each FAQ auto-answers correctly at 75%+ confidence.
-- [ ] **Fill in real Cay AI answers in settings.csv** — some entries still have placeholder-quality answers. Review and sharpen each one.
-- [ ] **Test !setup wizard end-to-end** — run `!setup`, complete all 18 steps, and confirm settings.csv is written correctly without wiping calendar link or token settings.
-- [ ] **Test re-running !setup** — confirm it preserves `calendar_link`, `response_window`, and token limits from the existing file.
+> **Governing document:** `docs/SCOPE_OF_WORK.md` (SOW v1.1 — Lucayan Labs, June 2026)
+> This file tracks build status against the SOW. Update it as items ship.
+> North star: first paying tourism client live within 30 days.
 
 ---
 
-## Short Term (first client deployment)
+## Workstream B — Product (critical path)
 
-- [x] **`ON_THE_FENCE_BUYER` intent** — detects warm prospects who are curious but undecided. Sends Cialdini-style soft-nudge auto-reply, sets stage to `exploring`, and notifies owner for follow-up.
-- [ ] **Windows support** — create `start.bat` equivalent of `start.command` so the agent can run on Windows machines. Same logic, different shell syntax.
-- [ ] **`!addcontact` command** — add a contact directly from WhatsApp: `!addcontact 12425550100 John Smith | Smith Hardware | lead | Met at networking event`. Pure logic, no AI. Uses `|` separator to avoid CSV comma conflicts.
-- [x] **`!followuplist` command** — scans `last_contacted` in contacts.csv and returns everyone not messaged in 30+ days. Relationship maintenance prompt for the owner.
-- [x] **Strip debug logs** — done.
-- [ ] **Client onboarding template** — a blank `settings.csv` with clear instructions per field, ready to hand to a new client.
-
----
-
-## Medium Term (scaling to multiple clients)
-
-- [ ] **Cloud deployment** — move from local Mac to a cloud server (Railway or a cheap VPS) for 24/7 uptime. The agent should auto-restart on crash. Target: Pro tier clients first.
-- [ ] **UptimeRobot integration** — for Starter/Growth clients still on Mac/Replit, set up UptimeRobot pings to keep the process alive.
-- [ ] **Operator monitoring dashboard** — a simple status page or spreadsheet showing which client agents are running, last active, message counts, and any errors. Even a shared Google Sheet works for now.
-- [ ] **Per-client logging** — currently all logs go to `data/log.csv` in each instance. For operator visibility, aggregate logs across clients.
-- [ ] **`!stats` improvements** — add weekly/monthly breakdowns, top contacted numbers, and intent breakdown from inbound log.
+| ID | Item | Status |
+|---|---|---|
+| B3-inc1 | Control-channel routing (`getControlChannel`, `control_channel` setting) | ✅ Done |
+| B9 | Operator web console (Settings/KB, ROI, Contacts, Scheduled msgs, nav) | ✅ Done |
+| B2 | Tourism KB template (`demo/settings_tour.csv` + `defaults/settings_tour.csv`) | ✅ Done |
+| B1 | Tourism intent tuning — `classifyIntent()` uses `business_context`; tourism examples added | ✅ Done |
+| B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ⬜ Pending |
+| B3-inc2 | Accept `!commands` from Cay Control group (operator drives agent from personal number) | ⬜ Pending |
+| B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ⬜ Pending |
+| B6 | Multi-client provisioning: generalize CI/CD from single hardcoded droplet; runbook | ⬜ Pending |
+| B7 | Tourism onboarding template: annotated `settings.csv` + step list, sub-1-hour setup | ⬜ Pending |
+| B8 | Pre-flight test pass: tourism KB ≥75% confidence gate added to `tests/index.test.js` | ⬜ Pending |
 
 ---
 
-## Product Roadmap
+## Workstream A — Brand (Claude-produced, founder-approved)
 
-- [ ] **Multi-number support (Pro tier)** — run the agent across multiple WhatsApp numbers from a single instance. Required for larger businesses with dedicated sales/support lines.
-- [ ] **Image and file sending** — whatsapp-web.js supports media. Add `!sendimage` and `!sendfile` commands for sending product photos, menus, price lists etc.
-- [ ] **`!draft` / `!unsaved`** — save a message draft without sending, come back to it later.
-- [ ] **`!remind [name] [date] [intent]`** — schedule by date not just time. Useful for birthdays, contract renewals, follow-up after a quoted project.
-- [ ] **OpenRouter model picker in settings** — allow clients to change their AI model from `settings.csv` without touching `.env`. Operator controls the key, client controls the model tier.
-- [ ] **Inbound auto-reply outside response_window** — if a message arrives outside `response_window`, auto-reply with "We are currently closed, we will get back to you during business hours" using the response_window value.
-- [ ] **Contacts HTML improvements** — add import CSV, tag filtering, and last_contacted display. Currently export-only.
-- [ ] **`!quote [name] [service] [amount]`** — AI writes a professional price quote message. High value for service businesses in Nassau.
+| ID | Item | Status |
+|---|---|---|
+| A1 | Domains — `lucayanlabs.com` + `cayai.com` registered and pointed | ⬜ Pending |
+| A2 | Logo system — Lucayan Labs wordmark + Cay AI product mark, SVG, `#0F6E56` primary | ⬜ Pending |
+| A3 | `lucayanlabs.com` — one-page company site, deploy-ready static HTML | ⬜ Pending |
+| A4 | `cayai.com` — product landing page (Cay Receptionist, ROI framing, lead form) | ⬜ Pending |
+| A5 | Pitch deck — tourism operator sales deck, content + layout | ⬜ Pending |
+| A6 | Cay Receptionist one-pager — client handout PDF | ⬜ Pending |
+| A7 | Sales kit — email signature, proposal template, contract/SOW template | ⬜ Pending |
 
 ---
 
-## Nice to Have (future)
+## Workstream C — GTM (founder-led, Claude-supported)
 
-- [ ] **Multi-language support** — Bahamian Creole, Spanish for tourist-facing businesses
-- [ ] **Webhook/Zapier integration** — trigger agent actions from external tools
-- [ ] **CRM sync** — Zoho, Airtable, or HubSpot integration as an upgrade from CSV
-- [ ] **Conversation history context** — pass recent message history to AI so follow-ups reference prior exchanges
-- [ ] **Analytics dashboard** — web UI showing send/receive rates, intent breakdown, response times, hot lead conversion
-- [ ] **Email digest** — send `review.html` content as a formatted HTML email via Resend or SendGrid (free tier, one `fetch()` call, no npm dependency). Add `OUTREACH_EMAIL_KEY` to `.env`. Complements `review.html` with push delivery on Sundays.
+| ID | Item | Status |
+|---|---|---|
+| C1 | Target list — 10–15 Nassau boat-tour / fishing-charter / excursion operators | ⬜ Pending |
+| C2 | Outreach motion — DM/email sequence + call script on cost-of-problem story | ⬜ Pending |
+| C3 | Live demo instance — always-on "Cay Receptionist Demo" number for meetings | ⬜ Pending |
+| C4 | Proposal + close — per-prospect proposal at $2,500 + $499/mo | ⬜ Pending |
+| C5 | Onboarding + go-live — KB build, QR link, staff training, go-live | ⬜ Pending |
+| C6 | Success readout — 2-week case study with at least one ROI data point | ⬜ Pending |
+
+---
+
+## Deferred / Out of Scope (for this engagement)
+
+- Windows `start.bat` launcher
+- Multi-number / multi-role per instance
+- Web/voice channels beyond WhatsApp
+- Live calendar/availability or payment processing
+- CRM sync, Zapier/webhook integration
+- In-browser customer-message inbox (stays in WhatsApp — SOW boundary)
+- Cay Sales Assistant, Booking Coordinator, Concierge, Dispatcher (future upsells)
+- Conversation history context passed to AI
+- Image/file sending commands
+- `!quote`, `!draft`, `!remind` commands
+- Multi-language (Bahamian Creole, Spanish)
