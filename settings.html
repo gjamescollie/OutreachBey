@@ -6,53 +6,126 @@
   <title>Cay AI — Settings & Knowledge Base</title>
   <meta name="description" content="Cay AI — configure your AI receptionist and knowledge base">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #111; }
-    header { background: #25D366; color: white; padding: 18px 24px; display: flex; align-items: center; gap: 12px; }
-    header h1 { font-size: 1.2rem; font-weight: 600; }
-    header span.logo { font-size: 1.5rem; }
-    nav { margin-left: auto; display: flex; gap: 4px; }
-    nav a { color: rgba(255,255,255,0.7); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; }
-    nav a.active { background: rgba(0,0,0,0.2); color: #fff; }
-    .container { max-width: 980px; margin: 28px auto; padding: 0 16px; }
-    .notice { background: #e8f5e9; border: 1px solid #25D366; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px; font-size: 0.88rem; color: #1b5e20; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 22px; }
-    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; color: #333; }
-    .card .sub { font-size: 0.8rem; color: #999; margin-bottom: 18px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366; --green-dark: #1da851; --green-bg: #e8f5e9;
+      --blue: #1565c0; --blue-bg: #e3f2fd;
+      --red: #e53935; --red-bg: #ffebee;
+      --surface: #ffffff;
+      --bg: #f4f6f8;
+      --border: #e8eaed;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    header {
+      background: linear-gradient(135deg, #25D366 0%, #1da851 100%);
+      color: white; padding: 0 24px;
+      height: 56px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(37,211,102,.3);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left .logo { font-size: 1.3rem; }
+    .header-left h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+
+    nav { display: flex; gap: 4px; }
+    nav a { color: rgba(255,255,255,0.65); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; transition: background .15s; }
+    nav a:hover { background: rgba(0,0,0,0.15); color: #fff; }
+    nav a.active { background: rgba(0,0,0,0.25); color: #fff; }
+
+    .container { max-width: 980px; margin: 28px auto; padding: 0 20px 100px; }
+
+    .notice {
+      background: var(--green-bg); border: 1px solid var(--green);
+      border-radius: var(--radius-sm); padding: 14px 18px;
+      margin-bottom: 22px; font-size: 0.85rem; color: #1b5e20;
+    }
+
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      padding: 24px; margin-bottom: 20px;
+    }
+    .card h2 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .card .sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 18px; }
+
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-group.full { grid-column: 1 / -1; }
-    label { font-size: 0.82rem; font-weight: 500; color: #555; }
-    input, select, textarea { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; font-size: 0.9rem; font-family: inherit; transition: border 0.2s; width: 100%; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #25D366; }
+
+    label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
+    input, select, textarea {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 9px 12px; font-size: 0.88rem; font-family: inherit;
+      color: var(--text); background: var(--surface);
+      transition: border-color .15s; width: 100%;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green); }
     textarea { resize: vertical; min-height: 64px; }
-    .hint { font-size: 0.76rem; color: #aaa; }
-    .btn { padding: 11px 22px; border-radius: 8px; border: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: #25D366; color: white; }
-    .btn-primary:hover { background: #1da851; }
-    .btn-secondary { background: #f0f2f5; color: #333; }
-    .btn-secondary:hover { background: #e0e2e5; }
-    .btn-danger { background: #ff4444; color: white; }
-    .btn-danger:hover { background: #cc0000; }
-    .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
-    .kb-row { border: 1px solid #eee; border-radius: 10px; padding: 14px; margin-bottom: 12px; background: #fafafa; }
+    .hint { font-size: 0.74rem; color: var(--text-muted); }
+
+    .btn { padding: 9px 20px; border-radius: var(--radius-sm); border: none; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit; }
+    .btn-primary { background: var(--green); color: white; }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-danger:hover { background: #c62828; }
+    .btn-sm { padding: 5px 12px; font-size: 0.76rem; }
+
+    .kb-row {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px; margin-bottom: 10px; background: var(--bg);
+    }
     .kb-row .form-group { margin-bottom: 8px; }
     .kb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .kb-head .n { font-size: 0.78rem; font-weight: 600; color: #888; }
-    .savebar { position: sticky; bottom: 0; background: white; border-top: 1px solid #eee; padding: 14px 24px; display: flex; gap: 12px; align-items: center; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); }
+    .kb-head .n { font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+
+    .sched-row {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px; margin-bottom: 10px; background: var(--surface);
+    }
+    .sched-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .sched-when { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+    .sched-msg { font-size: 0.85rem; color: var(--text); }
+
+    .savebar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 12px 24px; display: flex; gap: 12px; align-items: center;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.06); z-index: 50;
+    }
     .savebar .spacer { flex: 1; }
-    .toast { position: fixed; bottom: 80px; right: 24px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+
+    .toast {
+      position: fixed; bottom: 80px; right: 24px;
+      background: #1a1a2e; color: white; padding: 12px 20px;
+      border-radius: var(--radius-sm); font-size: 0.85rem;
+      opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 999;
+    }
     .toast.show { opacity: 1; }
-    .toast.success { background: #25D366; }
-    .toast.error { background: #ff4444; }
-    .empty { text-align: center; color: #bbb; padding: 20px; font-size: 0.9rem; }
+    .toast.success { background: var(--green); }
+    .toast.error { background: var(--red); }
+
+    .empty { text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.88rem; }
   </style>
 </head>
 <body>
 
 <header>
-  <span class="logo">⚙️</span>
-  <h1>Cay AI — Settings &amp; Knowledge Base</h1>
+  <div class="header-left">
+    <span class="logo">⚙️</span>
+    <h1>Cay AI — Settings &amp; Knowledge Base</h1>
+  </div>
   <nav>
     <a href="/">📊 Logs</a>
     <a href="/analytics">📈 Analytics</a>
@@ -206,7 +279,7 @@ function kbRow(entry, i) {
   const div = document.createElement('div');
   div.className = 'kb-row';
   div.innerHTML =
-    '<div class="kb-head"><span class="n">#' + (i + 1) + '</span>' +
+    '<div class="kb-head"><span class="n">Entry #' + (i + 1) + '</span>' +
     '<button class="btn btn-danger btn-sm remove-kb" type="button">Remove</button></div>' +
     '<div class="form-group"><label>Question</label>' +
     '<input type="text" class="kb-q" placeholder="What customers type"></div>' +
@@ -220,7 +293,7 @@ function kbRow(entry, i) {
 
 function renumber() {
   const rows = document.querySelectorAll('#kb-list .kb-row');
-  rows.forEach((r, i) => { r.querySelector('.n').textContent = '#' + (i + 1); });
+  rows.forEach((r, i) => { r.querySelector('.n').textContent = 'Entry #' + (i + 1); });
   $('kb-count').textContent = rows.length + ' of 40 knowledge-base entries';
   $('add-kb').style.display = rows.length >= 40 ? 'none' : '';
 }
@@ -282,15 +355,14 @@ async function loadScheduled() {
     list.forEach((f) => {
       const when = new Date(f.sendAt).toLocaleString();
       const row = document.createElement('div');
-      row.className = 'kb-row';
-      row.style.background = '#fff';
+      row.className = 'sched-row';
       const who = (f.contactName || f.rawNumber || '').toString();
       const msg = (f.message || '').toString();
       row.innerHTML =
-        '<div class="kb-head"><span class="n">⏰ ' + when + ' → ' +
-        who.replace(/</g, '&lt;') + '</span>' +
+        '<div class="sched-head">' +
+        '<span class="sched-when">⏰ ' + when + ' → ' + who.replace(/</g, '&lt;') + '</span>' +
         '<button class="btn btn-danger btn-sm" type="button">Cancel</button></div>' +
-        '<div style="font-size:0.85rem;color:#444">' + msg.replace(/</g, '&lt;').slice(0, 240) + '</div>';
+        '<div class="sched-msg">' + msg.replace(/</g, '&lt;').slice(0, 240) + '</div>';
       row.querySelector('button').onclick = async () => {
         if (!confirm('Cancel this scheduled message?')) return;
         try {
