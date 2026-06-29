@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" width="300" height="80">
+  <!-- Cay AI full lockup: icon left + wordmark right -->
+
+  <!-- Icon (scaled down version of mark) -->
+  <g transform="translate(4, 4) scale(0.9)">
+    <circle cx="40" cy="40" r="38" fill="#0F6E56"/>
+    <path
+      d="M 12 46 Q 22 40 32 46 Q 42 52 52 46 Q 62 40 68 46"
+      fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+    <path
+      d="M 12 52 Q 22 46 32 52 Q 42 58 52 52 Q 62 46 68 52"
+      fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+    <path
+      d="M 52 32 Q 40 18 28 26 Q 18 33 18 40 Q 18 50 28 55 Q 40 61 52 49"
+      fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="54" cy="26" r="4" fill="white" opacity="0.9"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text
+    x="90" y="34"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="30"
+    font-weight="700"
+    letter-spacing="1"
+    fill="#0F6E56">Cay AI</text>
+
+  <!-- Divider line -->
+  <line x1="90" y1="44" x2="290" y2="44" stroke="#0F6E56" stroke-width="1" opacity="0.25"/>
+
+  <!-- Sub-brand -->
+  <text
+    x="90" y="58"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="10"
+    font-weight="400"
+    letter-spacing="2.5"
+    fill="#0F6E56"
+    opacity="0.65">BY LUCAYAN LABS</text>
+
+  <!-- Tagline -->
+  <text
+    x="90" y="72"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="9"
+    font-weight="400"
+    letter-spacing="1.5"
+    fill="#0F6E56"
+    opacity="0.5">YOUR AI RECEPTIONIST ON WHATSAPP</text>
+</svg>

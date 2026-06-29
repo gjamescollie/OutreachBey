@@ -27,13 +27,13 @@
 
 | ID | Item | Status |
 |---|---|---|
-| A1 | Domains — `lucayanlabs.com` + `cayai.com` registered and pointed | ⬜ Pending |
-| A2 | Logo system — Lucayan Labs wordmark + Cay AI product mark, SVG, `#0F6E56` primary | ⬜ Pending |
-| A3 | `lucayanlabs.com` — one-page company site, deploy-ready static HTML | ⬜ Pending |
-| A4 | `cayai.com` — product landing page (Cay Receptionist, ROI framing, lead form) | ⬜ Pending |
-| A5 | Pitch deck — tourism operator sales deck, content + layout | ⬜ Pending |
-| A6 | Cay Receptionist one-pager — client handout PDF | ⬜ Pending |
-| A7 | Sales kit — email signature, proposal template, contract/SOW template | ⬜ Pending |
+| A1 | Domains — `lucayanlabs.com` + `cayai.com` registered and pointed | ⬜ Pending (founder action — registrar purchase) |
+| A2 | Logo system — Lucayan Labs wordmark + Cay AI product mark, SVG, `#0F6E56` primary | ✅ Done — `brand/logos/` (3 SVG files) |
+| A3 | `lucayanlabs.com` — one-page company site, deploy-ready static HTML | ✅ Done — `brand/sites/lucayanlabs/index.html` |
+| A4 | `cayai.com` — product landing page (Cay Receptionist, ROI framing, lead form) | ✅ Done — `brand/sites/cayai/index.html` |
+| A5 | Pitch deck — tourism operator sales deck, content + layout | ✅ Done — `brand/deck/pitch-deck.html` (8 slides, print-ready) |
+| A6 | Cay Receptionist one-pager — client handout PDF | ✅ Done — `brand/sales/one-pager.html` (print to PDF via browser) |
+| A7 | Sales kit — email signature, proposal template, contract/SOW template | ✅ Done — `brand/sales/` (3 files) |
 
 ---
 

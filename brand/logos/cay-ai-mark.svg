@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <!-- Cay AI product mark — stylized wave/cay icon -->
+  <!-- Outer circle -->
+  <circle cx="40" cy="40" r="38" fill="#0F6E56"/>
+
+  <!-- Wave shape representing a cay (small island/sandbar) -->
+  <!-- Water waves -->
+  <path
+    d="M 12 46 Q 22 40 32 46 Q 42 52 52 46 Q 62 40 68 46"
+    fill="none"
+    stroke="white"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    opacity="0.6"/>
+  <path
+    d="M 12 52 Q 22 46 32 52 Q 42 58 52 52 Q 62 46 68 52"
+    fill="none"
+    stroke="white"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    opacity="0.4"/>
+
+  <!-- Island silhouette -->
+  <ellipse cx="40" cy="44" rx="18" ry="7" fill="white" opacity="0.15"/>
+  <ellipse cx="40" cy="43" rx="14" ry="5" fill="white" opacity="0.2"/>
+
+  <!-- "C" letterform — bold, white -->
+  <path
+    d="M 52 32 Q 40 18 28 26 Q 18 33 18 40 Q 18 50 28 55 Q 40 61 52 49"
+    fill="none"
+    stroke="white"
+    stroke-width="5"
+    stroke-linecap="round"/>
+
+  <!-- Dot above — signal/AI indicator -->
+  <circle cx="54" cy="26" r="4" fill="white" opacity="0.9"/>
+</svg>

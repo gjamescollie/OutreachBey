@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cay Receptionist — Your AI employee on WhatsApp</title>
+  <meta name="description" content="Cay Receptionist answers your WhatsApp inquiries 24/7, qualifies bookings, and captures leads — so you never miss a customer while you're out running your business.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal: #0F6E56;
+      --teal-light: #e6f2ee;
+      --teal-mid: #1a9070;
+      --dark: #1a1a1a;
+      --mid: #4a4a4a;
+      --light: #f7f9f8;
+      --white: #ffffff;
+      --border: #d4e8e2;
+      --accent: #f4a433;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--dark);
+      background: var(--white);
+    }
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* NAV */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    .nav-inner {
+      max-width: 1060px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo { font-size: 20px; font-weight: 700; color: var(--teal); }
+    .nav-logo small { font-weight: 400; font-size: 12px; opacity: 0.65; display: block; line-height: 1; letter-spacing: 1px; text-transform: uppercase; }
+    .nav-cta {
+      background: var(--teal);
+      color: var(--white);
+      padding: 10px 22px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .nav-cta:hover { background: var(--teal-mid); text-decoration: none; }
+
+    /* LAYOUT */
+    section { padding: 80px 24px; }
+    .container { max-width: 1060px; margin: 0 auto; }
+    h1, h2, h3 { font-weight: 700; line-height: 1.2; }
+
+    /* HERO */
+    .hero {
+      background: var(--teal);
+      padding: 96px 24px 80px;
+      text-align: center;
+    }
+    .hero .eyebrow {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.9);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(34px, 5.5vw, 60px);
+      color: var(--white);
+      max-width: 800px;
+      margin: 0 auto 20px;
+    }
+    .hero h1 em {
+      color: var(--accent);
+      font-style: normal;
+    }
+    .hero .sub {
+      font-size: 18px;
+      color: rgba(255,255,255,0.82);
+      max-width: 580px;
+      margin: 0 auto 40px;
+    }
+    .hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn-white {
+      display: inline-block;
+      background: var(--white);
+      color: var(--teal);
+      padding: 16px 36px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .btn-white:hover { background: var(--teal-light); text-decoration: none; }
+    .btn-outline-white {
+      display: inline-block;
+      border: 2px solid rgba(255,255,255,0.6);
+      color: var(--white);
+      padding: 16px 36px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .btn-outline-white:hover { border-color: white; text-decoration: none; }
+
+    /* PROBLEM BAND */
+    .problem-band {
+      background: var(--dark);
+      color: var(--white);
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .problem-band p {
+      max-width: 780px;
+      margin: 0 auto;
+      font-size: 20px;
+      line-height: 1.55;
+      opacity: 0.9;
+    }
+    .problem-band strong { color: var(--accent); }
+
+    /* COST SECTION */
+    .cost { background: var(--light); }
+    .cost h2 {
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 12px;
+      color: var(--dark);
+    }
+    .cost .lead {
+      text-align: center;
+      color: var(--mid);
+      font-size: 17px;
+      max-width: 560px;
+      margin: 0 auto 48px;
+    }
+    .cost-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+    }
+    .cost-card {
+      background: var(--white);
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .cost-card .number {
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .cost-card p { font-size: 15px; color: var(--mid); }
+
+    /* HOW IT WORKS */
+    .how h2 {
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .how .lead {
+      text-align: center;
+      color: var(--mid);
+      max-width: 520px;
+      margin: 0 auto 52px;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 32px;
+      position: relative;
+    }
+    .step { text-align: center; padding: 0 16px; }
+    .step-num {
+      width: 52px;
+      height: 52px;
+      background: var(--teal);
+      color: var(--white);
+      border-radius: 50%;
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .step h3 { font-size: 18px; margin-bottom: 8px; }
+    .step p { font-size: 15px; color: var(--mid); }
+
+    /* FEATURES */
+    .features { background: var(--light); }
+    .features h2 {
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .feature-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      background: var(--white);
+      border-radius: 10px;
+      padding: 20px;
+      border: 1.5px solid var(--border);
+    }
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--teal-light);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+    }
+    .feature-item h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .feature-item p { font-size: 14px; color: var(--mid); }
+
+    /* ROI */
+    .roi { text-align: center; }
+    .roi h2 { font-size: 32px; margin-bottom: 12px; color: var(--teal); }
+    .roi .lead { color: var(--mid); font-size: 17px; max-width: 520px; margin: 0 auto 48px; }
+    .roi-numbers {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+    .roi-stat { text-align: center; }
+    .roi-stat .big {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1;
+    }
+    .roi-stat p { font-size: 14px; color: var(--mid); margin-top: 6px; max-width: 160px; }
+    .roi-note {
+      font-size: 13px;
+      color: var(--mid);
+      opacity: 0.7;
+      margin-top: 16px;
+    }
+
+    /* PRICING */
+    .pricing { background: var(--light); text-align: center; }
+    .pricing h2 { font-size: 32px; margin-bottom: 12px; }
+    .pricing .lead { color: var(--mid); font-size: 17px; max-width: 480px; margin: 0 auto 48px; }
+    .price-card {
+      max-width: 440px;
+      margin: 0 auto;
+      background: var(--white);
+      border-radius: 16px;
+      border: 2px solid var(--teal);
+      padding: 44px 40px;
+    }
+    .price-card .badge {
+      display: inline-block;
+      background: var(--teal);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .price-card h3 { font-size: 24px; margin-bottom: 8px; }
+    .price-card .price-setup { font-size: 36px; font-weight: 800; color: var(--teal); }
+    .price-card .price-monthly {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--mid);
+      margin-bottom: 28px;
+    }
+    .price-card ul {
+      list-style: none;
+      text-align: left;
+      margin-bottom: 32px;
+    }
+    .price-card li {
+      font-size: 15px;
+      color: var(--mid);
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .price-card li:last-child { border-bottom: none; }
+    .price-card li::before { content: "✓"; color: var(--teal); font-weight: 700; flex-shrink: 0; }
+    .btn-primary {
+      display: inline-block;
+      background: var(--teal);
+      color: var(--white);
+      padding: 16px 40px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      width: 100%;
+      text-align: center;
+    }
+    .btn-primary:hover { background: var(--teal-mid); text-decoration: none; }
+
+    /* LEAD FORM */
+    .lead-form { text-align: center; }
+    .lead-form h2 { font-size: 32px; margin-bottom: 12px; color: var(--teal); }
+    .lead-form .sub { color: var(--mid); font-size: 17px; max-width: 500px; margin: 0 auto 36px; }
+    .cta-options { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+    .btn-teal {
+      display: inline-block;
+      background: var(--teal);
+      color: var(--white);
+      padding: 16px 36px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .btn-teal:hover { background: var(--teal-mid); text-decoration: none; }
+    .btn-border {
+      display: inline-block;
+      border: 2px solid var(--teal);
+      color: var(--teal);
+      padding: 16px 36px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .btn-border:hover { background: var(--teal-light); text-decoration: none; }
+    .demo-note { font-size: 14px; color: var(--mid); opacity: 0.8; }
+
+    /* FOOTER */
+    footer {
+      background: var(--dark);
+      color: rgba(255,255,255,0.55);
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 14px;
+    }
+    footer strong { color: rgba(255,255,255,0.9); }
+    footer a { color: rgba(255,255,255,0.55); }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 32px; }
+      section { padding: 60px 20px; }
+      .roi-numbers { gap: 28px; }
+      .roi-stat .big { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <div class="nav-logo">
+        Cay AI
+        <small>by Lucayan Labs</small>
+      </div>
+      <a class="nav-cta" href="https://calendly.com/gjamescollie/30min">Book a free demo</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="eyebrow">Cay Receptionist &bull; For Nassau Tourism Operators</div>
+    <h1>Every missed WhatsApp is a booking you <em>didn't get.</em></h1>
+    <p class="sub">Your customers message you while you're on the water. Cay Receptionist answers them, qualifies their booking, and flags you when they're ready to pay.</p>
+    <div class="hero-ctas">
+      <a class="btn-white" href="https://calendly.com/gjamescollie/30min">See the live demo &rarr;</a>
+      <a class="btn-outline-white" href="mailto:granville@lucayanlabs.com">Ask a question</a>
+    </div>
+  </section>
+
+  <!-- PROBLEM BAND -->
+  <div class="problem-band">
+    <p>Tour operators in Nassau lose an average of <strong>6–12 inquiries every week</strong> to slow replies. At $150 a seat, that's <strong>$4,000–$7,000 walking out the door</strong> every month — before the season even starts.</p>
+  </div>
+
+  <!-- COST OF THE PROBLEM -->
+  <section class="cost">
+    <div class="container">
+      <h2>The math is uncomfortable.</h2>
+      <p class="lead">You already know customers message on WhatsApp. Here's what happens when those messages go unanswered for more than an hour.</p>
+      <div class="cost-grid">
+        <div class="cost-card">
+          <div class="number">78%</div>
+          <p>of customers choose the first business that responds to their inquiry</p>
+        </div>
+        <div class="cost-card">
+          <div class="number">1 hr</div>
+          <p>average response time before a prospect moves on to a competitor</p>
+        </div>
+        <div class="cost-card">
+          <div class="number">24/7</div>
+          <p>your customers message outside business hours — Cay Receptionist never sleeps</p>
+        </div>
+        <div class="cost-card">
+          <div class="number">$0</div>
+          <p>missed when a qualified inquiry is captured and handed to you warm</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how">
+    <div class="container">
+      <h2>How Cay Receptionist works.</h2>
+      <p class="lead">Set it up once. It runs on your existing WhatsApp number. No app downloads for your customers.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Customer messages you</h3>
+          <p>They ask about availability, pricing, group size, or trip details — just like they always have, on WhatsApp.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Cay Receptionist answers</h3>
+          <p>Your AI employee replies in seconds, in your voice — answering questions, qualifying the booking, and capturing their details.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>You get a warm lead</h3>
+          <p>When they're ready to book, you get a notification with everything you need to close: date, party size, name, contact.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <h3>You close the booking</h3>
+          <p>You step in when it matters. Cay Receptionist handles everything else — including questions that come in at midnight.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <div class="container">
+      <h2>What you get.</h2>
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-icon">&#128276;</div>
+          <div>
+            <h3>24/7 auto-answers</h3>
+            <p>Handles pricing, schedules, meeting points, cancellation policy, group size — based on your real FAQ.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#127937;</div>
+          <div>
+            <h3>Hot lead alerts</h3>
+            <p>When someone is ready to book, you get an instant notification with their details so you can close.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#128101;</div>
+          <div>
+            <h3>Contact capture</h3>
+            <p>Every inquiry is logged with the customer's name and number. Never lose a lead.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#128274;</div>
+          <div>
+            <h3>Your number, your inbox</h3>
+            <p>Works on your existing WhatsApp number. No new app for you or your customers.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#128202;</div>
+          <div>
+            <h3>Operator dashboard</h3>
+            <p>See every conversation, response, and lead in a private browser dashboard — anytime.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">&#128222;</div>
+          <div>
+            <h3>Complaint escalation</h3>
+            <p>Any complaint or sensitive message is flagged immediately and handed to you — never auto-resolved.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROI -->
+  <section class="roi">
+    <div class="container">
+      <h2>The numbers work.</h2>
+      <p class="lead">Based on a typical Nassau boat-tour operator running 3–4 trips per week at $150 per seat.</p>
+      <div class="roi-numbers">
+        <div class="roi-stat">
+          <div class="big">5</div>
+          <p>extra bookings recovered per week from inquiries that would have gone cold</p>
+        </div>
+        <div class="roi-stat">
+          <div class="big">$3K</div>
+          <p>in additional monthly revenue at $150/seat average for a 4-person party</p>
+        </div>
+        <div class="roi-stat">
+          <div class="big">15h</div>
+          <p>owner hours saved per month answering repetitive WhatsApp questions</p>
+        </div>
+      </div>
+      <p class="roi-note">Illustrative estimates based on typical operator metrics. Your results will depend on your inquiry volume and conversion rate.</p>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing">
+    <div class="container">
+      <h2>Simple pricing. No surprises.</h2>
+      <p class="lead">One setup fee. One monthly fee. We handle everything — setup, configuration, and support.</p>
+      <div class="price-card">
+        <div class="badge">Cay Receptionist</div>
+        <h3>Done-for-you AI employee</h3>
+        <div class="price-setup">$2,500</div>
+        <div class="price-monthly">setup &mdash; then $499/month</div>
+        <ul>
+          <li>AI employee configured for your specific business</li>
+          <li>Custom knowledge base built from your real FAQs</li>
+          <li>Setup and testing on your WhatsApp number</li>
+          <li>24/7 auto-answers, lead capture, booking qualification</li>
+          <li>Operator dashboard for logs, analytics, and contacts</li>
+          <li>Ongoing support from Lucayan Labs</li>
+          <li>No contract — cancel anytime</li>
+        </ul>
+        <a class="btn-primary" href="https://calendly.com/gjamescollie/30min">Book a free consultation</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEAD FORM / CTA -->
+  <section class="lead-form">
+    <div class="container">
+      <h2>Ready to stop losing bookings?</h2>
+      <p class="sub">Book a free 30-minute call. We'll demo Cay Receptionist live on a real WhatsApp number and show you exactly what it would look like for your business.</p>
+      <div class="cta-options">
+        <a class="btn-teal" href="https://calendly.com/gjamescollie/30min">Book a free 30-min call</a>
+        <a class="btn-border" href="mailto:granville@lucayanlabs.com">Send us a message</a>
+      </div>
+      <p class="demo-note">Or WhatsApp us directly to see the live demo in action.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Cay AI</strong> &mdash; A product of <strong>Lucayan Labs</strong> &mdash; Nassau, Bahamas</p>
+    <p style="margin-top: 6px;"><a href="mailto:granville@lucayanlabs.com">granville@lucayanlabs.com</a> &bull; <a href="https://calendly.com/gjamescollie/30min">Book a call</a></p>
+    <p style="margin-top: 8px;">Cay AI &trade; &copy; 2026 Lucayan Labs. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

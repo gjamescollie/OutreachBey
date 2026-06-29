@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cay Receptionist — Pitch Deck</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal: #0F6E56;
+      --teal-light: #e6f2ee;
+      --dark: #1a1a1a;
+      --mid: #4a4a4a;
+      --white: #ffffff;
+      --border: #d4e8e2;
+      --accent: #f4a433;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #e8e8e8;
+      color: var(--dark);
+    }
+
+    /* SLIDE CONTAINER */
+    .slide {
+      width: 960px;
+      min-height: 540px;
+      margin: 40px auto;
+      background: var(--white);
+      border-radius: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      padding: 60px 72px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* SLIDE NUMBERS */
+    .slide-num {
+      position: absolute;
+      bottom: 22px;
+      right: 30px;
+      font-size: 12px;
+      color: rgba(0,0,0,0.25);
+      letter-spacing: 1px;
+    }
+    .slide-brand {
+      position: absolute;
+      bottom: 22px;
+      left: 30px;
+      font-size: 11px;
+      color: rgba(0,0,0,0.25);
+      letter-spacing: 1px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* TYPOGRAPHY */
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 20px;
+    }
+    h1 { font-size: 52px; line-height: 1.1; font-weight: 800; }
+    h2 { font-size: 38px; line-height: 1.15; font-weight: 800; }
+    h3 { font-size: 22px; font-weight: 700; }
+    p { font-size: 18px; line-height: 1.6; color: var(--mid); }
+
+    /* SLIDE 1 — COVER */
+    .slide-cover {
+      background: var(--teal);
+      text-align: center;
+    }
+    .slide-cover h1 { color: var(--white); font-size: 48px; max-width: 700px; margin: 0 auto 20px; }
+    .slide-cover .sub { color: rgba(255,255,255,0.78); font-size: 19px; max-width: 560px; margin: 0 auto 36px; }
+    .slide-cover .presenter { font-size: 14px; color: rgba(255,255,255,0.55); letter-spacing: 1px; }
+    .slide-cover .slide-num { color: rgba(255,255,255,0.3); }
+    .slide-cover .slide-brand { color: rgba(255,255,255,0.3); }
+    .logo-text {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 1px;
+      margin-bottom: 48px;
+      display: block;
+    }
+    .logo-text small {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.6;
+      display: block;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .accent-line {
+      width: 48px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+      margin: 24px auto 0;
+    }
+
+    /* SLIDE 2 — PROBLEM */
+    .big-stat {
+      font-size: 88px;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .big-stat-label {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 20px;
+    }
+    .callout {
+      background: #fff8ee;
+      border-left: 4px solid var(--accent);
+      padding: 18px 24px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 28px;
+    }
+    .callout p { font-size: 17px; color: var(--dark); }
+
+    /* TWO COL */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .three-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 28px;
+    }
+
+    /* STAT CARDS */
+    .stat-card {
+      background: var(--teal-light);
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .stat-card .num {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-card p { font-size: 15px; color: var(--mid); }
+
+    /* SLIDE 3 — SOLUTION */
+    .solution-slide { background: var(--teal-light); }
+
+    /* STEPS */
+    .step-row {
+      display: flex;
+      gap: 0;
+      margin-top: 32px;
+    }
+    .step-item {
+      flex: 1;
+      text-align: center;
+      padding: 0 16px;
+      position: relative;
+    }
+    .step-item:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -10px;
+      top: 20px;
+      font-size: 24px;
+      color: var(--teal);
+      font-weight: 300;
+    }
+    .step-num {
+      width: 48px;
+      height: 48px;
+      background: var(--teal);
+      color: var(--white);
+      border-radius: 50%;
+      font-size: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    .step-item h3 { font-size: 16px; margin-bottom: 8px; }
+    .step-item p { font-size: 14px; }
+
+    /* FEATURE LIST */
+    .feat-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .feat-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 16px;
+      color: var(--mid);
+    }
+    .feat-list li::before {
+      content: "✓";
+      color: var(--teal);
+      font-weight: 800;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    /* PRICING SLIDE */
+    .price-box {
+      border: 2px solid var(--teal);
+      border-radius: 16px;
+      padding: 40px 48px;
+      text-align: center;
+      max-width: 460px;
+    }
+    .price-amount { font-size: 56px; font-weight: 800; color: var(--teal); line-height: 1; }
+    .price-period { font-size: 20px; font-weight: 600; color: var(--mid); margin-bottom: 20px; }
+    .price-includes { font-size: 15px; color: var(--mid); text-align: left; }
+    .price-includes li { padding: 7px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; }
+    .price-includes li:last-child { border-bottom: none; }
+    .price-includes li::before { content: "✓"; color: var(--teal); font-weight: 800; flex-shrink: 0; }
+
+    /* CTA SLIDE */
+    .cta-slide { background: var(--dark); text-align: center; }
+    .cta-slide h2 { color: var(--white); font-size: 42px; margin-bottom: 16px; }
+    .cta-slide p { color: rgba(255,255,255,0.75); font-size: 18px; max-width: 520px; margin: 0 auto 36px; }
+    .cta-btn {
+      display: inline-block;
+      background: var(--teal);
+      color: var(--white);
+      padding: 18px 40px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      margin: 0 8px 16px;
+    }
+    .cta-btn-sec {
+      display: inline-block;
+      border: 2px solid rgba(255,255,255,0.4);
+      color: var(--white);
+      padding: 18px 40px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      margin: 0 8px 16px;
+    }
+    .cta-slide .slide-brand,
+    .cta-slide .slide-num { color: rgba(255,255,255,0.2); }
+
+    /* PRINT */
+    @media print {
+      body { background: white; }
+      .slide {
+        width: 100%;
+        margin: 0;
+        min-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SLIDE 1: COVER -->
+  <div class="slide slide-cover">
+    <span class="logo-text">Cay AI <small>by Lucayan Labs</small></span>
+    <h1>Your business is losing bookings while you sleep.</h1>
+    <p class="sub">Introducing Cay Receptionist — the AI employee that answers your WhatsApp 24/7, qualifies bookings, and hands you warm leads.</p>
+    <div class="accent-line"></div>
+    <p class="presenter" style="margin-top: 28px;">Granville Collie &bull; Lucayan Labs &bull; Nassau, Bahamas &bull; 2026</p>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">1 / 8</span>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="eyebrow">The Problem</div>
+    <div class="two-col">
+      <div>
+        <h2>Nassau tour operators lose 6–12 inquiries every week to slow replies.</h2>
+        <div class="callout">
+          <p>At $150 a seat, that's <strong>$4,000–$7,000 walking out the door</strong> every month — before the season starts.</p>
+        </div>
+      </div>
+      <div class="three-col" style="grid-template-columns: 1fr; gap: 20px;">
+        <div class="stat-card">
+          <div class="num">78%</div>
+          <p>of customers choose the first business that replies</p>
+        </div>
+        <div class="stat-card">
+          <div class="num">&lt; 1hr</div>
+          <p>before a prospect moves on to a competitor</p>
+        </div>
+        <div class="stat-card">
+          <div class="num">24/7</div>
+          <p>your customers message outside business hours</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">2 / 8</span>
+  </div>
+
+  <!-- SLIDE 3: THE SOLUTION -->
+  <div class="slide solution-slide">
+    <div class="eyebrow">The Solution</div>
+    <h2 style="max-width: 600px; margin-bottom: 8px;">Meet Cay Receptionist — your AI employee on WhatsApp.</h2>
+    <p style="margin-bottom: 0;">It runs on your existing number. It speaks in your voice. It never sleeps.</p>
+    <div class="step-row">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <h3>Customer messages you</h3>
+        <p style="font-size: 14px;">On WhatsApp, just like they always have.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <h3>AI answers in seconds</h3>
+        <p style="font-size: 14px;">Pricing, schedule, trip details, group size — in your voice.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <h3>You get a warm lead</h3>
+        <p style="font-size: 14px;">Name, number, date, party size — ready to close.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <h3>You close the booking</h3>
+        <p style="font-size: 14px;">You step in when it matters. AI handles the rest.</p>
+      </div>
+    </div>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">3 / 8</span>
+  </div>
+
+  <!-- SLIDE 4: HOW IT WORKS (DETAIL) -->
+  <div class="slide">
+    <div class="eyebrow">Under the Hood</div>
+    <div class="two-col">
+      <div>
+        <h2 style="font-size: 30px; margin-bottom: 16px;">Built specifically for your business.</h2>
+        <p>We configure Cay Receptionist with your real FAQs — pricing, trip schedule, meeting point, what's included, cancellation policy, group size limits. It answers like someone who actually knows your business.</p>
+        <br>
+        <p>Every conversation logs to a private operator dashboard. You see exactly what customers asked, what the AI said, and who's ready to book.</p>
+      </div>
+      <div>
+        <h3 style="margin-bottom: 16px; color: var(--teal);">What it handles automatically:</h3>
+        <ul class="feat-list">
+          <li>Pricing questions</li>
+          <li>Trip schedule & availability windows</li>
+          <li>What's included / excluded</li>
+          <li>Meeting point & directions</li>
+          <li>Cancellation & weather policy</li>
+          <li>Group size & booking process</li>
+          <li>Greeting & initial qualification</li>
+          <li>Booking link handoff</li>
+        </ul>
+      </div>
+    </div>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">4 / 8</span>
+  </div>
+
+  <!-- SLIDE 5: ROI -->
+  <div class="slide">
+    <div class="eyebrow">The Return</div>
+    <h2 style="margin-bottom: 8px;">The numbers work for a tour operator.</h2>
+    <p style="margin-bottom: 36px;">Based on a typical Nassau charter running 3–4 trips per week at $150/seat for groups of 4–8.</p>
+    <div class="three-col">
+      <div class="stat-card">
+        <div class="num">5</div>
+        <p>extra bookings recovered per week from inquiries that would have gone cold</p>
+      </div>
+      <div class="stat-card">
+        <div class="num">$3K</div>
+        <p>additional monthly revenue at $150/seat for a 4-person party average</p>
+      </div>
+      <div class="stat-card">
+        <div class="num">15h</div>
+        <p>owner hours saved monthly answering repetitive WhatsApp questions</p>
+      </div>
+    </div>
+    <p style="font-size: 13px; margin-top: 20px; opacity: 0.55;">Illustrative estimates. Results depend on your inquiry volume and conversion rate.</p>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">5 / 8</span>
+  </div>
+
+  <!-- SLIDE 6: WHAT YOU GET -->
+  <div class="slide solution-slide">
+    <div class="eyebrow">What You Get</div>
+    <h2 style="font-size: 30px; margin-bottom: 24px;">Everything you need. Nothing you don't.</h2>
+    <ul class="feat-list" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+      <li style="font-size: 17px;">24/7 auto-answers in your voice</li>
+      <li style="font-size: 17px;">Lead capture &amp; contact logging</li>
+      <li style="font-size: 17px;">Hot lead notifications to your phone</li>
+      <li style="font-size: 17px;">Booking qualification flow</li>
+      <li style="font-size: 17px;">Instant complaint escalation (no auto-resolve)</li>
+      <li style="font-size: 17px;">Opt-out handling (compliant)</li>
+      <li style="font-size: 17px;">Private operator dashboard</li>
+      <li style="font-size: 17px;">Booking link delivery when configured</li>
+      <li style="font-size: 17px;">Works on your existing WhatsApp number</li>
+      <li style="font-size: 17px;">Ongoing support from Lucayan Labs</li>
+    </ul>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">6 / 8</span>
+  </div>
+
+  <!-- SLIDE 7: PRICING -->
+  <div class="slide">
+    <div class="eyebrow">Investment</div>
+    <div class="two-col">
+      <div>
+        <h2 style="font-size: 30px; margin-bottom: 16px;">Simple pricing. No surprises.</h2>
+        <p>One setup fee. One monthly fee. We handle the setup, configuration, and support. Cancel anytime — no long-term contract.</p>
+        <br>
+        <p style="font-size: 16px;">At 5 recovered bookings per week, Cay Receptionist pays for itself <strong>in the first month</strong> — with hours back in your week on top.</p>
+      </div>
+      <div class="price-box">
+        <div class="price-amount">$2,500</div>
+        <div class="price-period">one-time setup fee</div>
+        <div class="price-amount" style="font-size: 40px;">$499</div>
+        <div class="price-period">per month</div>
+        <ul class="price-includes" style="list-style: none; margin-top: 20px;">
+          <li>Custom AI configured for your business</li>
+          <li>Knowledge base built from your FAQs</li>
+          <li>24/7 answers, lead capture, escalation</li>
+          <li>Operator dashboard access</li>
+          <li>Ongoing support &amp; updates</li>
+        </ul>
+      </div>
+    </div>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">7 / 8</span>
+  </div>
+
+  <!-- SLIDE 8: NEXT STEP -->
+  <div class="slide cta-slide">
+    <h2>Ready to see it on a real WhatsApp number?</h2>
+    <p>Book a free 30-minute call. We'll demo Cay Receptionist live — you'll see it answer real tourism questions in real time — and we'll talk about what it would look like for your business.</p>
+    <div>
+      <a class="cta-btn" href="https://calendly.com/gjamescollie/30min">Book a free demo call</a>
+      <a class="cta-btn-sec" href="mailto:granville@lucayanlabs.com">Ask a question first</a>
+    </div>
+    <p style="font-size: 14px; color: rgba(255,255,255,0.4); margin-top: 8px;">Granville Collie &bull; Lucayan Labs &bull; granville@lucayanlabs.com</p>
+    <span class="slide-brand">CAY AI — CONFIDENTIAL</span>
+    <span class="slide-num">8 / 8</span>
+  </div>
+
+</body>
+</html>
