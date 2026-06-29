@@ -104,6 +104,28 @@
     .modal { background: var(--surface); border-radius: var(--radius); padding: 28px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
     .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 18px; color: var(--text); }
     .modal .actions { margin-top: 20px; }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      nav a { padding: 6px 10px; font-size: 11px; }
+    }
+    @media (max-width: 600px) {
+      header { padding: 0 12px; height: auto; min-height: 56px; flex-wrap: wrap; gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+      .header-left h1 { font-size: 0.88rem; }
+      nav { flex-wrap: wrap; gap: 2px; }
+      nav a { padding: 5px 8px; font-size: 10px; }
+      .container { padding: 0 12px; margin: 12px auto; }
+      .grid-2, .grid-3, .stats-grid { grid-template-columns: 1fr; }
+      .card { padding: 16px; }
+      .chart-card, .card { overflow-x: auto; }
+      table { font-size: 0.76rem; }
+      table th, table td { padding: 7px 8px; }
+      .funnel-row { gap: 8px; }
+      .funnel-stage { min-width: 80px; padding: 10px 8px; }
+      .modal { padding: 18px; }
+    }
   </style>
 </head>
 <body>
