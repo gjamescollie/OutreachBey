@@ -3721,6 +3721,18 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
     res.end();
   }).listen(3000);
   console.log(`🩺 Dashboard on :3000`);
+
+  // Public health-check server for UptimeRobot (no auth, no data)
+  http.createServer((req, res) => {
+    if (new URL(req.url, 'http://localhost').pathname === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  }).listen(3001, '0.0.0.0');
+  console.log(`🔎 Health check on :3001`);
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
