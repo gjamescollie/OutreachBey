@@ -1379,8 +1379,11 @@ client.on('qr', (qr) => {
   qrcode.generate(qr, { small: true });
 });
 
+let waState = 'connecting';
+
 client.on('authenticated', () => console.log('✅ Authenticated'));
 client.on('ready', () => {
+  waState = 'connected';
   const settings = getSettings();
   console.log(`🚀 ${settings.business_name || 'Lucayan Labs'} WhatsApp Agent is live!`);
   console.log(`🤖 AI Provider: ${AI_PROVIDER} | Model: ${AI_MODEL}`);
@@ -1414,6 +1417,7 @@ client.on('message', async (msg) => {
   await handleInbound(msg);
 });
 client.on('disconnected', (reason) => {
+  waState = 'disconnected';
   console.warn('⚠️ Disconnected:', reason);
   reconnectAttempts++;
   if (reconnectAttempts <= 3) {
@@ -3646,6 +3650,8 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
         clientId: process.env.CLIENT_ID || 'default',
         aiProvider: process.env.AI_PROVIDER || 'openrouter',
         currentModel: settings.ai_model || process.env.AI_MODEL || 'anthropic/claude-haiku-4-5',
+        waState,
+        memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
       }));
       return;
     }

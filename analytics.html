@@ -174,6 +174,26 @@
 
     .empty { color: var(--text-muted); font-size: 0.84rem; text-align: center; padding: 20px; }
     .note { font-size: 0.78rem; color: var(--text-muted); margin-top: 16px; padding: 12px 16px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr 1fr; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .stats-grid, .mini-grid { grid-template-columns: repeat(2, 1fr); }
+      nav a { padding: 6px 10px; font-size: 11px; }
+    }
+    @media (max-width: 600px) {
+      header { padding: 0 12px; height: auto; min-height: 56px; flex-wrap: wrap; gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+      .header-left h1 { font-size: 0.88rem; }
+      nav { flex-wrap: wrap; gap: 2px; }
+      nav a { padding: 5px 8px; font-size: 10px; }
+      .container { padding: 0 12px; margin: 12px auto; }
+      .grid-2, .grid-3, .kpi-grid, .stats-grid, .mini-grid { grid-template-columns: 1fr; }
+      .chart-card { overflow-x: auto; }
+      .log-table { font-size: 0.76rem; }
+      .log-table th, .log-table td { padding: 7px 8px; }
+      .page-bar { margin-bottom: 12px; }
+    }
   </style>
 </head>
 <body>

@@ -12,6 +12,7 @@
       --green: #25D366; --green-dark: #1da851; --green-bg: #e8f5e9;
       --blue: #1565c0; --blue-bg: #e3f2fd;
       --red: #e53935; --red-bg: #ffebee;
+      --amber: #f57c00; --amber-bg: #fff8e1;
       --surface: #ffffff;
       --bg: #f4f6f8;
       --border: #e8eaed;
@@ -50,13 +51,28 @@
       margin-bottom: 22px; font-size: 0.85rem; color: #1b5e20;
     }
 
-    .card {
+    /* Collapsible card via <details> */
+    details.card {
       background: var(--surface); border-radius: var(--radius);
       box-shadow: var(--shadow-sm); border: 1px solid var(--border);
-      padding: 24px; margin-bottom: 20px;
+      margin-bottom: 16px; overflow: hidden;
     }
-    .card h2 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-    .card .sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 18px; }
+    details.card > summary {
+      padding: 18px 24px; cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.95rem; font-weight: 700; color: var(--text);
+      user-select: none;
+    }
+    details.card > summary::-webkit-details-marker { display: none; }
+    details.card > summary::after {
+      content: '›'; margin-left: auto; font-size: 1.2rem; color: var(--text-muted);
+      transform: rotate(90deg); transition: transform .2s;
+    }
+    details.card[open] > summary::after { transform: rotate(270deg); }
+    details.card > summary:hover { background: var(--bg); }
+    details.card > summary .card-icon { font-size: 1rem; }
+    .card-body { padding: 4px 24px 24px; border-top: 1px solid var(--border); }
+    .card-sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 18px; padding-top: 12px; }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .form-group { display: flex; flex-direction: column; gap: 5px; }
@@ -82,6 +98,26 @@
     .btn-danger:hover { background: #c62828; }
     .btn-sm { padding: 5px 12px; font-size: 0.76rem; }
 
+    /* Industry quick-start */
+    .qs-card {
+      background: linear-gradient(135deg, #e8f5e9, #f0fdf4);
+      border-radius: var(--radius); border: 1px solid var(--green);
+      padding: 18px 24px; margin-bottom: 16px;
+    }
+    .qs-card h2 { font-size: 0.88rem; font-weight: 700; color: #1b5e20; margin-bottom: 4px; }
+    .qs-card .qs-sub { font-size: 0.78rem; color: #2e7d32; margin-bottom: 14px; }
+    .qs-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .qs-btn {
+      padding: 7px 16px; border-radius: 20px; border: 1px solid var(--green);
+      background: var(--surface); color: var(--green-dark); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all .15s; font-family: inherit;
+    }
+    .qs-btn:hover { background: var(--green); color: #fff; border-color: var(--green-dark); }
+
+    /* Model card */
+    .model-status-line { font-size: 0.72rem; color: var(--text-muted); min-height: 14px; }
+
+    /* KB rows */
     .kb-row {
       border: 1px solid var(--border); border-radius: var(--radius-sm);
       padding: 14px; margin-bottom: 10px; background: var(--bg);
@@ -117,6 +153,26 @@
     .toast.error { background: var(--red); }
 
     .empty { text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.88rem; }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      nav a { padding: 6px 10px; font-size: 11px; }
+    }
+    @media (max-width: 600px) {
+      header { padding: 0 12px; height: auto; min-height: 56px; flex-wrap: wrap; gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+      .header-left h1 { font-size: 0.88rem; }
+      nav { flex-wrap: wrap; gap: 2px; }
+      nav a { padding: 5px 8px; font-size: 10px; }
+      .container { padding: 0 12px 100px; margin: 12px auto; }
+      details.card > summary { padding: 14px 16px; font-size: 0.88rem; }
+      .card-body { padding: 4px 16px 18px; }
+      .qs-card { padding: 14px 16px; }
+      .savebar { padding: 10px 12px; flex-wrap: wrap; }
+      .savebar .btn { flex: 1; text-align: center; }
+      .toast { right: 12px; left: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -140,108 +196,146 @@
     Changes save to <strong>settings.csv</strong> and take effect immediately — no restart needed.
   </div>
 
-  <!-- BUSINESS BASICS -->
-  <div class="card">
-    <h2>Business basics</h2>
-    <div class="sub">Who you are and how the AI should sound.</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Business name *</label>
-        <input type="text" id="business_name" placeholder="Blue Water Boat Tours">
-      </div>
-      <div class="form-group">
-        <label>Sign-off / signature</label>
-        <input type="text" id="signature" placeholder="- The Blue Water Team">
-      </div>
-      <div class="form-group full">
-        <label>What your business does (the AI uses this for context)</label>
-        <textarea id="business_context" placeholder="We run daily boat tours and private charters out of Nassau — snorkeling, sandbar stops, and sunset cruises."></textarea>
-      </div>
-      <div class="form-group">
-        <label>Tone</label>
-        <select id="tone">
-          <option value="friendly-pro">Friendly &amp; professional</option>
-          <option value="formal">Formal</option>
-          <option value="casual">Casual</option>
-          <option value="sales">Sales</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Message length</label>
-        <select id="message_length">
-          <option value="short">Short (&lt;50 words)</option>
-          <option value="medium">Medium (&lt;80 words)</option>
-          <option value="long">Long (&lt;120 words)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Language style</label>
-        <select id="language_style">
-          <option value="standard">Standard</option>
-          <option value="bahamian">Bahamian</option>
-          <option value="formal-english">Formal English</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Words the AI must never use</label>
-        <input type="text" id="avoid_words" placeholder="cheap, guarantee">
-        <span class="hint">Comma-separated</span>
-      </div>
-      <div class="form-group full">
-        <label>Extra instructions (max 200 chars)</label>
-        <textarea id="custom_instructions" maxlength="200" placeholder="Always mention we provide life jackets. Never quote prices for private charters — route those to me."></textarea>
-      </div>
+  <!-- INDUSTRY QUICK START -->
+  <div class="qs-card">
+    <h2>Quick start — industry templates</h2>
+    <div class="qs-sub">Pick your industry to pre-fill the Knowledge Base with starter Q&amp;A pairs. You can edit them after.</div>
+    <div class="qs-buttons">
+      <button class="qs-btn" onclick="loadTemplate('boat-tours')">🚤 Boat Tours</button>
+      <button class="qs-btn" onclick="loadTemplate('fishing')">🎣 Fishing Charters</button>
+      <button class="qs-btn" onclick="loadTemplate('excursions')">🌴 Excursions</button>
+      <button class="qs-btn" onclick="loadTemplate('restaurant')">🍽️ Restaurants</button>
+      <button class="qs-btn" onclick="loadTemplate('car-rental')">🚗 Car Rentals</button>
+      <button class="qs-btn" onclick="loadTemplate('salon')">💇 Salons</button>
+      <button class="qs-btn" onclick="loadTemplate('real-estate')">🏠 Real Estate</button>
     </div>
   </div>
+
+  <!-- BUSINESS BASICS -->
+  <details class="card" open>
+    <summary><span class="card-icon">🏢</span> Business basics</summary>
+    <div class="card-body">
+      <div class="card-sub">Who you are and how the AI should sound.</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Business name *</label>
+          <input type="text" id="business_name" placeholder="Blue Water Boat Tours">
+        </div>
+        <div class="form-group">
+          <label>Sign-off / signature</label>
+          <input type="text" id="signature" placeholder="- The Blue Water Team">
+        </div>
+        <div class="form-group full">
+          <label>What your business does (the AI uses this for context)</label>
+          <textarea id="business_context" placeholder="We run daily boat tours and private charters out of Nassau — snorkeling, sandbar stops, and sunset cruises."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tone</label>
+          <select id="tone">
+            <option value="friendly-pro">Friendly &amp; professional</option>
+            <option value="formal">Formal</option>
+            <option value="casual">Casual</option>
+            <option value="sales">Sales</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Message length</label>
+          <select id="message_length">
+            <option value="short">Short (&lt;50 words)</option>
+            <option value="medium">Medium (&lt;80 words)</option>
+            <option value="long">Long (&lt;120 words)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Language style</label>
+          <select id="language_style">
+            <option value="standard">Standard</option>
+            <option value="bahamian">Bahamian</option>
+            <option value="formal-english">Formal English</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Words the AI must never use</label>
+          <input type="text" id="avoid_words" placeholder="cheap, guarantee">
+          <span class="hint">Comma-separated</span>
+        </div>
+        <div class="form-group full">
+          <label>Extra instructions (max 200 chars)</label>
+          <textarea id="custom_instructions" maxlength="200" placeholder="Always mention we provide life jackets. Never quote prices for private charters — route those to me."></textarea>
+        </div>
+      </div>
+    </div>
+  </details>
 
   <!-- OPERATIONS -->
-  <div class="card">
-    <h2>Operations</h2>
-    <div class="sub">Availability, booking link, and where escalations go.</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Response window</label>
-        <input type="text" id="response_window" placeholder="Every day 7am to 7pm">
-        <span class="hint">When a human is available — the AI sets expectations from this</span>
-      </div>
-      <div class="form-group">
-        <label>Booking / calendar link</label>
-        <input type="text" id="calendar_link" placeholder="https://...">
-      </div>
-      <div class="form-group full">
-        <label>Cay Control channel</label>
-        <input type="text" id="control_channel" placeholder="120363...@g.us  or  12425559999">
-        <span class="hint">Where escalations are sent — a Cay Control group JID or your personal number. Blank = your owner number.</span>
-      </div>
-      <div class="form-group">
-        <label>Token limit — send</label>
-        <input type="number" id="token_limit_send" min="1" max="2000">
-      </div>
-      <div class="form-group">
-        <label>Token limit — check-in</label>
-        <input type="number" id="token_limit_checkin" min="1" max="2000">
-      </div>
-      <div class="form-group">
-        <label>Token limit — broadcast</label>
-        <input type="number" id="token_limit_broadcast" min="1" max="2000">
+  <details class="card" open>
+    <summary><span class="card-icon">⚙️</span> Operations</summary>
+    <div class="card-body">
+      <div class="card-sub">Availability, booking link, and where escalations go.</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Response window</label>
+          <input type="text" id="response_window" placeholder="Every day 7am to 7pm">
+          <span class="hint">When a human is available — the AI sets expectations from this</span>
+        </div>
+        <div class="form-group">
+          <label>Booking / calendar link</label>
+          <input type="text" id="calendar_link" placeholder="https://...">
+        </div>
+        <div class="form-group full">
+          <label>Cay Control channel</label>
+          <input type="text" id="control_channel" placeholder="120363...@g.us  or  12425559999">
+          <span class="hint">Where escalations are sent — a Cay Control group JID or your personal number. Blank = your owner number.</span>
+        </div>
+        <div class="form-group">
+          <label>Token limit — send</label>
+          <input type="number" id="token_limit_send" min="1" max="2000">
+        </div>
+        <div class="form-group">
+          <label>Token limit — check-in</label>
+          <input type="number" id="token_limit_checkin" min="1" max="2000">
+        </div>
+        <div class="form-group">
+          <label>Token limit — broadcast</label>
+          <input type="number" id="token_limit_broadcast" min="1" max="2000">
+        </div>
       </div>
     </div>
-  </div>
+  </details>
+
+  <!-- AI MODEL -->
+  <details class="card" open>
+    <summary><span class="card-icon">🤖</span> AI Model</summary>
+    <div class="card-body">
+      <div class="card-sub">Choose the AI model your agent uses. Changes take effect on the next message.</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Model</label>
+          <select id="modelSel" onchange="setModel(this.value)"></select>
+          <span class="model-status-line" id="modelStatus"></span>
+        </div>
+      </div>
+    </div>
+  </details>
 
   <!-- KNOWLEDGE BASE -->
-  <div class="card">
-    <h2>Knowledge base</h2>
-    <div class="sub">The questions customers ask and the answers the AI gives. Write questions in your customers' own words. Up to 40.</div>
-    <div id="kb-list"></div>
-    <button class="btn btn-secondary btn-sm" id="add-kb">+ Add question</button>
-  </div>
+  <details class="card" open>
+    <summary><span class="card-icon">📚</span> Knowledge base</summary>
+    <div class="card-body">
+      <div class="card-sub">The questions customers ask and the answers the AI gives. Write questions in your customers' own words. Up to 40.</div>
+      <div id="kb-list"></div>
+      <button class="btn btn-secondary btn-sm" id="add-kb">+ Add question</button>
+    </div>
+  </details>
 
   <!-- SCHEDULED MESSAGES -->
-  <div class="card">
-    <h2>Scheduled messages</h2>
-    <div class="sub">Pending follow-ups queued via WhatsApp <code>!schedule</code>. Cancel any that are no longer needed.</div>
-    <div id="sched-list"><div class="empty">Loading…</div></div>
-  </div>
+  <details class="card" open>
+    <summary><span class="card-icon">⏰</span> Scheduled messages</summary>
+    <div class="card-body">
+      <div class="card-sub">Pending follow-ups queued via WhatsApp <code>!schedule</code>. Cancel any that are no longer needed.</div>
+      <div id="sched-list"><div class="empty">Loading…</div></div>
+    </div>
+  </details>
 </div>
 
 <div class="savebar">
@@ -255,23 +349,100 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
+
 const SCALARS = ['business_name','signature','business_context','tone','message_length',
   'language_style','avoid_words','custom_instructions','response_window','calendar_link',
   'control_channel','token_limit_send','token_limit_checkin','token_limit_broadcast'];
-const TOUR_PLACEHOLDERS = [
-  { q: 'How much is a tour?', a: '' },
-  { q: 'What time do the tours leave?', a: '' },
-  { q: 'Where do we meet / where are you located?', a: '' },
-  { q: "What's included in the trip?", a: '' },
-  { q: 'What happens if the weather is bad?', a: '' },
-  { q: 'Can you do groups or private charters?', a: '' },
+
+const MODELS = [
+  'anthropic/claude-haiku-4-5',
+  'anthropic/claude-haiku-4-5:beta',
+  'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-sonnet-4-5:beta',
+  'openai/gpt-4o-mini',
+  'openai/gpt-4o',
+  'google/gemini-flash-1.5',
+  'google/gemini-pro-1.5',
 ];
+
+const INDUSTRY_TEMPLATES = {
+  'boat-tours': [
+    { q: 'How much is a tour?', a: '' },
+    { q: 'What time do the tours leave?', a: '' },
+    { q: 'Where do we meet / where are you located?', a: '' },
+    { q: "What's included in the trip?", a: '' },
+    { q: 'What happens if the weather is bad?', a: '' },
+    { q: 'Can you do groups or private charters?', a: '' },
+  ],
+  'fishing': [
+    { q: 'What kind of fish can we catch?', a: '' },
+    { q: 'Do you provide gear and equipment?', a: '' },
+    { q: 'How many people fit on the boat?', a: '' },
+    { q: "What's the best time of year to come?", a: '' },
+    { q: 'Do you clean and fillet the fish?', a: '' },
+    { q: 'How much does a charter cost?', a: '' },
+  ],
+  'excursions': [
+    { q: 'What excursions do you offer?', a: '' },
+    { q: 'How long are the excursions?', a: '' },
+    { q: "What's included in the price?", a: '' },
+    { q: 'Is there a minimum age requirement?', a: '' },
+    { q: 'What should I bring?', a: '' },
+    { q: 'Do you offer group rates?', a: '' },
+  ],
+  'restaurant': [
+    { q: 'What are your opening hours?', a: '' },
+    { q: 'Do you take reservations?', a: '' },
+    { q: 'Is there a dress code?', a: '' },
+    { q: 'Do you have vegetarian or vegan options?', a: '' },
+    { q: 'Where are you located?', a: '' },
+    { q: 'Do you offer catering or private events?', a: '' },
+  ],
+  'car-rental': [
+    { q: 'What cars do you have available?', a: '' },
+    { q: 'What is the daily rental rate?', a: '' },
+    { q: 'Do you deliver the car to me?', a: '' },
+    { q: "What's required to rent a car?", a: '' },
+    { q: 'Is insurance included in the price?', a: '' },
+    { q: 'What is your fuel policy?', a: '' },
+  ],
+  'salon': [
+    { q: 'What services do you offer?', a: '' },
+    { q: 'How do I book an appointment?', a: '' },
+    { q: 'What are your prices?', a: '' },
+    { q: 'How long does a typical appointment take?', a: '' },
+    { q: 'Do you accept walk-ins?', a: '' },
+    { q: 'What products do you use?', a: '' },
+  ],
+  'real-estate': [
+    { q: 'What areas do you cover?', a: '' },
+    { q: 'How do I list my property with you?', a: '' },
+    { q: 'What are your commission fees?', a: '' },
+    { q: 'How long does it typically take to sell?', a: '' },
+    { q: 'Do you handle rentals as well?', a: '' },
+    { q: "What's the process for buyers?", a: '' },
+  ],
+};
 
 function toast(msg, kind) {
   const t = $('toast');
   t.textContent = msg;
   t.className = 'toast show ' + (kind || '');
   setTimeout(() => { t.className = 'toast'; }, 2600);
+}
+
+function loadTemplate(industry) {
+  const entries = INDUSTRY_TEMPLATES[industry];
+  if (!entries) return;
+  if (!confirm('Replace the current Knowledge Base with the ' + industry + ' template? Unsaved changes will be lost.')) return;
+  const list = $('kb-list');
+  list.innerHTML = '';
+  entries.forEach(e => addKb(e));
+  renumber();
+  // Scroll to KB section
+  document.querySelector('details.card:nth-of-type(4)').setAttribute('open', '');
+  list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast('Template loaded — fill in the answers then save', 'success');
 }
 
 function kbRow(entry, i) {
@@ -311,8 +482,23 @@ async function load() {
     const data = await r.json();
     const s = data.settings || {};
     SCALARS.forEach((k) => { if ($(k) != null && s[k] != null) $(k).value = s[k]; });
+
+    // Populate model selector
+    const sel = $('modelSel');
+    if (!sel.options.length) {
+      MODELS.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m; o.textContent = m;
+        if (m === (s.ai_model || '')) o.selected = true;
+        sel.appendChild(o);
+      });
+    } else if (s.ai_model) {
+      sel.value = s.ai_model;
+    }
+
     const list = $('kb-list');
     list.innerHTML = '';
+    const TOUR_PLACEHOLDERS = INDUSTRY_TEMPLATES['boat-tours'];
     let kb = (data.kb && data.kb.length) ? data.kb : TOUR_PLACEHOLDERS;
     kb.forEach((e) => addKb(e));
     if (!list.children.length) addKb();
@@ -324,6 +510,9 @@ async function save() {
   if (!$('business_name').value.trim()) { toast('Business name is required', 'error'); return; }
   const settings = {};
   SCALARS.forEach((k) => { if ($(k) != null) settings[k] = $(k).value; });
+  // Include model from model selector
+  const modelSel = $('modelSel');
+  if (modelSel && modelSel.value) settings.ai_model = modelSel.value;
   const kb = [];
   document.querySelectorAll('#kb-list .kb-row').forEach((r) => {
     const q = r.querySelector('.kb-q').value.trim();
@@ -342,6 +531,17 @@ async function save() {
     else toast('Save failed: ' + (out.error || r.status), 'error');
   } catch (e) { toast('Save failed — network error', 'error'); }
   $('save').disabled = false;
+}
+
+async function setModel(m) {
+  const st = $('modelStatus');
+  st.textContent = 'Saving…'; st.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch('/api/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m }) });
+    if (r.ok) { st.textContent = '✓ Active'; st.style.color = 'var(--green-dark)'; }
+    else       { st.textContent = '✗ Failed'; st.style.color = 'var(--red)'; }
+  } catch(e) { st.textContent = '✗ Error'; st.style.color = 'var(--red)'; }
+  setTimeout(() => { st.textContent = ''; }, 2500);
 }
 
 async function loadScheduled() {
