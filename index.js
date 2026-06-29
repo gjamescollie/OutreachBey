@@ -563,6 +563,7 @@ function saveFollowUps() {
 let followUps = loadFollowUps();
 const pendingPreviews = {};
 const demoSessions = {};   // tracks contacts inside the interactive demo flow
+const customerSessions = {};  // { [from]: { collected: {...}, lastActivity } } — memory for real contacts
 const pendingDisambiguation = {}; // { [from]: { options: [{index, question}], expires: timestamp } }
 const pendingQualifications = {}; // { [from]: { originalMessage, timestamp } } — awaiting B4 booking details
 
@@ -1386,6 +1387,7 @@ client.on('ready', () => {
   startFollowUpChecker();
   startInactivityChecker();
   startReviewAgent();
+  startUptimeRobotPing();
 });
 client.on('auth_failure', () => console.error('❌ Auth failed — re-scan the QR code'));
 
@@ -1894,6 +1896,21 @@ async function handleBroadcastApproval(preview, settings) {
   return { sent, failed };
 }
 
+// ─── UPTIMEROBOT PUSH HEARTBEAT ──────────────────────────────────────────────
+// Set UPTIME_ROBOT_PUSH_URL in .env to the push URL from your UptimeRobot
+// "Push" monitor (https://uptimerobot.com → Add Monitor → Push). The agent
+// pings it every 5 minutes to confirm it is alive. No-op when unset.
+function startUptimeRobotPing() {
+  const pushUrl = process.env.UPTIME_ROBOT_PUSH_URL;
+  if (!pushUrl) return;
+  const ping = () =>
+    fetch(pushUrl, { method: 'GET' })
+      .then(() => console.log('💓 UptimeRobot ping sent'))
+      .catch(e => console.error('UptimeRobot ping failed:', e.message));
+  ping();
+  setInterval(ping, 5 * 60 * 1000);
+}
+
 // ─── FOLLOW-UP CHECKER ────────────────────────────────────────────────────────
 function startFollowUpChecker() {
   setInterval(async () => {
@@ -2226,6 +2243,14 @@ function startInactivityChecker() {
           .catch(e => console.error('[DEMO] follow-up send failed:', e.message));
         session.followUpSent = true;
         appendToLog(from, from, '[DEMO] Follow-up sent', 'demo:followup', '', '', 'out', 'demo');
+      }
+    }
+
+    // ── CUSTOMER SESSIONS (real-contact memory — 4-hour idle expiry) ──
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+    for (const [from, session] of Object.entries(customerSessions)) {
+      if (session.lastActivity < now - FOUR_HOURS_MS) {
+        delete customerSessions[from];
       }
     }
 
@@ -2607,6 +2632,7 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
   delete pendingQualifications[from];
 
   const bizName = settings.business_name || 'Cay AI';
+  const sc = customerSessions[from] ? customerSessions[from].collected : {};
 
   // AI: extract date, party size, and notes from their reply
   const extractResult = await callAI(
@@ -2615,23 +2641,57 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
     150
   );
 
-  let date = null, partySize = null, notes = null;
+  let aiDate = null, aiPartySize = null, aiNotes = null;
   if (extractResult.text) {
     try {
       const m = extractResult.text.replace(/```json/gi, '').replace(/```/g, '').trim().match(/\{[\s\S]*\}/);
       if (m) {
         const parsed = JSON.parse(m[0]);
-        date = parsed.date || null;
-        partySize = parsed.party_size || null;
-        notes = parsed.notes || null;
+        aiDate = parsed.date || null;
+        aiPartySize = parsed.party_size || null;
+        aiNotes = parsed.notes || null;
       }
     } catch (_) {}
   }
 
-  const qualParts = [date && `Date: ${date}`, partySize && `Party: ${partySize}`, notes && `Notes: ${notes}`].filter(Boolean);
+  // Session memory supplements AI extraction
+  const date = aiDate || sc.date || null;
+  const partySize = aiPartySize || sc.groupSize || null;
+  const notes = aiNotes || null;
+  const time = sc.time || null;
+
+  // Update session with confirmed facts
+  if (customerSessions[from]) {
+    if (date) customerSessions[from].collected.date = date;
+    if (partySize) customerSessions[from].collected.groupSize = partySize;
+  }
+
+  // Check availability when date + time are both known
+  if (date && time) {
+    const avail = await checkAvailability(date, time, null, settings);
+    if (!avail.available) {
+      const alts = avail.alternatives.join(' or ');
+      await humanDelay(true);
+      await msg.reply(
+        `Got it${firstName ? `, ${firstName}` : ''}! One thing — that time is taken. We have *${alts}* available on that day. Which works for you?\n\n${signature}`,
+        null, { linkPreview: false }
+      );
+      if (customerSessions[from]) customerSessions[from].collected.time = null;
+      pendingQualifications[from] = { originalMessage: pq.originalMessage, timestamp: Date.now() };
+      return;
+    }
+  }
+
+  const qualParts = [
+    date      && `Date: ${date}`,
+    time      && `Time: ${time}`,
+    partySize && `Party: ${partySize}`,
+    notes     && `Notes: ${notes}`,
+  ].filter(Boolean);
   const qualNotes = qualParts.join(' | ');
 
   if (qualNotes) updateContactNotes(from, qualNotes);
+  writeCayToContact(from, customerSessions[from] ? customerSessions[from].collected : {});
   setContactStage(from, 'exploring');
 
   // Cay Control warm lead summary
@@ -2640,9 +2700,10 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
     ``,
     `*Name:* ${contactName}`,
     `*Number:* ${from}`,
-    date       ? `*Date:* ${date}` : null,
-    partySize  ? `*Group:* ${partySize}` : null,
-    notes      ? `*Notes:* ${notes}` : null,
+    date      ? `*Date:* ${date}` : null,
+    time      ? `*Time:* ${time}` : null,
+    partySize ? `*Group:* ${partySize}` : null,
+    notes     ? `*Notes:* ${notes}` : null,
     ``,
     `*Inquiry:* "${pq.originalMessage.slice(0, 120)}"`,
     calendarLink ? `*Booking link:* ${calendarLink}` : null,
@@ -2653,9 +2714,10 @@ async function handleQualification(from, body, pq, msg, settings, contact, conta
   await client.sendMessage(controlChannel, summaryLines, { linkPreview: false }).catch(() => {});
 
   // Customer confirmation + booking link
+  const confirmedSlot = date && time ? ` for *${date}* at *${time}*` : '';
   const confirmMsg = calendarLink
-    ? `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along and someone will be in touch shortly to confirm everything.\n\nYou can also secure your spot directly here: ${calendarLink}\n\n${signature}`
-    : `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along and someone will be in touch shortly to confirm everything.\n\n${signature}`;
+    ? `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along${confirmedSlot} and someone will be in touch shortly to confirm everything.\n\nYou can also secure your spot directly here: ${calendarLink}\n\n${signature}`
+    : `Got it${firstName ? `, ${firstName}` : ''}! I've passed your details along${confirmedSlot} and someone will be in touch shortly to confirm everything.\n\n${signature}`;
 
   await humanDelay(true);
   await msg.reply(confirmMsg, null, { linkPreview: false });
@@ -2692,6 +2754,29 @@ async function handleInbound(msg) {
 
   // ── FAST PATH: empty/media-only messages (no text to classify) ──
   if (!body) return;
+
+  // ── CUSTOMER SESSION MEMORY ──
+  // Initialize on first message (pre-populate from [CAY] notes); update on every message.
+  if (!customerSessions[from]) {
+    const priorFacts = contact ? parseCayNotes(contact.notes) : {};
+    customerSessions[from] = {
+      collected: {
+        name: priorFacts.name || null,
+        business: priorFacts.business || null,
+        sells: priorFacts.sells || null,
+        groupSize: priorFacts.groupSize || null,
+        date: priorFacts.date || null,
+        time: priorFacts.time || null,
+        pickup: priorFacts.pickup || null,
+        service: priorFacts.service || null,
+        preference: priorFacts.preference || null,
+      },
+      lastActivity: Date.now(),
+    };
+  } else {
+    customerSessions[from].lastActivity = Date.now();
+  }
+  customerSessions[from].collected = extractDemoFacts(body, customerSessions[from].collected);
 
   console.log(`📨 Inbound from ${contactName}: ${body}`);
   const spamFlag = isSpam(body) ? ' [⚠️ SPAM?]' : '';
@@ -2970,12 +3055,16 @@ async function handleInbound(msg) {
       if (stageOrder.indexOf(stage) < stageOrder.indexOf('exploring')) setContactStage(from, 'exploring');
       await humanDelay(true);
       if (conf >= AUTO_ACT_THRESHOLD) {
-        // B4: qualify before handing off the booking link
+        // B4: qualify before handing off the booking link — skip already-known fields
+        const sc = customerSessions[from] ? customerSessions[from].collected : {};
+        const qualLines = [];
+        if (!sc.date) qualLines.push(`📅 *What date* are you thinking?`);
+        if (!sc.groupSize) qualLines.push(`👥 *How many people* in your group?`);
+        qualLines.push(`💬 *Any special requests* or questions?`);
         const qualifyMsg =
-          `${firstName ? `Hey ${firstName}! ` : `Hey! `}We'd love to get you sorted 😊 Just a couple quick things:\n\n` +
-          `📅 *What date* are you thinking?\n` +
-          `👥 *How many people* in your group?\n` +
-          `💬 *Any special requests* or questions?\n\n` +
+          `${firstName ? `Hey ${firstName}! ` : `Hey! `}We'd love to get you sorted 😊` +
+          (qualLines.length > 1 ? ` Just a couple quick things:\n\n` : ` Quick question:\n\n`) +
+          qualLines.join('\n') + `\n\n` +
           `Once I have those I'll get everything confirmed for you!\n\n${signature}`;
         await msg.reply(qualifyMsg, null, { linkPreview: false });
         pendingQualifications[from] = { originalMessage: body, timestamp: Date.now() };
@@ -3812,7 +3901,7 @@ if (process.env.NODE_ENV === 'test') {
     // constants
     SETUP_STEPS, KB_INTRO_INDEX, LOGICAL_TOTAL, AUTO_ACT_THRESHOLD, SUGGEST_THRESHOLD,
     // state
-    setupSessions, pendingPreviews, demoSessions, pendingQualifications,
+    setupSessions, pendingPreviews, demoSessions, customerSessions, pendingQualifications,
     // state machines
     handleSetup, handleInbound, handleIndustryDemo, handleQualification,
     // data helpers
