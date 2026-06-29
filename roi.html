@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cay AI — ROI</title>
+  <meta name="description" content="Cay AI — what your AI receptionist did for the business">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366; --green-dark: #1da851; --green-bg: #e8f5e9;
+      --blue: #1565c0; --blue-bg: #e3f2fd;
+      --red: #e53935; --red-bg: #ffebee;
+      --amber: #f57c00; --amber-bg: #fff8e1;
+      --surface: #ffffff;
+      --bg: #f4f6f8;
+      --border: #e8eaed;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    header {
+      background: linear-gradient(135deg, #25D366 0%, #1da851 100%);
+      color: white; padding: 0 24px;
+      height: 56px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(37,211,102,.3);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left .logo { font-size: 1.3rem; }
+    .header-left h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+
+    nav { display: flex; gap: 4px; }
+    nav a { color: rgba(255,255,255,0.65); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; transition: background .15s; }
+    nav a:hover { background: rgba(0,0,0,0.15); color: #fff; }
+    nav a.active { background: rgba(0,0,0,0.25); color: #fff; }
+
+    .container { max-width: 1040px; margin: 28px auto; padding: 0 20px; }
+
+    .page-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .page-bar h2 { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .page-bar .spacer { flex: 1; }
+    .page-bar label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+
+    select {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 7px 12px; font-size: 0.82rem; font-family: inherit;
+      background: var(--surface); color: var(--text); cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--green); }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+
+    .kpi {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      padding: 24px; border-top: 4px solid var(--green);
+    }
+    .kpi.hero { border-top-color: var(--blue); }
+    .kpi .v { font-size: 2.2rem; font-weight: 800; color: var(--text); line-height: 1.1; letter-spacing: -0.02em; }
+    .kpi .l { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
+    .kpi .s { font-size: 0.74rem; color: var(--text-muted); margin-top: 5px; }
+
+    .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+
+    .mini {
+      background: var(--surface); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      padding: 16px 18px;
+    }
+    .mini .v { font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .mini .l { font-size: 0.74rem; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
+    .mini.warn .v { color: var(--red); }
+
+    .note { font-size: 0.78rem; color: var(--text-muted); margin-top: 16px; padding: 12px 16px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    .empty { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">💰</span>
+    <h1>Cay AI — ROI</h1>
+  </div>
+  <nav>
+    <a href="/">📊 Logs</a>
+    <a href="/analytics">📈 Analytics</a>
+    <a href="/roi" class="active">💰 ROI</a>
+    <a href="/contacts">👥 Contacts</a>
+    <a href="/settings">⚙️ Settings</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-bar">
+    <h2>What your AI receptionist did</h2>
+    <span class="spacer"></span>
+    <label for="range">Period</label>
+    <select id="range">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+    </select>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi hero">
+      <div class="v" id="bookings">–</div>
+      <div class="l">Bookings confirmed</div>
+      <div class="s">Inbound messages the AI logged as a confirmed booking</div>
+    </div>
+    <div class="kpi hero">
+      <div class="v" id="leads">–</div>
+      <div class="l">Hot leads captured</div>
+      <div class="s">Serious buyers the AI caught and flagged for you</div>
+    </div>
+    <div class="kpi">
+      <div class="v" id="hours">–</div>
+      <div class="l">Owner hours saved</div>
+      <div class="s" id="hours-sub"></div>
+    </div>
+    <div class="kpi">
+      <div class="v" id="speed">–</div>
+      <div class="l">Avg response speed</div>
+      <div class="s">From a hot lead to your follow-up</div>
+    </div>
+  </div>
+
+  <div class="mini-grid">
+    <div class="mini"><div class="v" id="handled">–</div><div class="l">Messages handled</div></div>
+    <div class="mini"><div class="v" id="auto">–</div><div class="l">Auto-answered</div></div>
+    <div class="mini"><div class="v" id="autopct">–</div><div class="l">Auto-answered %</div></div>
+    <div class="mini"><div class="v" id="sent">–</div><div class="l">Messages sent</div></div>
+    <div class="mini"><div class="v" id="contacts">–</div><div class="l">Unique contacts</div></div>
+    <div class="mini warn"><div class="v" id="complaints">–</div><div class="l">Complaints</div></div>
+    <div class="mini warn"><div class="v" id="optouts">–</div><div class="l">Opt-outs</div></div>
+    <div class="mini"><div class="v" id="cost">–</div><div class="l">Est. AI cost</div></div>
+  </div>
+
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtMin = (m) => (m == null ? '—' : (m < 60 ? m + ' min' : (Math.round(m / 6) / 10) + ' hr'));
+
+async function load() {
+  const days = $('range').value;
+  try {
+    const r = await fetch('/api/analytics?days=' + days);
+    const d = await r.json();
+    $('bookings').textContent = d.bookings;
+    $('leads').textContent = d.leadsCaptured;
+    $('hours').textContent = d.ownerHoursSaved + ' hr';
+    $('hours-sub').textContent = 'Estimate: ' + d.autoAnswered + ' auto-answered × ' + d.minutesSavedPerMsg + ' min each';
+    $('speed').textContent = fmtMin(d.responseSpeedMin);
+    $('handled').textContent = d.messagesHandled;
+    $('auto').textContent = d.autoAnswered;
+    $('autopct').textContent = d.autoAnsweredPct + '%';
+    $('sent').textContent = d.sent;
+    $('contacts').textContent = d.uniqueContacts;
+    $('complaints').textContent = d.complaints;
+    $('optouts').textContent = d.optOuts;
+    $('cost').textContent = '$' + d.costEst;
+    $('note').textContent = 'Top contact this period: ' + d.topContact +
+      '. Owner hours saved is an estimate — tune it with the settings key "minutes_saved_per_msg".';
+  } catch (e) {
+    $('note').innerHTML = '<span class="empty">Could not load analytics.</span>';
+  }
+}
+$('range').onchange = load;
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cay AI — Logs</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366; --green-dark: #1da851; --green-bg: #e8f5e9;
+      --blue: #1565c0; --blue-bg: #e3f2fd;
+      --red: #e53935; --red-bg: #ffebee;
+      --amber: #f57c00; --amber-bg: #fff8e1;
+      --purple: #6a1b9a; --purple-bg: #f3e5f5;
+      --teal: #006064; --teal-bg: #e0f7fa;
+      --surface: #ffffff;
+      --bg: #f4f6f8;
+      --border: #e8eaed;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    header {
+      background: linear-gradient(135deg, #25D366 0%, #1da851 100%);
+      color: white; padding: 0 24px;
+      height: 56px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(37,211,102,.3);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left .logo { font-size: 1.3rem; }
+    .header-left h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    nav { display: flex; gap: 4px; }
+    nav a { color: rgba(255,255,255,0.65); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; transition: background .15s; }
+    nav a:hover { background: rgba(0,0,0,0.15); color: #fff; }
+    nav a.active { background: rgba(0,0,0,0.25); color: #fff; }
+
+    .live-badge {
+      background: rgba(0,0,0,0.2); color: #fff;
+      padding: 3px 10px 3px 6px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .live-dot { width: 7px; height: 7px; background: #fff; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    .container { max-width: 1280px; margin: 24px auto; padding: 0 20px 40px; }
+
+    .page-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .page-bar h2 { font-size: 1rem; font-weight: 700; }
+    .page-bar .spacer { flex: 1; }
+
+    /* Stat cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .stat-card .s-icon { font-size: 1.1rem; }
+    .stat-card .s-val { font-size: 1.75rem; font-weight: 800; color: var(--green); line-height: 1; letter-spacing: -0.02em; }
+    .stat-card .s-val.blue { color: var(--blue); }
+    .stat-card .s-val.muted { color: var(--text-secondary); font-size: 1.1rem; }
+    .stat-card .s-lbl { font-size: 0.73rem; font-weight: 500; color: var(--text-secondary); }
+
+    /* Model card */
+    .model-card {
+      background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .model-card .s-lbl { font-size: 0.73rem; font-weight: 500; color: var(--text-secondary); }
+    .model-select {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 7px 10px; font-size: 0.82rem; font-family: inherit;
+      background: var(--bg); color: var(--text); cursor: pointer; width: 100%;
+    }
+    .model-select:focus { outline: none; border-color: var(--green); }
+    .model-status { font-size: 0.72rem; color: var(--text-muted); min-height: 14px; }
+
+    /* Section card */
+    .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; margin-top: 28px; }
+    .section-header:first-child { margin-top: 0; }
+    .section-header h2 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary); }
+    .section-header hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+
+    .chart-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border); padding: 20px;
+      margin-bottom: 16px;
+    }
+    .chart-card h3 { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .chart-card .sub { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 14px; }
+
+    /* Toolbar */
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .toolbar label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+    select, button {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 7px 12px; font-size: 0.82rem; font-family: inherit;
+      background: var(--surface); color: var(--text); cursor: pointer;
+      transition: border-color .15s;
+    }
+    select:hover, button:hover { border-color: var(--green); }
+    select:focus, button:focus { outline: none; border-color: var(--green); }
+
+    /* Table */
+    .log-table { width: 100%; border-collapse: collapse; }
+    .log-table th {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); padding: 9px 12px; border-bottom: 2px solid var(--border);
+      text-align: left; background: var(--bg);
+    }
+    .log-table td {
+      padding: 9px 12px; border-bottom: 1px solid var(--border);
+      font-size: 0.82rem; color: var(--text-secondary);
+      vertical-align: middle;
+    }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover td { background: var(--bg); }
+    .log-table .msg-cell { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .status-pill { padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; display: inline-block; }
+    .pill-in   { background: #e8f5e9; color: #1b5e20; }
+    .pill-out  { background: #e3f2fd; color: #0d47a1; }
+    .pill-opt  { background: #ffebee; color: #b71c1c; }
+    .pill-demo { background: #f3e5f5; color: #4a148c; }
+    .pill-own  { background: #fff8e1; color: #6d4c00; }
+    .pill-oth  { background: var(--bg); color: var(--text-muted); }
+
+    /* Pager */
+    .pager { display: flex; gap: 12px; align-items: center; padding: 14px 0; }
+    .pager button { padding: 5px 14px; font-size: 0.82rem; font-weight: 600; }
+    .pager button:disabled { opacity: .4; cursor: default; border-color: var(--border); }
+    .pager span { font-size: 0.82rem; color: var(--text-secondary); }
+
+    .empty { color: var(--text-muted); font-size: 0.84rem; text-align: center; padding: 20px; }
+
+    /* Countdown ring in header */
+    .countdown-wrap { display: flex; align-items: center; gap: 6px; }
+    .cring-svg { width: 24px; height: 24px; transform: rotate(-90deg); }
+    .cring-track { fill: none; stroke: rgba(255,255,255,.2); stroke-width: 3; }
+    .cring-prog  { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 63.6; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+    .cring-num   { font-size: 11px; color: rgba(255,255,255,.75); min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">🤖</span>
+    <h1>Cay AI — Logs</h1>
+  </div>
+  <nav>
+    <a href="/" class="active">📊 Logs</a>
+    <a href="/analytics">📈 Analytics</a>
+    <a href="/contacts">👥 Contacts</a>
+    <a href="/settings">⚙️ Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="countdown-wrap">
+      <svg class="cring-svg" viewBox="0 0 24 24">
+        <circle class="cring-track" cx="12" cy="12" r="10"/>
+        <circle class="cring-prog" id="cring" cx="12" cy="12" r="10"/>
+      </svg>
+      <span class="cring-num" id="cnum">30</span>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-bar">
+    <h2 id="biz-name">Dashboard</h2>
+    <span class="spacer"></span>
+    <label style="font-size:0.78rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;">Filter</label>
+    <select id="filterSel" onchange="applyFilter()">
+      <option value="">All statuses</option>
+      <option value="inbound">inbound</option>
+      <option value="outbound">outbound</option>
+      <option value="demo">demo</option>
+      <option value="opt-out">opt-out</option>
+      <option value="outside">outside</option>
+      <option value="owner">owner</option>
+    </select>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><span class="s-icon">⏱</span><span class="s-val muted" id="s-uptime">—</span><span class="s-lbl">Uptime</span></div>
+    <div class="stat-card"><span class="s-icon">📋</span><span class="s-val" id="s-total">—</span><span class="s-lbl">Total log entries</span></div>
+    <div class="stat-card"><span class="s-icon">🎬</span><span class="s-val blue" id="s-demos">—</span><span class="s-lbl">Active demo sessions</span></div>
+    <div class="stat-card"><span class="s-icon">🔌</span><span class="s-val muted" id="s-provider">—</span><span class="s-lbl">AI provider</span></div>
+    <div class="model-card">
+      <span class="s-lbl">Model</span>
+      <select class="model-select" id="modelSel" onchange="setModel(this.value)"></select>
+      <div class="model-status" id="modelStatus"></div>
+    </div>
+  </div>
+
+  <!-- Demo sessions -->
+  <div class="section-header"><h2>Active demo sessions</h2><hr></div>
+  <div class="chart-card">
+    <table class="log-table">
+      <thead><tr><th>Number</th><th>Keyword</th><th>Persona</th><th>Messages</th><th>State</th><th>Last active</th></tr></thead>
+      <tbody id="demo-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Log table -->
+  <div class="section-header"><h2 id="log-heading">All logs</h2><hr></div>
+  <div class="chart-card" style="padding-bottom:0">
+    <div class="toolbar">
+      <span style="font-size:0.82rem;color:var(--text-muted)" id="log-count"></span>
+    </div>
+    <table class="log-table">
+      <thead><tr><th>Timestamp</th><th>Number</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr></thead>
+      <tbody id="log-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+    <div class="pager">
+      <button id="prev-btn" onclick="changePage(-1)" disabled>← Prev</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-btn" onclick="changePage(1)" disabled>Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MODELS = [
+  'anthropic/claude-haiku-4-5',
+  'anthropic/claude-haiku-4-5:beta',
+  'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-sonnet-4-5:beta',
+  'openai/gpt-4o-mini',
+  'openai/gpt-4o',
+  'google/gemini-flash-1.5',
+  'google/gemini-pro-1.5',
+];
+
+let currentPage = 1, currentFilter = '', totalPages = 1;
+
+function pillClass(s) {
+  if (!s) return 'pill-oth';
+  if (s.includes('inbound'))  return 'pill-in';
+  if (s.includes('outbound')) return 'pill-out';
+  if (s.includes('opt-out'))  return 'pill-opt';
+  if (s.includes('demo'))     return 'pill-demo';
+  if (s.includes('owner'))    return 'pill-own';
+  return 'pill-oth';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function load() {
+  try {
+    const r = await fetch(`/api/logs?page=${currentPage}&filter=${encodeURIComponent(currentFilter)}`);
+    const d = await r.json();
+
+    const biz = d.businessName || 'Cay AI';
+    document.getElementById('biz-name').textContent = biz + ' · ' + (d.clientId || 'default');
+
+    document.getElementById('s-uptime').textContent  = d.uptime || '—';
+    document.getElementById('s-total').textContent   = d.totalEntries ?? '—';
+    document.getElementById('s-demos').textContent   = d.activeDemos ?? '—';
+    document.getElementById('s-provider').textContent= d.aiProvider || '—';
+
+    // Model selector (populate once)
+    const sel = document.getElementById('modelSel');
+    if (!sel.options.length) {
+      MODELS.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m; o.textContent = m.split('/')[1];
+        if (m === (d.currentModel || '')) o.selected = true;
+        sel.appendChild(o);
+      });
+    }
+
+    // Demo sessions
+    const demos = d.demos || [];
+    document.getElementById('demo-body').innerHTML = demos.length
+      ? demos.map(s =>
+          `<tr>
+            <td>${esc(s.number)}</td>
+            <td>${esc(s.keyword || '—')}</td>
+            <td>${esc(s.persona || '—')}</td>
+            <td>${esc(s.messageCount || 0)}</td>
+            <td>${esc(s.state || '—')}</td>
+            <td>${esc(s.lastActive)}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No active demo sessions</td></tr>';
+
+    // Pager
+    totalPages = d.totalPages || 1;
+    document.getElementById('log-heading').textContent =
+      'All logs' + (currentFilter ? ' — ' + currentFilter : '');
+    document.getElementById('log-count').textContent =
+      (d.filteredCount || 0) + ' entries · page ' + (d.currentPage || 1) + ' of ' + totalPages;
+    document.getElementById('page-info').textContent =
+      'Page ' + (d.currentPage || 1) + ' of ' + totalPages;
+    document.getElementById('prev-btn').disabled = currentPage <= 1;
+    document.getElementById('next-btn').disabled = currentPage >= totalPages;
+
+    // Log rows
+    const rows = d.rows || [];
+    document.getElementById('log-body').innerHTML = rows.length
+      ? rows.map(r =>
+          `<tr>
+            <td style="white-space:nowrap;color:var(--text-muted)">${esc(r.ts.slice(0,19).replace('T',' '))}</td>
+            <td>${esc(r.number)}</td>
+            <td>${esc(r.name)}</td>
+            <td class="msg-cell" title="${esc(r.message)}">${esc(r.message)}</td>
+            <td><span class="status-pill ${pillClass(r.status)}">${esc(r.status)}</span></td>
+            <td style="color:var(--text-muted)">${esc(r.tokens)}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No log entries</td></tr>';
+
+  } catch(e) { console.error('Failed to load logs', e); }
+}
+
+function applyFilter() { currentFilter = document.getElementById('filterSel').value; currentPage = 1; load(); }
+function changePage(dir) { const n = currentPage + dir; if (n < 1 || n > totalPages) return; currentPage = n; load(); }
+
+async function setModel(m) {
+  const st = document.getElementById('modelStatus');
+  st.textContent = 'Saving…'; st.style.color = 'var(--text-muted)';
+  try {
+    const r = await fetch('/api/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m }) });
+    if (r.ok) { st.textContent = '✓ Saved'; st.style.color = 'var(--green-dark)'; }
+    else       { st.textContent = '✗ Failed'; st.style.color = 'var(--red)'; }
+  } catch(e) { st.textContent = '✗ Error'; st.style.color = 'var(--red)'; }
+  setTimeout(() => { st.textContent = ''; }, 2500);
+}
+
+// Countdown ring auto-refresh
+(function() {
+  const total = 30, ring = document.getElementById('cring'), num = document.getElementById('cnum');
+  const circ = 63.6;
+  let left = total;
+  const t = setInterval(() => {
+    left--;
+    ring.style.strokeDashoffset = circ * (1 - left / total);
+    num.textContent = left;
+    if (left <= 0) { clearInterval(t); load(); }
+  }, 1000);
+})();
+
+load();
+</script>
+</body>
+</html>

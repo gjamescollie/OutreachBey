@@ -1,5 +1,6 @@
 # Credentials & secrets
 settings.csv
+!defaults/settings.csv
 .env
 .env.local
 credentials.json
@@ -14,4 +15,5 @@ logs/
 .DS_Store
 *.swp
 .vscode/
-.claude/
+.claude/*
+!.claude/skills
