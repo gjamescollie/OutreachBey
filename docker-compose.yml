@@ -11,6 +11,7 @@ services:
       - PROXY_URL=${PROXY_URL:-}
     ports:
       - "127.0.0.1:3000:3000"
+      - "3001:3001"
     volumes:
       # WhatsApp session — survives restarts, only re-scan if deleted
       - ./.wwebjs_auth:/app/.wwebjs_auth
