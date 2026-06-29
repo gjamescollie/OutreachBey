@@ -3329,207 +3329,6 @@ if (process.env.NODE_ENV !== 'test') {
     } catch(_) { return []; }
   }
 
-  function statusColor(status) {
-    if (!status) return '#888';
-    if (status.includes('demo'))         return '#8b5cf6';
-    if (status.includes('opt-out'))      return '#ef4444';
-    if (status.includes('outbound'))     return '#3b82f6';
-    if (status.includes('inbound'))      return '#10b981';
-    if (status.includes('owner'))        return '#f59e0b';
-    if (status.includes('outside'))      return '#6b7280';
-    return '#888';
-  }
-
-  function buildDashboard(page, filter) {
-    const settings = getSettings();
-    const uptime   = fmtUptime(Math.floor((Date.now() - START_TIME) / 1000));
-    const allLogs  = readAllLogs();
-    const filtered = filter ? allLogs.filter(r => r.status.includes(filter)) : allLogs;
-    const PAGE_SIZE = 100;
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const pageNum    = Math.min(Math.max(1, page), totalPages);
-    const pageLogs   = filtered.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
-
-    const activeDemos = Object.entries(demoSessions).map(([num, s]) => `
-      <tr>
-        <td>${htmlEsc(num)}</td>
-        <td>${htmlEsc(s.keyword || '—')}</td>
-        <td>${htmlEsc(s.persona || '—')}</td>
-        <td>${htmlEsc(s.messageCount || 0)}</td>
-        <td>${htmlEsc(s.state || '—')}</td>
-        <td>${htmlEsc(new Date(s.lastActivity).toLocaleTimeString())}</td>
-      </tr>`).join('') || '<tr><td colspan="6" style="color:#888;text-align:center">No active demo sessions</td></tr>';
-
-    const logRows = pageLogs.map(r => `
-      <tr>
-        <td style="white-space:nowrap;color:#aaa">${htmlEsc(r.ts)}</td>
-        <td style="color:#e2e8f0">${htmlEsc(r.number)}</td>
-        <td style="color:#e2e8f0">${htmlEsc(r.name)}</td>
-        <td style="color:#cbd5e1;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${htmlEsc(r.message)}">${htmlEsc(r.message)}</td>
-        <td><span style="background:${statusColor(r.status)};padding:2px 6px;border-radius:4px;font-size:11px;color:#fff">${htmlEsc(r.status)}</span></td>
-        <td style="color:#aaa">${htmlEsc(r.tokens)}</td>
-      </tr>`).join('');
-
-    const filterOptions = ['','inbound','outbound','demo','opt-out','outside','owner'].map(f =>
-      `<option value="${f}" ${filter===f?'selected':''}>${f||'All'}</option>`).join('');
-
-    const filterParam = encodeURIComponent(filter);
-    const pagerPrev = pageNum > 1
-      ? `<a href="/?page=${pageNum-1}&filter=${filterParam}" style="color:#7c3aed">← Prev</a>` : '';
-    const pagerNext = pageNum < totalPages
-      ? `<a href="/?page=${pageNum+1}&filter=${filterParam}" style="color:#7c3aed">Next →</a>` : '';
-
-    const currentModel = settings.ai_model || process.env.AI_MODEL || 'anthropic/claude-haiku-4-5';
-    const modelOptions = [
-      'anthropic/claude-haiku-4-5',
-      'anthropic/claude-haiku-4-5:beta',
-      'anthropic/claude-sonnet-4-5',
-      'anthropic/claude-sonnet-4-5:beta',
-      'openai/gpt-4o-mini',
-      'openai/gpt-4o',
-      'google/gemini-flash-1.5',
-      'google/gemini-pro-1.5',
-    ].map(m => `<option value="${m}"${m===currentModel?' selected':''}>${m.split('/')[1]}</option>`).join('');
-
-    return `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Cay AI — Dashboard</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0f1e;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;min-height:100vh}
-h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em}
-h2{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
-.header{background:linear-gradient(135deg,#1a1f35 0%,#1e293b 100%);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;box-shadow:0 1px 0 rgba(255,255,255,.04)}
-.badge{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;box-shadow:0 0 12px rgba(124,58,237,.4)}
-.badge::before{content:'';display:inline-block;width:6px;height:6px;background:#4ade80;border-radius:50%;margin-right:6px;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
-.nav{background:#0a0f1e;padding:6px 24px;display:flex;gap:4px;border-bottom:1px solid #1a2035}
-.nav a{color:#64748b;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;transition:background .15s,color .15s}
-.nav a:hover{background:#1e293b;color:#e2e8f0}
-.nav a.active{background:linear-gradient(135deg,#7c3aed22,#6d28d922);color:#a78bfa;border:1px solid #7c3aed44}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;padding:20px 24px}
-.card{background:linear-gradient(135deg,#1a2035 0%,#1e293b 100%);border:1px solid #1e2d45;border-radius:10px;padding:16px;transition:border-color .2s,transform .2s,box-shadow .2s;position:relative;overflow:hidden}
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,#4f46e5);opacity:0;transition:opacity .2s}
-.card:hover{border-color:#334155;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
-.card:hover::before{opacity:1}
-.card .val{font-size:24px;font-weight:700;color:#fff;margin-top:6px;font-variant-numeric:tabular-nums}
-.card .lbl{color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
-.model-select{background:#0a0f1e;border:1px solid #334155;color:#e2e8f0;padding:5px 8px;border-radius:6px;font-size:11px;margin-top:6px;width:100%;cursor:pointer;transition:border-color .15s}
-.model-select:hover,.model-select:focus{border-color:#7c3aed;outline:none}
-.section{padding:0 24px 28px}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid #1a2035}
-td{padding:7px 10px;border-bottom:1px solid #111827;vertical-align:middle;transition:background .1s}
-tr:hover td{background:#111827}
-.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-select,button{background:#1a2035;border:1px solid #1e2d45;color:#e2e8f0;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;transition:background .15s,border-color .15s}
-select:hover,button:hover{background:#1e293b;border-color:#334155}
-.pager{display:flex;gap:16px;align-items:center;padding:14px 0;color:#64748b;font-size:12px}
-.pager a{color:#7c3aed;font-weight:500;padding:4px 10px;border:1px solid #7c3aed33;border-radius:5px;transition:background .15s}
-.pager a:hover{background:#7c3aed22}
-a{text-decoration:none}
-.refresh-wrap{display:flex;align-items:center;gap:8px}
-.countdown-ring{width:28px;height:28px;transform:rotate(-90deg)}
-.countdown-ring .track{fill:none;stroke:#1e293b;stroke-width:3}
-.countdown-ring .progress{fill:none;stroke:#7c3aed;stroke-width:3;stroke-linecap:round;stroke-dasharray:75.4;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .5s}
-.countdown-num{font-size:10px;color:#64748b;font-variant-numeric:tabular-nums;min-width:18px;text-align:center}
-.section-card{background:linear-gradient(135deg,#111827 0%,#0f172a 100%);border:1px solid #1a2035;border-radius:10px;overflow:hidden;margin-bottom:0}
-.section-card th{background:#111827}
-</style>
-</head><body>
-<div class="header">
-  <div>
-    <h1>🤖 Cay AI Dashboard</h1>
-    <div style="color:#475569;font-size:12px;margin-top:3px">${htmlEsc(settings.business_name || 'Agent')} · ${htmlEsc(process.env.CLIENT_ID || 'default')}</div>
-  </div>
-  <div style="display:flex;gap:12px;align-items:center">
-    <div class="refresh-wrap">
-      <svg class="countdown-ring" viewBox="0 0 28 28">
-        <circle class="track" cx="14" cy="14" r="12"/>
-        <circle class="progress" id="cring" cx="14" cy="14" r="12"/>
-      </svg>
-      <span class="countdown-num" id="cnum">30</span>
-    </div>
-    <span class="badge">LIVE</span>
-  </div>
-</div>
-<nav class="nav">
-  <a href="/" class="active">📊 Logs</a>
-  <a href="/analytics">📈 Analytics</a>
-  <a href="/roi">💰 ROI</a>
-  <a href="/contacts">👥 Contacts</a>
-  <a href="/settings">⚙️ Settings</a>
-</nav>
-
-<div class="grid">
-  <div class="card"><div class="lbl">Uptime</div><div class="val" style="font-size:16px">${uptime}</div></div>
-  <div class="card"><div class="lbl">Total Log Entries</div><div class="val">${allLogs.length}</div></div>
-  <div class="card"><div class="lbl">Active Demo Sessions</div><div class="val">${Object.keys(demoSessions).length}</div></div>
-  <div class="card"><div class="lbl">AI Provider</div><div class="val" style="font-size:14px">${process.env.AI_PROVIDER || 'openrouter'}</div></div>
-  <div class="card">
-    <div class="lbl">Model</div>
-    <select class="model-select" id="modelSel" onchange="setModel(this.value)">${modelOptions}</select>
-    <div id="modelStatus" style="font-size:10px;color:#64748b;margin-top:4px;min-height:14px"></div>
-  </div>
-</div>
-
-<script>
-// Animated countdown ring
-(function(){
-  var total=30, ring=document.getElementById('cring'), num=document.getElementById('cnum');
-  var circ=75.4, left=total;
-  var t=setInterval(function(){
-    left--;
-    var pct=(left/total);
-    ring.style.strokeDashoffset=circ*(1-pct);
-    ring.style.stroke=pct>0.4?'#7c3aed':pct>0.15?'#f59e0b':'#ef4444';
-    num.textContent=left;
-    if(left<=0){clearInterval(t);location.reload();}
-  },1000);
-})();
-// Model selector
-async function setModel(m){
-  var st=document.getElementById('modelStatus');
-  st.textContent='Saving…';st.style.color='#94a3b8';
-  try{
-    var r=await fetch('/api/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:m})});
-    if(r.ok){st.textContent='✓ Saved';st.style.color='#4ade80';}
-    else{st.textContent='✗ Failed';st.style.color='#f87171';}
-  }catch(e){st.textContent='✗ Error';st.style.color='#f87171';}
-  setTimeout(function(){st.textContent='';},2500);
-}
-</script>
-
-<div class="section">
-  <h2>Active Demo Sessions</h2>
-  <div class="section-card">
-  <table>
-    <tr><th>Number</th><th>Keyword</th><th>Persona</th><th>Messages</th><th>State</th><th>Last Active</th></tr>
-    ${activeDemos}
-  </table>
-  </div>
-</div>
-
-<div class="section">
-  <h2>All Logs (${filtered.length} entries)</h2>
-  <div class="toolbar">
-    <form method="get" style="display:flex;gap:8px;align-items:center">
-      <label style="color:#64748b;font-size:12px">Filter:</label>
-      <select name="filter" onchange="this.form.submit()">${filterOptions}</select>
-      <input type="hidden" name="page" value="1">
-    </form>
-  </div>
-  <div class="section-card">
-  <table>
-    <tr><th>Timestamp</th><th>Number</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr>
-    ${logRows}
-  </table>
-  </div>
-  <div class="pager">${pagerPrev} <span>Page ${pageNum} of ${totalPages}</span> ${pagerNext}</div>
-</div>
-</body></html>`;
-  }
-
   http.createServer((req, res) => {
     const parsed = new URL(req.url, 'http://localhost');
     const pathname = parsed.pathname;
@@ -3591,12 +3390,13 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       return;
     }
 
-    // Dashboard
+    // Logs page (static)
     if (pathname === '/' || pathname === '') {
-      const page   = parseInt(query.get('page') || '1');
-      const filter = query.get('filter') || '';
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(buildDashboard(page, filter));
+      try {
+        const html = fs.readFileSync(path.join(__dirname, 'logs.html'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
+      } catch(_) { res.writeHead(404); res.end('logs.html not found'); }
       return;
     }
 
@@ -3610,13 +3410,13 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       return;
     }
 
-    // Analytics page
+    // Analytics page (merged analytics + ROI)
     if (pathname === '/analytics') {
       try {
-        const html = fs.readFileSync(path.join(__dirname, 'dashboard.html'), 'utf8');
+        const html = fs.readFileSync(path.join(__dirname, 'analytics.html'), 'utf8');
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(html);
-      } catch(_) { res.writeHead(404); res.end('dashboard.html not found'); }
+      } catch(_) { res.writeHead(404); res.end('analytics.html not found'); }
       return;
     }
 
@@ -3806,13 +3606,47 @@ button{width:100%;background:#7c3aed;color:#fff;border:none;padding:10px;border-
       }
     }
 
-    // ROI summary page
+    // ROI — redirect to merged analytics page
     if (pathname === '/roi') {
-      try {
-        const html = fs.readFileSync(path.join(__dirname, 'roi.html'), 'utf8');
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(html);
-      } catch(_) { res.writeHead(404); res.end('roi.html not found'); }
+      res.writeHead(301, { 'Location': '/analytics' });
+      res.end();
+      return;
+    }
+
+    // Logs API — paginated log rows + stat summary for logs.html
+    if (pathname === '/api/logs') {
+      const PAGE_SIZE = 100;
+      const page   = Math.max(1, parseInt(query.get('page') || '1', 10));
+      const filter = query.get('filter') || '';
+      const allLogs = readAllLogs();
+      const filtered = filter ? allLogs.filter(r => r.status.includes(filter)) : allLogs;
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      const pageNum = Math.min(page, totalPages);
+      const rows = filtered.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
+      const settings = getSettings();
+      const demos = Object.entries(demoSessions).map(([num, s]) => ({
+        number: num,
+        keyword: s.keyword || '',
+        persona: s.persona || '',
+        messageCount: s.messageCount || 0,
+        state: s.state || '',
+        lastActive: new Date(s.lastActivity).toLocaleTimeString(),
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        rows,
+        totalPages,
+        currentPage: pageNum,
+        filteredCount: filtered.length,
+        totalEntries: allLogs.length,
+        activeDemos: demos.length,
+        demos,
+        uptime: fmtUptime(Math.floor((Date.now() - START_TIME) / 1000)),
+        businessName: settings.business_name || '',
+        clientId: process.env.CLIENT_ID || 'default',
+        aiProvider: process.env.AI_PROVIDER || 'openrouter',
+        currentModel: settings.ai_model || process.env.AI_MODEL || 'anthropic/claude-haiku-4-5',
+      }));
       return;
     }
 

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cay AI — Analytics</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366; --green-dark: #1da851; --green-bg: #e8f5e9;
+      --blue: #1565c0; --blue-bg: #e3f2fd;
+      --red: #e53935; --red-bg: #ffebee;
+      --amber: #f57c00; --amber-bg: #fff8e1;
+      --purple: #6a1b9a; --purple-bg: #f3e5f5;
+      --teal: #006064; --teal-bg: #e0f7fa;
+      --surface: #ffffff;
+      --bg: #f4f6f8;
+      --border: #e8eaed;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    header {
+      background: linear-gradient(135deg, #25D366 0%, #1da851 100%);
+      color: white; padding: 0 24px;
+      height: 56px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(37,211,102,.3);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left .logo { font-size: 1.3rem; }
+    .header-left h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+
+    nav { display: flex; gap: 4px; }
+    nav a { color: rgba(255,255,255,0.65); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; transition: background .15s; }
+    nav a:hover { background: rgba(0,0,0,0.15); color: #fff; }
+    nav a.active { background: rgba(0,0,0,0.25); color: #fff; }
+
+    .container { max-width: 1280px; margin: 24px auto; padding: 0 20px; }
+
+    .page-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .page-bar h2 { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .page-bar .spacer { flex: 1; }
+    .page-bar label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+
+    select {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 7px 12px; font-size: 0.82rem; font-family: inherit;
+      background: var(--surface); color: var(--text); cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--green); }
+
+    /* ROI KPI section */
+    .roi-section { margin-bottom: 28px; }
+    .section-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .kpi {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      padding: 24px; border-top: 4px solid var(--green);
+    }
+    .kpi.blue { border-top-color: var(--blue); }
+    .kpi .v { font-size: 2.2rem; font-weight: 800; color: var(--text); line-height: 1.1; letter-spacing: -0.02em; }
+    .kpi .l { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
+    .kpi .s { font-size: 0.74rem; color: var(--text-muted); margin-top: 5px; }
+
+    .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .mini {
+      background: var(--surface); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      padding: 16px 18px;
+    }
+    .mini .v { font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .mini .l { font-size: 0.74rem; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
+    .mini.warn .v { color: var(--red); }
+
+    /* Analytics section */
+    .toolbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 10px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .toolbar label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+    .toolbar input[type=file] { font-size: 0.8rem; color: var(--text-secondary); }
+    .toolbar input[type=date] { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; font-size: 0.82rem; font-family: inherit; color: var(--text); background: var(--surface); }
+    .toolbar input[type=date]:focus { outline: none; border-color: var(--green); }
+    .btn { border: none; border-radius: var(--radius-sm); padding: 6px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .btn-primary { background: var(--green); color: white; }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-blue { background: var(--blue); color: white; }
+    .btn-blue:hover { background: #0d47a1; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg); color: var(--text); }
+    .load-status { font-size: 0.75rem; color: var(--text-muted); background: var(--bg); border-radius: 20px; padding: 3px 10px; }
+    .load-status.ok { color: var(--green-dark); background: var(--green-bg); }
+    .load-status.err { color: var(--red); background: var(--red-bg); }
+
+    .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; margin-top: 28px; }
+    .section-header:first-child { margin-top: 0; }
+    .section-header h2 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary); }
+    .section-header hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .stat-card .s-icon { font-size: 1.2rem; }
+    .stat-card .s-val { font-size: 1.75rem; font-weight: 800; color: var(--green); line-height: 1; letter-spacing: -0.02em; }
+    .stat-card .s-val.blue { color: var(--blue); }
+    .stat-card .s-val.red { color: var(--red); }
+    .stat-card .s-val.amber { color: var(--amber); }
+    .stat-card .s-lbl { font-size: 0.73rem; font-weight: 500; color: var(--text-secondary); }
+    .stat-card .s-delta { font-size: 0.7rem; color: var(--text-muted); background: var(--bg); border-radius: 20px; padding: 1px 7px; align-self: flex-start; }
+    .stat-card .s-delta.up { color: var(--green-dark); background: var(--green-bg); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 16px; }
+    @media(max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border); padding: 20px;
+    }
+    .chart-card h3 { font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .chart-card .sub { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 14px; }
+
+    .bar-list { display: flex; flex-direction: column; gap: 10px; }
+    .bar-item { display: flex; flex-direction: column; gap: 4px; }
+    .bar-item .bi-label { display: flex; justify-content: space-between; font-size: 0.78rem; }
+    .bar-item .bi-name { color: var(--text-secondary); font-weight: 500; }
+    .bar-item .bi-val { color: var(--text); font-weight: 700; }
+    .bar-track { background: var(--bg); border-radius: 4px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; background: var(--green); transition: width .5s ease; }
+    .bar-fill.blue { background: var(--blue); }
+    .bar-fill.red { background: var(--red); }
+    .bar-fill.amber { background: var(--amber); }
+    .bar-fill.purple { background: #6a1b9a; }
+
+    .intent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    .intent-chip {
+      background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .intent-chip .ic-val { font-size: 1.3rem; font-weight: 800; color: var(--text); }
+    .intent-chip .ic-lbl { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
+
+    .log-table { width: 100%; border-collapse: collapse; }
+    .log-table th { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); padding: 8px 10px; border-bottom: 2px solid var(--border); text-align: left; }
+    .log-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.82rem; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover td { background: var(--bg); }
+
+    .status-pill { padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; display: inline-block; }
+    .pill-in  { background: #e8f5e9; color: #1b5e20; }
+    .pill-out { background: #e3f2fd; color: #0d47a1; }
+    .pill-opt { background: #ffebee; color: #b71c1c; }
+    .pill-demo{ background: #f3e5f5; color: #4a148c; }
+    .pill-oth { background: var(--bg); color: var(--text-muted); }
+
+    .empty { color: var(--text-muted); font-size: 0.84rem; text-align: center; padding: 20px; }
+    .note { font-size: 0.78rem; color: var(--text-muted); margin-top: 16px; padding: 12px 16px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="logo">📈</span>
+    <h1>Cay AI — Analytics</h1>
+  </div>
+  <nav>
+    <a href="/">📊 Logs</a>
+    <a href="/analytics" class="active">📈 Analytics</a>
+    <a href="/contacts">👥 Contacts</a>
+    <a href="/settings">⚙️ Settings</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-bar">
+    <h2>Performance overview</h2>
+    <span class="spacer"></span>
+    <label for="range">Period</label>
+    <select id="range">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="365">Last year</option>
+    </select>
+    <span class="load-status" id="load-status">Loading…</span>
+  </div>
+
+  <!-- ROI / Value section -->
+  <div class="roi-section">
+    <div class="section-label">Client ROI &amp; value delivered</div>
+    <div class="kpi-grid">
+      <div class="kpi blue">
+        <div class="v" id="roi-bookings">–</div>
+        <div class="l">Bookings confirmed</div>
+        <div class="s">Inbound messages the AI logged as a confirmed booking</div>
+      </div>
+      <div class="kpi blue">
+        <div class="v" id="roi-leads">–</div>
+        <div class="l">Hot leads captured</div>
+        <div class="s">Serious buyers the AI caught and flagged for you</div>
+      </div>
+      <div class="kpi">
+        <div class="v" id="roi-hours">–</div>
+        <div class="l">Owner hours saved</div>
+        <div class="s" id="roi-hours-sub"></div>
+      </div>
+      <div class="kpi">
+        <div class="v" id="roi-speed">–</div>
+        <div class="l">Avg response speed</div>
+        <div class="s">From a hot lead to your follow-up</div>
+      </div>
+    </div>
+
+    <div class="mini-grid">
+      <div class="mini"><div class="v" id="roi-handled">–</div><div class="l">Messages handled</div></div>
+      <div class="mini"><div class="v" id="roi-auto">–</div><div class="l">Auto-answered</div></div>
+      <div class="mini"><div class="v" id="roi-autopct">–</div><div class="l">Auto-answered %</div></div>
+      <div class="mini"><div class="v" id="roi-sent">–</div><div class="l">Messages sent</div></div>
+      <div class="mini"><div class="v" id="roi-contacts">–</div><div class="l">Unique contacts</div></div>
+      <div class="mini warn"><div class="v" id="roi-complaints">–</div><div class="l">Complaints</div></div>
+      <div class="mini warn"><div class="v" id="roi-optouts">–</div><div class="l">Opt-outs</div></div>
+      <div class="mini"><div class="v" id="roi-cost">–</div><div class="l">Est. AI cost</div></div>
+    </div>
+
+    <div class="note" id="roi-note"></div>
+  </div>
+
+  <!-- Full Analytics breakdown (from log CSV) -->
+  <div class="section-header"><h2>Message breakdown</h2><hr></div>
+
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><span class="s-icon">📨</span><span class="s-val" id="sc-inbound">–</span><span class="s-lbl">Inbound messages</span></div>
+    <div class="stat-card"><span class="s-icon">📤</span><span class="s-val blue" id="sc-sent">–</span><span class="s-lbl">Sent messages</span></div>
+    <div class="stat-card"><span class="s-icon">🤖</span><span class="s-val" id="sc-auto">–</span><span class="s-lbl">Auto-replied</span></div>
+    <div class="stat-card"><span class="s-icon">🔥</span><span class="s-val amber" id="sc-leads">–</span><span class="s-lbl">Hot leads</span></div>
+    <div class="stat-card"><span class="s-icon">📅</span><span class="s-val blue" id="sc-bookings">–</span><span class="s-lbl">Bookings</span></div>
+    <div class="stat-card"><span class="s-icon">🚫</span><span class="s-val red" id="sc-optouts">–</span><span class="s-lbl">Opt-outs</span></div>
+  </div>
+
+  <div class="grid-3">
+    <div class="chart-card">
+      <h3>Top contacts</h3>
+      <div class="sub">Most active numbers in this period</div>
+      <div class="bar-list" id="top-contacts"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="chart-card">
+      <h3>Message status breakdown</h3>
+      <div class="sub">Distribution of log entries by status</div>
+      <div class="bar-list" id="status-bars"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Intent distribution</h3>
+      <div class="sub">What customers were asking about</div>
+      <div class="intent-grid" id="intent-grid"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="chart-card">
+      <h3>Daily message volume</h3>
+      <div class="sub">Total log entries per day (last 14 days)</div>
+      <div class="bar-list" id="daily-bars"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:16px">
+    <h3>Recent message log</h3>
+    <div class="sub">Last 20 entries across all statuses</div>
+    <table class="log-table">
+      <thead><tr><th>Time</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr></thead>
+      <tbody id="recent-log"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtMin = (m) => (m == null ? '—' : m < 60 ? m + ' min' : (Math.round(m / 6) / 10) + ' hr');
+
+function pillClass(s) {
+  if (!s) return 'pill-oth';
+  if (s.includes('inbound')) return 'pill-in';
+  if (s.includes('outbound')) return 'pill-out';
+  if (s.includes('opt-out')) return 'pill-opt';
+  if (s.includes('demo')) return 'pill-demo';
+  return 'pill-oth';
+}
+
+function barColor(i) {
+  return ['','blue','amber','purple','red'][i % 5];
+}
+
+async function load() {
+  const days = $('range').value;
+  $('load-status').textContent = 'Loading…';
+  $('load-status').className = 'load-status';
+
+  try {
+    // Fetch API analytics (server-computed)
+    const ar = await fetch('/api/analytics?days=' + days);
+    const a = await ar.json();
+
+    // ROI section
+    $('roi-bookings').textContent = a.bookings;
+    $('roi-leads').textContent = a.leadsCaptured;
+    $('roi-hours').textContent = a.ownerHoursSaved + ' hr';
+    $('roi-hours-sub').textContent = 'Estimate: ' + a.autoAnswered + ' auto-answered × ' + a.minutesSavedPerMsg + ' min each';
+    $('roi-speed').textContent = fmtMin(a.responseSpeedMin);
+    $('roi-handled').textContent = a.messagesHandled;
+    $('roi-auto').textContent = a.autoAnswered;
+    $('roi-autopct').textContent = a.autoAnsweredPct + '%';
+    $('roi-sent').textContent = a.sent;
+    $('roi-contacts').textContent = a.uniqueContacts;
+    $('roi-complaints').textContent = a.complaints;
+    $('roi-optouts').textContent = a.optOuts;
+    $('roi-cost').textContent = '$' + a.costEst;
+    $('roi-note').textContent = 'Top contact this period: ' + a.topContact +
+      '. Hours saved is an estimate — tune with the "minutes_saved_per_msg" setting.';
+
+    // Summary stat cards
+    $('sc-inbound').textContent = a.messagesHandled;
+    $('sc-sent').textContent = a.sent;
+    $('sc-auto').textContent = a.autoAnswered;
+    $('sc-leads').textContent = a.leadsCaptured;
+    $('sc-bookings').textContent = a.bookings;
+    $('sc-optouts').textContent = a.optOuts;
+
+    // Detailed breakdown from log CSV
+    const lr = await fetch('/data/log.csv');
+    const csv = await lr.text();
+    const lines = csv.trim().split('\n').filter(Boolean);
+    const rows = (lines[0].startsWith('timestamp') ? lines.slice(1) : lines).map(l => {
+      const p = l.split(',');
+      return { ts: p[0]||'', number: p[1]||'', name: p[2]||'', message: p[3]||'', status: p[4]||'', tokens: p[5]||'', direction: p[7]||'' };
+    });
+
+    // Filter to period
+    const cutoff = Date.now() - parseInt(days) * 86400000;
+    const period = rows.filter(r => {
+      const t = new Date(r.ts).getTime();
+      return !isNaN(t) && t >= cutoff;
+    });
+
+    // Top contacts
+    const contactMap = {};
+    period.forEach(r => {
+      if (!r.number) return;
+      const key = r.name || r.number;
+      contactMap[key] = (contactMap[key] || 0) + 1;
+    });
+    const topContacts = Object.entries(contactMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
+    const maxC = topContacts[0]?.[1] || 1;
+    $('top-contacts').innerHTML = topContacts.length
+      ? topContacts.map(([name, cnt], i) =>
+          `<div class="bar-item">
+            <div class="bi-label"><span class="bi-name">${esc(name)}</span><span class="bi-val">${cnt}</span></div>
+            <div class="bar-track"><div class="bar-fill ${barColor(i)}" style="width:${Math.round(cnt/maxC*100)}%"></div></div>
+          </div>`).join('')
+      : '<div class="empty">No data for this period</div>';
+
+    // Status breakdown
+    const statusMap = {};
+    period.forEach(r => { if (r.status) statusMap[r.status] = (statusMap[r.status]||0)+1; });
+    const statusEntries = Object.entries(statusMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxS = statusEntries[0]?.[1] || 1;
+    $('status-bars').innerHTML = statusEntries.length
+      ? statusEntries.map(([st, cnt], i) =>
+          `<div class="bar-item">
+            <div class="bi-label"><span class="bi-name">${esc(st)}</span><span class="bi-val">${cnt}</span></div>
+            <div class="bar-track"><div class="bar-fill ${barColor(i)}" style="width:${Math.round(cnt/maxS*100)}%"></div></div>
+          </div>`).join('')
+      : '<div class="empty">No data for this period</div>';
+
+    // Intent distribution
+    const intentMap = {};
+    period.forEach(r => {
+      const m = r.status && r.status.match(/intent:(\w+)/i);
+      if (m) intentMap[m[1]] = (intentMap[m[1]]||0)+1;
+    });
+    const intents = Object.entries(intentMap).sort((a,b)=>b[1]-a[1]);
+    $('intent-grid').innerHTML = intents.length
+      ? intents.map(([intent, cnt]) =>
+          `<div class="intent-chip"><div class="ic-val">${cnt}</div><div class="ic-lbl">${esc(intent.toLowerCase())}</div></div>`
+        ).join('')
+      : '<div class="empty">No intent data — requires AI classification in log</div>';
+
+    // Daily volume (last 14 days)
+    const dayMap = {};
+    const today = new Date(); today.setHours(0,0,0,0);
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      dayMap[d.toISOString().slice(0,10)] = 0;
+    }
+    period.forEach(r => {
+      const day = r.ts.slice(0,10);
+      if (day in dayMap) dayMap[day]++;
+    });
+    const dayEntries = Object.entries(dayMap);
+    const maxD = Math.max(...dayEntries.map(e=>e[1]), 1);
+    $('daily-bars').innerHTML = dayEntries.map(([day, cnt]) =>
+      `<div class="bar-item">
+        <div class="bi-label"><span class="bi-name">${day.slice(5)}</span><span class="bi-val">${cnt}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxD*100)}%"></div></div>
+      </div>`).join('');
+
+    // Recent log (last 20)
+    const recent = rows.slice(0, 20);
+    $('recent-log').innerHTML = recent.length
+      ? recent.map(r =>
+          `<tr>
+            <td style="white-space:nowrap;color:var(--text-muted)">${esc(r.ts.slice(0,16).replace('T',' '))}</td>
+            <td>${esc(r.name||r.number)}</td>
+            <td title="${esc(r.message)}">${esc(r.message.slice(0,80))}${r.message.length>80?'…':''}</td>
+            <td><span class="status-pill ${pillClass(r.status)}">${esc(r.status)}</span></td>
+            <td>${esc(r.tokens)}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="empty">No log entries yet</td></tr>';
+
+    $('load-status').textContent = 'Updated';
+    $('load-status').className = 'load-status ok';
+    setTimeout(() => { $('load-status').textContent = ''; $('load-status').className = 'load-status'; }, 2000);
+
+  } catch(e) {
+    $('load-status').textContent = 'Error loading data';
+    $('load-status').className = 'load-status err';
+    console.error(e);
+  }
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+$('range').onchange = load;
+load();
+</script>
+</body>
+</html>
