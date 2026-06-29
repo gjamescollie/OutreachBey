@@ -2,108 +2,190 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cay AI — Logs</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0a0f1e;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;min-height:100vh}
-    h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.02em}
-    h2{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
-    .header{background:linear-gradient(135deg,#1a1f35 0%,#1e293b 100%);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e293b;box-shadow:0 1px 0 rgba(255,255,255,.04)}
-    .badge{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;box-shadow:0 0 12px rgba(124,58,237,.4)}
-    .badge::before{content:'';display:inline-block;width:6px;height:6px;background:#4ade80;border-radius:50%;margin-right:6px;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
-    .nav{background:#0a0f1e;padding:6px 24px;display:flex;gap:4px;border-bottom:1px solid #1a2035}
-    .nav a{color:#64748b;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;transition:background .15s,color .15s}
-    .nav a:hover{background:#1e293b;color:#e2e8f0}
-    .nav a.active{background:linear-gradient(135deg,#7c3aed22,#6d28d922);color:#a78bfa;border:1px solid #7c3aed44}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;padding:20px 24px}
-    .card{background:linear-gradient(135deg,#1a2035 0%,#1e293b 100%);border:1px solid #1e2d45;border-radius:10px;padding:16px;transition:border-color .2s,transform .2s,box-shadow .2s;position:relative;overflow:hidden}
-    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7c3aed,#4f46e5);opacity:0;transition:opacity .2s}
-    .card:hover{border-color:#334155;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
-    .card:hover::before{opacity:1}
-    .card .val{font-size:24px;font-weight:700;color:#fff;margin-top:6px;font-variant-numeric:tabular-nums}
-    .card .lbl{color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
-    .model-select{background:#0a0f1e;border:1px solid #334155;color:#e2e8f0;padding:5px 8px;border-radius:6px;font-size:11px;margin-top:6px;width:100%;cursor:pointer;transition:border-color .15s}
-    .model-select:hover,.model-select:focus{border-color:#7c3aed;outline:none}
-    .section{padding:0 24px 28px}
-    table{width:100%;border-collapse:collapse}
-    th{text-align:left;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid #1a2035}
-    td{padding:7px 10px;border-bottom:1px solid #111827;vertical-align:middle;transition:background .1s}
-    tr:hover td{background:#111827}
-    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-    select,button{background:#1a2035;border:1px solid #1e2d45;color:#e2e8f0;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;transition:background .15s,border-color .15s}
-    select:hover,button:hover{background:#1e293b;border-color:#334155}
-    .pager{display:flex;gap:16px;align-items:center;padding:14px 0;color:#64748b;font-size:12px}
-    .pager button{color:#a78bfa;font-weight:500;padding:4px 10px;border:1px solid #7c3aed33;border-radius:5px}
-    .pager button:disabled{opacity:.35;cursor:default}
-    a{text-decoration:none}
-    .refresh-wrap{display:flex;align-items:center;gap:8px}
-    .countdown-ring{width:28px;height:28px;transform:rotate(-90deg)}
-    .countdown-ring .track{fill:none;stroke:#1e293b;stroke-width:3}
-    .countdown-ring .progress{fill:none;stroke:#7c3aed;stroke-width:3;stroke-linecap:round;stroke-dasharray:75.4;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .5s}
-    .countdown-num{font-size:10px;color:#64748b;font-variant-numeric:tabular-nums;min-width:18px;text-align:center}
-    .section-card{background:linear-gradient(135deg,#111827 0%,#0f172a 100%);border:1px solid #1a2035;border-radius:10px;overflow:hidden;margin-bottom:0}
-    .section-card th{background:#111827}
-    .status-badge{padding:2px 6px;border-radius:4px;font-size:11px;color:#fff;display:inline-block}
-    .empty-row td{color:#475569;text-align:center;padding:20px}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366; --green-dark: #1da851; --green-bg: #e8f5e9;
+      --blue: #1565c0; --blue-bg: #e3f2fd;
+      --red: #e53935; --red-bg: #ffebee;
+      --amber: #f57c00; --amber-bg: #fff8e1;
+      --purple: #6a1b9a; --purple-bg: #f3e5f5;
+      --teal: #006064; --teal-bg: #e0f7fa;
+      --surface: #ffffff;
+      --bg: #f4f6f8;
+      --border: #e8eaed;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.04);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    header {
+      background: linear-gradient(135deg, #25D366 0%, #1da851 100%);
+      color: white; padding: 0 24px;
+      height: 56px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(37,211,102,.3);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left .logo { font-size: 1.3rem; }
+    .header-left h1 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    nav { display: flex; gap: 4px; }
+    nav a { color: rgba(255,255,255,0.65); text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; transition: background .15s; }
+    nav a:hover { background: rgba(0,0,0,0.15); color: #fff; }
+    nav a.active { background: rgba(0,0,0,0.25); color: #fff; }
+
+    .live-badge {
+      background: rgba(0,0,0,0.2); color: #fff;
+      padding: 3px 10px 3px 6px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .live-dot { width: 7px; height: 7px; background: #fff; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    .container { max-width: 1280px; margin: 24px auto; padding: 0 20px 40px; }
+
+    .page-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .page-bar h2 { font-size: 1rem; font-weight: 700; }
+    .page-bar .spacer { flex: 1; }
+
+    /* Stat cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .stat-card .s-icon { font-size: 1.1rem; }
+    .stat-card .s-val { font-size: 1.75rem; font-weight: 800; color: var(--green); line-height: 1; letter-spacing: -0.02em; }
+    .stat-card .s-val.blue { color: var(--blue); }
+    .stat-card .s-val.muted { color: var(--text-secondary); font-size: 1.1rem; }
+    .stat-card .s-lbl { font-size: 0.73rem; font-weight: 500; color: var(--text-secondary); }
+
+    /* Model card */
+    .model-card {
+      background: var(--surface); border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .model-card .s-lbl { font-size: 0.73rem; font-weight: 500; color: var(--text-secondary); }
+    .model-select {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 7px 10px; font-size: 0.82rem; font-family: inherit;
+      background: var(--bg); color: var(--text); cursor: pointer; width: 100%;
+    }
+    .model-select:focus { outline: none; border-color: var(--green); }
+    .model-status { font-size: 0.72rem; color: var(--text-muted); min-height: 14px; }
+
+    /* Section card */
+    .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; margin-top: 28px; }
+    .section-header:first-child { margin-top: 0; }
+    .section-header h2 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary); }
+    .section-header hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+
+    .chart-card {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border); padding: 20px;
+      margin-bottom: 16px;
+    }
+    .chart-card h3 { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .chart-card .sub { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 14px; }
+
+    /* Toolbar */
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .toolbar label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+    select, button {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 7px 12px; font-size: 0.82rem; font-family: inherit;
+      background: var(--surface); color: var(--text); cursor: pointer;
+      transition: border-color .15s;
+    }
+    select:hover, button:hover { border-color: var(--green); }
+    select:focus, button:focus { outline: none; border-color: var(--green); }
+
+    /* Table */
+    .log-table { width: 100%; border-collapse: collapse; }
+    .log-table th {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); padding: 9px 12px; border-bottom: 2px solid var(--border);
+      text-align: left; background: var(--bg);
+    }
+    .log-table td {
+      padding: 9px 12px; border-bottom: 1px solid var(--border);
+      font-size: 0.82rem; color: var(--text-secondary);
+      vertical-align: middle;
+    }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover td { background: var(--bg); }
+    .log-table .msg-cell { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .status-pill { padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; display: inline-block; }
+    .pill-in   { background: #e8f5e9; color: #1b5e20; }
+    .pill-out  { background: #e3f2fd; color: #0d47a1; }
+    .pill-opt  { background: #ffebee; color: #b71c1c; }
+    .pill-demo { background: #f3e5f5; color: #4a148c; }
+    .pill-own  { background: #fff8e1; color: #6d4c00; }
+    .pill-oth  { background: var(--bg); color: var(--text-muted); }
+
+    /* Pager */
+    .pager { display: flex; gap: 12px; align-items: center; padding: 14px 0; }
+    .pager button { padding: 5px 14px; font-size: 0.82rem; font-weight: 600; }
+    .pager button:disabled { opacity: .4; cursor: default; border-color: var(--border); }
+    .pager span { font-size: 0.82rem; color: var(--text-secondary); }
+
+    .empty { color: var(--text-muted); font-size: 0.84rem; text-align: center; padding: 20px; }
+
+    /* Countdown ring in header */
+    .countdown-wrap { display: flex; align-items: center; gap: 6px; }
+    .cring-svg { width: 24px; height: 24px; transform: rotate(-90deg); }
+    .cring-track { fill: none; stroke: rgba(255,255,255,.2); stroke-width: 3; }
+    .cring-prog  { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 63.6; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+    .cring-num   { font-size: 11px; color: rgba(255,255,255,.75); min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <div>
-    <h1>🤖 Cay AI Dashboard</h1>
-    <div style="color:#475569;font-size:12px;margin-top:3px" id="header-meta">Loading…</div>
+<header>
+  <div class="header-left">
+    <span class="logo">🤖</span>
+    <h1 id="page-title">Cay AI — Live Logs</h1>
   </div>
-  <div style="display:flex;gap:12px;align-items:center">
-    <div class="refresh-wrap">
-      <svg class="countdown-ring" viewBox="0 0 28 28">
-        <circle class="track" cx="14" cy="14" r="12"/>
-        <circle class="progress" id="cring" cx="14" cy="14" r="12"/>
+  <nav>
+    <a href="/" class="active">📊 Logs</a>
+    <a href="/analytics">📈 Analytics</a>
+    <a href="/contacts">👥 Contacts</a>
+    <a href="/settings">⚙️ Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="countdown-wrap">
+      <svg class="cring-svg" viewBox="0 0 24 24">
+        <circle class="cring-track" cx="12" cy="12" r="10"/>
+        <circle class="cring-prog" id="cring" cx="12" cy="12" r="10"/>
       </svg>
-      <span class="countdown-num" id="cnum">30</span>
+      <span class="cring-num" id="cnum">30</span>
     </div>
-    <span class="badge">LIVE</span>
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
   </div>
-</div>
+</header>
 
-<nav class="nav">
-  <a href="/" class="active">📊 Logs</a>
-  <a href="/analytics">📈 Analytics</a>
-  <a href="/contacts">👥 Contacts</a>
-  <a href="/settings">⚙️ Settings</a>
-</nav>
-
-<div class="grid">
-  <div class="card"><div class="lbl">Uptime</div><div class="val" style="font-size:16px" id="s-uptime">—</div></div>
-  <div class="card"><div class="lbl">Total Log Entries</div><div class="val" id="s-total">—</div></div>
-  <div class="card"><div class="lbl">Active Demo Sessions</div><div class="val" id="s-demos">—</div></div>
-  <div class="card"><div class="lbl">AI Provider</div><div class="val" style="font-size:14px" id="s-provider">—</div></div>
-  <div class="card">
-    <div class="lbl">Model</div>
-    <select class="model-select" id="modelSel" onchange="setModel(this.value)"></select>
-    <div id="modelStatus" style="font-size:10px;color:#64748b;margin-top:4px;min-height:14px"></div>
-  </div>
-</div>
-
-<div class="section">
-  <h2>Active Demo Sessions</h2>
-  <div class="section-card">
-    <table>
-      <tr><th>Number</th><th>Keyword</th><th>Persona</th><th>Messages</th><th>State</th><th>Last Active</th></tr>
-      <tbody id="demo-body"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<div class="section" style="margin-top:20px">
-  <div class="toolbar">
-    <h2 style="margin-bottom:0" id="log-count">Logs</h2>
-    <div style="flex:1"></div>
-    <label style="color:#64748b;font-size:12px">Filter:</label>
+<div class="container">
+  <div class="page-bar">
+    <h2 id="biz-name">Dashboard</h2>
+    <span class="spacer"></span>
+    <label style="font-size:0.78rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;">Filter</label>
     <select id="filterSel" onchange="applyFilter()">
-      <option value="">All</option>
+      <option value="">All statuses</option>
       <option value="inbound">inbound</option>
       <option value="outbound">outbound</option>
       <option value="demo">demo</option>
@@ -112,16 +194,44 @@
       <option value="owner">owner</option>
     </select>
   </div>
-  <div class="section-card">
-    <table>
-      <tr><th>Timestamp</th><th>Number</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr>
-      <tbody id="log-body"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+
+  <!-- Stat cards -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><span class="s-icon">⏱</span><span class="s-val muted" id="s-uptime">—</span><span class="s-lbl">Uptime</span></div>
+    <div class="stat-card"><span class="s-icon">📋</span><span class="s-val" id="s-total">—</span><span class="s-lbl">Total log entries</span></div>
+    <div class="stat-card"><span class="s-icon">🎬</span><span class="s-val blue" id="s-demos">—</span><span class="s-lbl">Active demo sessions</span></div>
+    <div class="stat-card"><span class="s-icon">🔌</span><span class="s-val muted" id="s-provider">—</span><span class="s-lbl">AI provider</span></div>
+    <div class="model-card">
+      <span class="s-lbl">Model</span>
+      <select class="model-select" id="modelSel" onchange="setModel(this.value)"></select>
+      <div class="model-status" id="modelStatus"></div>
+    </div>
+  </div>
+
+  <!-- Demo sessions -->
+  <div class="section-header"><h2>Active demo sessions</h2><hr></div>
+  <div class="chart-card">
+    <table class="log-table">
+      <thead><tr><th>Number</th><th>Keyword</th><th>Persona</th><th>Messages</th><th>State</th><th>Last active</th></tr></thead>
+      <tbody id="demo-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
     </table>
   </div>
-  <div class="pager">
-    <button id="prev-btn" onclick="changePage(-1)" disabled>← Prev</button>
-    <span id="page-info" style="color:#64748b;font-size:12px">Page 1</span>
-    <button id="next-btn" onclick="changePage(1)" disabled>Next →</button>
+
+  <!-- Log table -->
+  <div class="section-header"><h2 id="log-heading">All logs</h2><hr></div>
+  <div class="chart-card" style="padding-bottom:0">
+    <div class="toolbar">
+      <span style="font-size:0.82rem;color:var(--text-muted)" id="log-count"></span>
+    </div>
+    <table class="log-table">
+      <thead><tr><th>Timestamp</th><th>Number</th><th>Name</th><th>Message</th><th>Status</th><th>Tokens</th></tr></thead>
+      <tbody id="log-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table>
+    <div class="pager">
+      <button id="prev-btn" onclick="changePage(-1)" disabled>← Prev</button>
+      <span id="page-info">Page 1</span>
+      <button id="next-btn" onclick="changePage(1)" disabled>Next →</button>
+    </div>
   </div>
 </div>
 
@@ -137,19 +247,16 @@ const MODELS = [
   'google/gemini-pro-1.5',
 ];
 
-let currentPage = 1;
-let currentFilter = '';
-let totalPages = 1;
+let currentPage = 1, currentFilter = '', totalPages = 1;
 
-function statusColor(s) {
-  if (!s) return '#888';
-  if (s.includes('demo'))    return '#8b5cf6';
-  if (s.includes('opt-out')) return '#ef4444';
-  if (s.includes('outbound'))return '#3b82f6';
-  if (s.includes('inbound')) return '#10b981';
-  if (s.includes('owner'))   return '#f59e0b';
-  if (s.includes('outside')) return '#6b7280';
-  return '#888';
+function pillClass(s) {
+  if (!s) return 'pill-oth';
+  if (s.includes('inbound'))  return 'pill-in';
+  if (s.includes('outbound')) return 'pill-out';
+  if (s.includes('opt-out'))  return 'pill-opt';
+  if (s.includes('demo'))     return 'pill-demo';
+  if (s.includes('owner'))    return 'pill-own';
+  return 'pill-oth';
 }
 
 function esc(s) {
@@ -162,22 +269,22 @@ async function load() {
     const r = await fetch(`/api/logs?page=${currentPage}&filter=${encodeURIComponent(currentFilter)}`);
     const d = await r.json();
 
-    document.getElementById('header-meta').textContent =
-      (d.businessName || 'Agent') + ' · ' + (d.clientId || 'default');
+    const biz = d.businessName || 'Cay AI';
+    document.getElementById('page-title').textContent = biz + ' — Live Logs';
+    document.getElementById('biz-name').textContent = biz + ' · ' + (d.clientId || 'default');
 
-    document.getElementById('s-uptime').textContent = d.uptime || '—';
-    document.getElementById('s-total').textContent = d.totalEntries ?? '—';
-    document.getElementById('s-demos').textContent = d.activeDemos ?? '—';
-    document.getElementById('s-provider').textContent = d.aiProvider || 'openrouter';
+    document.getElementById('s-uptime').textContent  = d.uptime || '—';
+    document.getElementById('s-total').textContent   = d.totalEntries ?? '—';
+    document.getElementById('s-demos').textContent   = d.activeDemos ?? '—';
+    document.getElementById('s-provider').textContent= d.aiProvider || '—';
 
-    // Model selector
+    // Model selector (populate once)
     const sel = document.getElementById('modelSel');
-    const cur = d.currentModel || '';
     if (!sel.options.length) {
       MODELS.forEach(m => {
         const o = document.createElement('option');
         o.value = m; o.textContent = m.split('/')[1];
-        if (m === cur) o.selected = true;
+        if (m === (d.currentModel || '')) o.selected = true;
         sel.appendChild(o);
       });
     }
@@ -187,83 +294,67 @@ async function load() {
     document.getElementById('demo-body').innerHTML = demos.length
       ? demos.map(s =>
           `<tr>
-            <td style="color:#aaa">${esc(s.number)}</td>
-            <td>${esc(s.keyword||'—')}</td>
-            <td>${esc(s.persona||'—')}</td>
-            <td>${esc(s.messageCount||0)}</td>
-            <td>${esc(s.state||'—')}</td>
-            <td style="color:#aaa">${esc(s.lastActive)}</td>
+            <td>${esc(s.number)}</td>
+            <td>${esc(s.keyword || '—')}</td>
+            <td>${esc(s.persona || '—')}</td>
+            <td>${esc(s.messageCount || 0)}</td>
+            <td>${esc(s.state || '—')}</td>
+            <td>${esc(s.lastActive)}</td>
           </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="6">No active demo sessions</td></tr>';
+      : '<tr><td colspan="6" class="empty">No active demo sessions</td></tr>';
 
-    // Log rows
+    // Pager
     totalPages = d.totalPages || 1;
+    document.getElementById('log-heading').textContent =
+      'All logs' + (currentFilter ? ' — ' + currentFilter : '');
     document.getElementById('log-count').textContent =
-      `All Logs (${d.filteredCount || 0} entries)`;
+      (d.filteredCount || 0) + ' entries · page ' + (d.currentPage || 1) + ' of ' + totalPages;
     document.getElementById('page-info').textContent =
-      `Page ${d.currentPage} of ${totalPages}`;
+      'Page ' + (d.currentPage || 1) + ' of ' + totalPages;
     document.getElementById('prev-btn').disabled = currentPage <= 1;
     document.getElementById('next-btn').disabled = currentPage >= totalPages;
 
+    // Log rows
     const rows = d.rows || [];
     document.getElementById('log-body').innerHTML = rows.length
       ? rows.map(r =>
           `<tr>
-            <td style="white-space:nowrap;color:#aaa">${esc(r.ts)}</td>
-            <td style="color:#e2e8f0">${esc(r.number)}</td>
-            <td style="color:#e2e8f0">${esc(r.name)}</td>
-            <td style="color:#cbd5e1;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.message)}">${esc(r.message)}</td>
-            <td><span class="status-badge" style="background:${statusColor(r.status)}">${esc(r.status)}</span></td>
-            <td style="color:#aaa">${esc(r.tokens)}</td>
+            <td style="white-space:nowrap;color:var(--text-muted)">${esc(r.ts.slice(0,19).replace('T',' '))}</td>
+            <td>${esc(r.number)}</td>
+            <td>${esc(r.name)}</td>
+            <td class="msg-cell" title="${esc(r.message)}">${esc(r.message)}</td>
+            <td><span class="status-pill ${pillClass(r.status)}">${esc(r.status)}</span></td>
+            <td style="color:var(--text-muted)">${esc(r.tokens)}</td>
           </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="6">No log entries</td></tr>';
-  } catch(e) {
-    console.error('Failed to load logs', e);
-  }
+      : '<tr><td colspan="6" class="empty">No log entries</td></tr>';
+
+  } catch(e) { console.error('Failed to load logs', e); }
 }
 
-function applyFilter() {
-  currentFilter = document.getElementById('filterSel').value;
-  currentPage = 1;
-  load();
-}
-
-function changePage(dir) {
-  const next = currentPage + dir;
-  if (next < 1 || next > totalPages) return;
-  currentPage = next;
-  load();
-}
+function applyFilter() { currentFilter = document.getElementById('filterSel').value; currentPage = 1; load(); }
+function changePage(dir) { const n = currentPage + dir; if (n < 1 || n > totalPages) return; currentPage = n; load(); }
 
 async function setModel(m) {
   const st = document.getElementById('modelStatus');
-  st.textContent = 'Saving…'; st.style.color = '#94a3b8';
+  st.textContent = 'Saving…'; st.style.color = 'var(--text-muted)';
   try {
-    const r = await fetch('/api/model', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: m }),
-    });
-    if (r.ok) { st.textContent = '✓ Saved'; st.style.color = '#4ade80'; }
-    else { st.textContent = '✗ Failed'; st.style.color = '#f87171'; }
-  } catch(e) { st.textContent = '✗ Error'; st.style.color = '#f87171'; }
+    const r = await fetch('/api/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m }) });
+    if (r.ok) { st.textContent = '✓ Saved'; st.style.color = 'var(--green-dark)'; }
+    else       { st.textContent = '✗ Failed'; st.style.color = 'var(--red)'; }
+  } catch(e) { st.textContent = '✗ Error'; st.style.color = 'var(--red)'; }
   setTimeout(() => { st.textContent = ''; }, 2500);
 }
 
 // Countdown ring auto-refresh
 (function() {
-  const total = 30;
-  const ring = document.getElementById('cring');
-  const num = document.getElementById('cnum');
-  const circ = 75.4;
+  const total = 30, ring = document.getElementById('cring'), num = document.getElementById('cnum');
+  const circ = 63.6;
   let left = total;
   const t = setInterval(() => {
     left--;
-    const pct = left / total;
-    ring.style.strokeDashoffset = circ * (1 - pct);
-    ring.style.stroke = pct > 0.4 ? '#7c3aed' : pct > 0.15 ? '#f59e0b' : '#ef4444';
+    ring.style.strokeDashoffset = circ * (1 - left / total);
     num.textContent = left;
-    if (left <= 0) { clearInterval(t); load(); left = total; }
+    if (left <= 0) { clearInterval(t); load(); }
   }, 1000);
 })();
 
