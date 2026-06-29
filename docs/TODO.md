@@ -15,8 +15,8 @@
 | B9-ux | Dashboard UX upgrade — health panel, two-tab Settings, industry KB templates, responsive design, waState tracking | ✅ Done |
 | B2 | Tourism KB template (`demo/settings_tour.csv` + `defaults/settings_tour.csv`) | ✅ Done |
 | B1 | Tourism intent tuning — `classifyIntent()` uses `business_context`; tourism examples added | ✅ Done |
-| B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ⬜ Pending |
-| B3-inc2 | Accept `!commands` from Cay Control group (operator drives agent from personal number) | ⬜ Pending |
+| B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ✅ Done |
+| B3-inc2 | Accept `!commands` from Cay Control group (operator drives agent from personal number) | ✅ Done |
 | B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ⬜ Pending |
 | B6 | Multi-client provisioning: generalize CI/CD from single hardcoded droplet; runbook | ⬜ Pending |
 | B7 | Tourism onboarding template: annotated `settings.csv` + step list, sub-1-hour setup | ⬜ Pending |
