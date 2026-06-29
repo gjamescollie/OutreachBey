@@ -1,31 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80">
-  <!-- Lucayan Labs wordmark with wave underline -->
-  <text
-    x="160" y="42"
-    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="28"
-    font-weight="700"
-    letter-spacing="4"
-    fill="#0F6E56"
-    text-anchor="middle"
-    dominant-baseline="middle">LUCAYAN LABS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 280" width="560" height="280">
+  <!-- Background -->
+  <rect width="560" height="280" fill="white"/>
 
-  <!-- Wave underline -->
-  <path
-    d="M 40 58 Q 80 50 120 58 Q 160 66 200 58 Q 240 50 280 58"
-    fill="none"
-    stroke="#0F6E56"
-    stroke-width="2"
-    stroke-linecap="round"/>
+  <!-- LUCAYAN — split so the A can have teal accent -->
+  <!-- "LUC" in dark navy -->
+  <text
+    x="36" y="148"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="96"
+    font-weight="900"
+    letter-spacing="-1"
+    fill="#152848">LUC</text>
+
+  <!-- "A" base in dark navy -->
+  <text
+    x="265" y="148"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="96"
+    font-weight="900"
+    fill="#152848">A</text>
+
+  <!-- Teal chevron overlay on the A — triangle pointing up, covering the top peak of the letter -->
+  <polygon
+    points="316,58  296,105  336,105"
+    fill="#1ab8d4"/>
+
+  <!-- "YAN" in dark navy -->
+  <text
+    x="329" y="148"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="96"
+    font-weight="900"
+    letter-spacing="-1"
+    fill="#152848">YAN</text>
+
+  <!-- Separator lines + LABS row -->
+  <!-- Left line -->
+  <line x1="36" y1="168" x2="148" y2="168" stroke="#152848" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Right line -->
+  <line x1="394" y1="168" x2="524" y2="168" stroke="#1ab8d4" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- LABS in teal, centred -->
+  <text
+    x="280" y="172"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="38"
+    font-weight="700"
+    letter-spacing="18"
+    fill="#1ab8d4"
+    text-anchor="middle">LABS</text>
 
   <!-- Tagline -->
   <text
-    x="160" y="72"
+    x="280" y="210"
     font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="9"
+    font-size="14"
     font-weight="400"
-    letter-spacing="2"
-    fill="#0F6E56"
+    letter-spacing="4"
+    fill="#152848"
     opacity="0.65"
-    text-anchor="middle">AI EMPLOYEES FOR NASSAU BUSINESSES</text>
+    text-anchor="middle">INNOVATE  •  AUTOMATE  •  ELEVATE</text>
 </svg>

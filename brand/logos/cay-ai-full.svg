@@ -1,50 +1,69 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" width="300" height="80">
-  <!-- Cay AI full lockup: icon left + wordmark right -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 120" width="640" height="120">
+  <rect width="640" height="120" fill="white"/>
 
-  <!-- Icon (scaled down version of mark) -->
-  <g transform="translate(4, 4) scale(0.9)">
-    <circle cx="40" cy="40" r="38" fill="#0F6E56"/>
-    <path
-      d="M 12 46 Q 22 40 32 46 Q 42 52 52 46 Q 62 40 68 46"
-      fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-    <path
-      d="M 12 52 Q 22 46 32 52 Q 42 58 52 52 Q 62 46 68 52"
-      fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-    <path
-      d="M 52 32 Q 40 18 28 26 Q 18 33 18 40 Q 18 50 28 55 Q 40 61 52 49"
-      fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="54" cy="26" r="4" fill="white" opacity="0.9"/>
-  </g>
+  <defs>
+    <linearGradient id="aiGradFull" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#152848;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1ab8d4;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="palmGradFull" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#0F6E56;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1ab8d4;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
 
-  <!-- Wordmark -->
-  <text
-    x="90" y="34"
+  <!-- "Cay" dark navy -->
+  <text x="16" y="82"
     font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="30"
-    font-weight="700"
-    letter-spacing="1"
-    fill="#0F6E56">Cay AI</text>
+    font-size="68" font-weight="800" font-style="italic"
+    fill="#152848">Cay</text>
 
-  <!-- Divider line -->
-  <line x1="90" y1="44" x2="290" y2="44" stroke="#0F6E56" stroke-width="1" opacity="0.25"/>
-
-  <!-- Sub-brand -->
-  <text
-    x="90" y="58"
+  <!-- "AI" gradient -->
+  <text x="183" y="82"
     font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="10"
-    font-weight="400"
-    letter-spacing="2.5"
-    fill="#0F6E56"
-    opacity="0.65">BY LUCAYAN LABS</text>
+    font-size="68" font-weight="800" font-style="italic"
+    fill="url(#aiGradFull)">AI</text>
+
+  <!-- Palm tree (mini) -->
+  <path d="M 177 88 Q 175 70 173 55 Q 172 44 171 36"
+    fill="none" stroke="url(#palmGradFull)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Fronds -->
+  <path d="M 171 36 Q 183 28 192 22" fill="none" stroke="url(#palmGradFull)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 171 36 Q 159 28 150 22" fill="none" stroke="url(#palmGradFull)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 171 36 Q 169 24 167 14" fill="none" stroke="url(#palmGradFull)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 171 36 Q 173 24 177 14" fill="none" stroke="url(#palmGradFull)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 171 36 Q 184 34 196 32" fill="none" stroke="url(#palmGradFull)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 171 36 Q 158 34 146 32" fill="none" stroke="url(#palmGradFull)" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Wave lines -->
+  <path d="M 16 96 Q 80 89 144 95 Q 208 101 272 95 Q 310 91 340 94"
+    fill="none" stroke="url(#aiGradFull)" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 16 106 Q 90 98 164 105 Q 228 112 292 105 Q 318 101 340 104"
+    fill="none" stroke="#1ab8d4" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Divider -->
+  <line x1="358" y1="24" x2="358" y2="96" stroke="#e0e0e0" stroke-width="1.5"/>
+
+  <!-- "by Lucayan Labs" text block -->
+  <!-- LUCAYAN with teal A accent -->
+  <text x="382" y="62"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="28" font-weight="900" letter-spacing="1"
+    fill="#152848">LUCAYAN</text>
+  <!-- Teal triangle over A in LUCAYAN (A starts ~around x=452) -->
+  <polygon points="474,36  465,56  483,56" fill="#1ab8d4"/>
+
+  <!-- — LABS — -->
+  <line x1="382" y1="70" x2="418" y2="70" stroke="#152848" stroke-width="1.5"/>
+  <line x1="538" y1="70" x2="622" y2="70" stroke="#1ab8d4" stroke-width="1.5"/>
+  <text x="480" y="74"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="14" font-weight="700" letter-spacing="6"
+    fill="#1ab8d4" text-anchor="middle">LABS</text>
 
   <!-- Tagline -->
-  <text
-    x="90" y="72"
+  <text x="502" y="94"
     font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
-    font-size="9"
-    font-weight="400"
-    letter-spacing="1.5"
-    fill="#0F6E56"
-    opacity="0.5">YOUR AI RECEPTIONIST ON WHATSAPP</text>
+    font-size="7" font-weight="400" letter-spacing="1.5"
+    fill="#152848" opacity="0.55" text-anchor="middle">INNOVATE • AUTOMATE • ELEVATE</text>
 </svg>

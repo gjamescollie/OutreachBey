@@ -1,37 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
-  <!-- Cay AI product mark — stylized wave/cay icon -->
-  <!-- Outer circle -->
-  <circle cx="40" cy="40" r="38" fill="#0F6E56"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 380" width="560" height="380">
+  <!-- Background -->
+  <rect width="560" height="380" fill="white"/>
 
-  <!-- Wave shape representing a cay (small island/sandbar) -->
-  <!-- Water waves -->
-  <path
-    d="M 12 46 Q 22 40 32 46 Q 42 52 52 46 Q 62 40 68 46"
-    fill="none"
-    stroke="white"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    opacity="0.6"/>
-  <path
-    d="M 12 52 Q 22 46 32 52 Q 42 58 52 52 Q 62 46 68 52"
-    fill="none"
-    stroke="white"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    opacity="0.4"/>
+  <!-- === CAY AI LOGO === -->
 
-  <!-- Island silhouette -->
-  <ellipse cx="40" cy="44" rx="18" ry="7" fill="white" opacity="0.15"/>
-  <ellipse cx="40" cy="43" rx="14" ry="5" fill="white" opacity="0.2"/>
+  <!-- "Cay" in dark navy, bold italic -->
+  <text
+    x="60" y="230"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="160"
+    font-weight="800"
+    font-style="italic"
+    fill="#152848">Cay</text>
 
-  <!-- "C" letterform — bold, white -->
+  <!-- "AI" with gradient (navy → teal) via linearGradient -->
+  <defs>
+    <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#152848;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1ab8d4;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Palm tree gradient -->
+    <linearGradient id="palmGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#0F6E56;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1ab8d4;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Wave gradient -->
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#152848;stop-opacity:0.7"/>
+      <stop offset="100%" style="stop-color:#1ab8d4;stop-opacity:0.8"/>
+    </linearGradient>
+  </defs>
+
+  <text
+    x="348" y="230"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="160"
+    font-weight="800"
+    font-style="italic"
+    fill="url(#aiGrad)">AI</text>
+
+  <!-- === PALM TREE — positioned between "y" and "A" === -->
+  <!-- Trunk -->
   <path
-    d="M 52 32 Q 40 18 28 26 Q 18 33 18 40 Q 18 50 28 55 Q 40 61 52 49"
+    d="M 338 240 Q 334 195 330 160 Q 328 130 326 100"
     fill="none"
-    stroke="white"
-    stroke-width="5"
+    stroke="url(#palmGrad)"
+    stroke-width="7"
     stroke-linecap="round"/>
 
-  <!-- Dot above — signal/AI indicator -->
-  <circle cx="54" cy="26" r="4" fill="white" opacity="0.9"/>
+  <!-- Palm fronds — radiating from top of trunk -->
+  <!-- Frond 1: top-right -->
+  <path
+    d="M 326 100 Q 355 82 375 68"
+    fill="none" stroke="url(#palmGrad)" stroke-width="5" stroke-linecap="round"/>
+  <!-- Frond 1 leaves -->
+  <path d="M 345 92 Q 358 80 372 72" fill="none" stroke="url(#palmGrad)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 350 88 Q 366 78 380 64" fill="none" stroke="url(#palmGrad)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 355 82 Q 370 74 385 68" fill="none" stroke="url(#palmGrad)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Frond 2: top-left -->
+  <path
+    d="M 326 100 Q 298 82 278 68"
+    fill="none" stroke="url(#palmGrad)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 308 92 Q 296 82 280 74" fill="none" stroke="url(#palmGrad)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 312 86 Q 296 76 278 70" fill="none" stroke="url(#palmGrad)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Frond 3: straight up -->
+  <path
+    d="M 326 100 Q 322 72 318 52"
+    fill="none" stroke="url(#palmGrad)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 326 100 Q 332 72 338 52" fill="none" stroke="url(#palmGrad)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M 326 100 Q 318 78 310 60" fill="none" stroke="url(#palmGrad)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Frond 4: right -->
+  <path
+    d="M 326 100 Q 358 96 385 90"
+    fill="none" stroke="url(#palmGrad)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Frond 5: left -->
+  <path
+    d="M 326 100 Q 296 98 268 94"
+    fill="none" stroke="url(#palmGrad)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- === WAVE LINES — underneath the text === -->
+  <!-- Wave 1 (back, lighter) -->
+  <path
+    d="M 60 272 Q 140 256 220 268 Q 300 280 380 268 Q 440 258 500 266"
+    fill="none"
+    stroke="url(#waveGrad)"
+    stroke-width="3.5"
+    stroke-linecap="round"
+    opacity="0.5"/>
+
+  <!-- Wave 2 (front, stronger) -->
+  <path
+    d="M 60 288 Q 150 272 240 286 Q 320 300 400 286 Q 460 274 500 282"
+    fill="none"
+    stroke="url(#waveGrad)"
+    stroke-width="4"
+    stroke-linecap="round"
+    opacity="0.75"/>
+
+  <!-- Wave 3 (foreground, teal) -->
+  <path
+    d="M 80 306 Q 170 290 260 304 Q 340 318 420 304 Q 470 294 500 300"
+    fill="none"
+    stroke="#1ab8d4"
+    stroke-width="3"
+    stroke-linecap="round"
+    opacity="0.6"/>
+
 </svg>
