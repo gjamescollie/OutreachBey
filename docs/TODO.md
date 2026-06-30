@@ -17,7 +17,7 @@
 | B1 | Tourism intent tuning — `classifyIntent()` uses `business_context`; tourism examples added | ✅ Done |
 | B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ✅ Done |
 | B3-inc2 | Accept `!commands` from Cay Control group (operator drives agent from personal number) | ✅ Done |
-| B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ⬜ Pending |
+| B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ✅ Done |
 | B6 | Multi-client provisioning: generalize CI/CD from single hardcoded droplet; runbook | ⬜ Pending |
 | B7 | Tourism onboarding template: annotated `settings.csv` + step list, sub-1-hour setup | ⬜ Pending |
 | B8 | Pre-flight test pass: tourism KB ≥75% confidence gate added to `tests/index.test.js` | ⬜ Pending |

@@ -22,3 +22,4 @@ followups.json
 .vscode/
 .claude/*
 !.claude/skills
+logs/*.log
