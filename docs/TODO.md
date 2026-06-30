@@ -15,10 +15,9 @@
 | B9-ux | Dashboard UX upgrade — health panel, two-tab Settings, industry KB templates, responsive design, waState tracking | ✅ Done |
 | B2 | Tourism KB template (`demo/settings_tour.csv` + `defaults/settings_tour.csv`) | ✅ Done |
 | B1 | Tourism intent tuning — `classifyIntent()` uses `business_context`; tourism examples added | ✅ Done |
-
-| B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ✅ Done — port 3001 health server, daily WhatsApp heartbeat, !status command, pm2 config; **founder action: enable UFW on droplet** (`ufw allow ssh`, `ufw allow 3001/tcp`, `ufw enable`) |
 | B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ✅ Done |
 | B3-inc2 | Accept `!commands` from Cay Control group (operator drives agent from personal number) | ✅ Done |
+| B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ✅ Done — port 3001 health server, daily WhatsApp heartbeat, !status command, pm2 config; **founder action: enable UFW on droplet** (`ufw allow ssh`, `ufw allow 3001/tcp`, `ufw enable`) |
 | B6 | Multi-client provisioning: generalize CI/CD from single hardcoded droplet; runbook | ⬜ Pending |
 | B7 | Tourism onboarding template: annotated `settings.csv` + step list, sub-1-hour setup | ⬜ Pending |
 | B8 | Pre-flight test pass: tourism KB ≥75% confidence gate added to `tests/index.test.js` | ⬜ Pending |

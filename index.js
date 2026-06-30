@@ -1391,6 +1391,7 @@ client.on('ready', () => {
   startInactivityChecker();
   startReviewAgent();
   startUptimeRobotPing();
+  startHeartbeat();
 });
 client.on('auth_failure', () => console.error('❌ Auth failed — re-scan the QR code'));
 
@@ -1590,6 +1591,25 @@ client.on('message_create', async (msg) => {
     }
   }
 
+  // ── STATUS ──
+  if (lower === '!status') {
+    const stats = getStats();
+    const pending = followUps.length;
+    const uptimeHours = Math.floor(process.uptime() / 3600);
+    const uptimeMins  = Math.floor((process.uptime() % 3600) / 60);
+    await msg.reply(
+      `✅ *Agent Status*\n\n` +
+      `📊 *Today:* ${stats?.today ?? 0} messages\n` +
+      `📅 *Scheduled:* ${pending} pending\n` +
+      `📨 *All time:* ${stats?.total ?? 0} messages\n` +
+      `⏱ *Uptime:* ${uptimeHours}h ${uptimeMins}m\n` +
+      `🤖 *Model:* ${AI_MODEL}\n` +
+      `🔌 *Provider:* ${AI_PROVIDER}`,
+      null, { linkPreview: false }
+    );
+    return;
+  }
+
   // ── HELP ──
   if (lower === '!help') {
     await msg.reply(
@@ -1608,6 +1628,7 @@ client.on('message_create', async (msg) => {
       `*!settings*\n→ View current agent settings\n\n` +
       `*!list*\n→ View pending scheduled messages\n\n` +
       `*!cancel [id]*\n→ Cancel a scheduled message\n\n` +
+      `*!status*\n→ Check agent health and stats\n\n` +
       `*!setup*\n→ Run the setup wizard to configure your agent`,
       null, { linkPreview: false }
     );
@@ -1923,6 +1944,51 @@ function startUptimeRobotPing() {
       .catch(e => console.error('UptimeRobot ping failed:', e.message));
   ping();
   setInterval(ping, 5 * 60 * 1000);
+}
+
+// ─── DAILY HEARTBEAT ──────────────────────────────────────────────────────────
+function startHeartbeat() {
+  const HEARTBEAT_HOUR   = 8;
+  const HEARTBEAT_MINUTE = 0;
+
+  function scheduleNext() {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), HEARTBEAT_HOUR, HEARTBEAT_MINUTE, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const delay = next.getTime() - now.getTime();
+    setTimeout(async () => {
+      await sendHeartbeat();
+      scheduleNext();
+    }, delay);
+    console.log(`💓 Heartbeat scheduled for ${next.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+  }
+
+  async function sendHeartbeat() {
+    try {
+      const settings = getSettings();
+      const controlChannel = getControlChannel(settings);
+      if (!controlChannel) return;
+      const stats = getStats();
+      const pending = followUps.length;
+      const uptimeHours = Math.floor(process.uptime() / 3600);
+      const uptimeMins  = Math.floor((process.uptime() % 3600) / 60);
+      const lines = [
+        `✅ *Cay AI is live* — ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        ``,
+        `📊 *Today:* ${stats?.today ?? 0} messages sent`,
+        `📅 *Scheduled:* ${pending} pending`,
+        `📨 *All time:* ${stats?.total ?? 0} messages`,
+        `⏱ *Uptime:* ${uptimeHours}h ${uptimeMins}m`,
+        `🤖 *Model:* ${AI_MODEL}`,
+      ];
+      await client.sendMessage(controlChannel, lines.join('\n'));
+      console.log('💓 Daily heartbeat sent');
+    } catch (e) {
+      console.error('Heartbeat failed:', e.message);
+    }
+  }
+
+  scheduleNext();
 }
 
 // ─── FOLLOW-UP CHECKER ────────────────────────────────────────────────────────

@@ -43,6 +43,9 @@ if [ ! -d "node_modules" ]; then
   echo ""
 fi
 
+# Create logs dir if missing (required by pm2)
+mkdir -p logs
+
 # Remove quarantine flags if present
 xattr -r -d com.apple.quarantine "$HOME/.cache/puppeteer" 2>/dev/null
 
@@ -50,6 +53,14 @@ echo "🚀 Starting agent..."
 echo "💬 Open contacts.html in your browser to manage contacts"
 echo ""
 
-PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node index.js
+# Use pm2 if installed (auto-restart on crash), otherwise fall back to node
+if command -v pm2 &> /dev/null; then
+  echo "⚙️  Starting with pm2 (auto-restart enabled)..."
+  pm2 start ecosystem.config.js --no-daemon
+else
+  echo "⚠️  pm2 not found — running directly with node"
+  echo "   Install pm2 for auto-restart: npm install -g pm2"
+  PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node index.js
+fi
 
 read -p "Agent stopped. Press Enter to exit..."
