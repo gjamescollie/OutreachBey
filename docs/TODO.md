@@ -18,9 +18,9 @@
 | B4 | Qualify + capture + handoff flow (date, party size, trip type → warm lead → booking link) | ✅ Done |
 | B3-inc2 | Accept `!commands` from Cay Control group (operator drives agent from personal number) | ✅ Done |
 | B5 | Reliability: daily heartbeat + external uptime monitor (spec in `FUTURE_PLANS.md`) | ✅ Done — port 3001 health server, daily WhatsApp heartbeat, !status command, pm2 config; **founder action: enable UFW on droplet** (`ufw allow ssh`, `ufw allow 3001/tcp`, `ufw enable`) |
-| B6 | Multi-client provisioning: generalize CI/CD from single hardcoded droplet; runbook | ⬜ Pending |
-| B7 | Tourism onboarding template: annotated `settings.csv` + step list, sub-1-hour setup | ⬜ Pending |
-| B8 | Pre-flight test pass: tourism KB ≥75% confidence gate added to `tests/index.test.js` | ⬜ Pending |
+| B6 | Multi-client provisioning: generalize CI/CD from single hardcoded droplet; runbook | ⏸ Deferred — one client per droplet; branching model (`preview` → personal, `main` → clients) agreed; build when client #2 signs |
+| B7 | Tourism onboarding runbook — step-by-step guide for spinning up a new client (QR scan → `!setup` wizard → tourism KB template → go-live checklist) | ⏸ Deferred — build when client #2 signs; intake form + checklist exist at `brand/sales/` |
+| B8 | Pre-flight test pass: tourism KB ≥75% confidence gate added to `tests/index.test.js` | ✅ Done — run with `RUN_PREFLIGHT=true OPENROUTER_API_KEY=sk-or-xxx npm test`; skipped automatically in CI |
 
 ---
 

@@ -1,7 +1,8 @@
 'use strict';
 
-const { describe, it, before, beforeEach } = require('node:test');
+const { describe, it, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('path');
 
 // ─── MOCK SETUP (must run before requiring index.js) ──────────────────────────
 
@@ -33,18 +34,20 @@ fs.appendFileSync = (filePath, data, ...rest) => {
 };
 
 // Default fetch stub — individual tests override global.fetch as needed
+// Save the real Node 18 built-in fetch before stubbing so pre-flight tests can restore it
+const _realFetch = globalThis.fetch;
 global.fetch = async () => ({ ok: true, json: async () => ({}), text: async () => '' });
 
 // Load index.js in test mode
 process.env.NODE_ENV = 'test';
-process.env.OPENROUTER_API_KEY = 'test-key-unused';
+if (!process.env.OPENROUTER_API_KEY) process.env.OPENROUTER_API_KEY = 'test-key-unused';
 
 const agent = require('../index.js');
 const {
   pick, parseCSV, appendToLog, buildTemplateFallback, withNav, CANNED,
   SETUP_STEPS, KB_INTRO_INDEX, LOGICAL_TOTAL, AUTO_ACT_THRESHOLD, SUGGEST_THRESHOLD,
   setupSessions, pendingPreviews, demoSessions,
-  handleSetup, handleInbound,
+  handleSetup, handleInbound, classifyIntent,
   fetchNewsHeadlines,
 } = agent;
 
@@ -541,6 +544,43 @@ describe('fetchNewsHeadlines()', () => {
     const headlines = await fetchNewsHeadlines();
     assert.equal(headlines, null);
   });
+});
+
+// ─── TOURISM KB — PRE-FLIGHT CONFIDENCE GATE ──────────────────────────────────
+// Run with: OPENROUTER_API_KEY=sk-or-xxx RUN_PREFLIGHT=true npm test
+// Skipped automatically in CI / when RUN_PREFLIGHT is not set.
+
+describe('Tourism KB — pre-flight confidence gate', async () => {
+  const run = process.env.RUN_PREFLIGHT === 'true';
+
+  // Restore real fetch so callAI() can reach OpenRouter; stub it back after
+  let _stubFetch;
+  before(() => { if (run) { _stubFetch = global.fetch; global.fetch = _realFetch; } });
+  after(() => { if (_stubFetch) { global.fetch = _stubFetch; _stubFetch = null; } });
+
+  const tourPath = path.join(__dirname, '..', 'demo', 'settings_tour.csv');
+  const tourRows = parseCSV(tourPath);
+  const tourSettings = {};
+  tourRows.forEach(r => { if (r.key) tourSettings[r.key] = r.value; });
+
+  for (let i = 1; i <= 20; i++) {
+    const q = tourSettings[`faq_${i}_q`];
+    const a = tourSettings[`faq_${i}_a`];
+    if (!q || !a) continue;
+
+    it(`KB ${i}: "${q.slice(0, 60)}…" → QUESTION ≥75%`, { skip: !run }, async () => {
+      const result = await classifyIntent(q, null, tourSettings);
+      assert.ok(result, 'classifyIntent returned null — AI unavailable?');
+      assert.ok(
+        result.confidence >= AUTO_ACT_THRESHOLD,
+        `KB ${i} confidence too low: ${result.confidence} (need ≥${AUTO_ACT_THRESHOLD})\nQ: "${q}"\nReasoning: ${result.reasoning}`
+      );
+      assert.equal(
+        result.intent, 'QUESTION',
+        `KB ${i} wrong intent: ${result.intent} (need QUESTION)\nQ: "${q}"`
+      );
+    });
+  }
 });
 
 // ─── CONSTANTS & SANITY ───────────────────────────────────────────────────────
